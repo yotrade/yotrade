@@ -9,6 +9,8 @@ const publicSchema = z.object({
   NEXT_PUBLIC_RP_ID: z.string().min(1).default("localhost"),
   NEXT_PUBLIC_RPC_URL: z.url().default("https://testnet-rpc.monad.xyz"),
   NEXT_PUBLIC_ALCHEMY_API_KEY: z.string().min(1).optional(),
+  /** Envio Cloud GraphQL endpoint. Changes with every indexer deployment on the development plan. */
+  NEXT_PUBLIC_INDEXER_URL: z.url().default("https://indexer.dev.hyperindex.xyz/78dbffe/v1/graphql"),
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;
@@ -26,4 +28,5 @@ export const publicEnv: PublicEnv = parsePublicEnv({
   NEXT_PUBLIC_RP_ID: process.env["NEXT_PUBLIC_RP_ID"],
   NEXT_PUBLIC_RPC_URL: process.env["NEXT_PUBLIC_RPC_URL"],
   NEXT_PUBLIC_ALCHEMY_API_KEY: process.env["NEXT_PUBLIC_ALCHEMY_API_KEY"],
+  NEXT_PUBLIC_INDEXER_URL: process.env["NEXT_PUBLIC_INDEXER_URL"],
 });
