@@ -72,3 +72,23 @@ Display names and avatars, set by each account for itself. It is immutable, has 
 | Storage or gas griefing through long names | Names are capped at 32 bytes; every write is paid by the writer into its own slot |
 | Markup or script in a name | The contract stores bytes; clients must render names as text and never as HTML |
 | Impersonation by choosing another trader's name | Not preventable onchain; clients show the address next to the name where it matters (results, claims) |
+
+## PerpsEngine
+
+The futures venue: cross-margin paper perpetuals priced by Pyth. It holds no value. What it protects is the fairness of a score that decides who receives a prize pool.
+
+| Threat | Mitigation |
+|---|---|
+| Choosing a convenient price for a fill | The fill uses the price stored in Pyth after the caller's update, at most 30 seconds old. Pyth ignores updates older than the one it holds, so any fresher price pushed by anyone wins |
+| Choosing a convenient settlement price | `settle` accepts only the first Pyth update at or after the end time (`parsePriceFeedUpdatesUnique`). Whoever settles, the price is the same |
+| Trading on a wide or broken price | Fills revert when the confidence interval exceeds 2% of the price, and on non-positive prices or exponents outside `[-18, 0]` |
+| Unlimited leverage as a free option, since losses are floored at zero | Fills that add risk must keep total notional within 20x equity across all markets. Anyone can liquidate an account under 2.5% maintenance margin, which rivals are motivated to do |
+| Trading outside the tournament, or by a non-participant | Schedule, venue and roster are read from the TournamentManager on every call; the engine keeps no copy |
+| Locking a trader into a position | Fills that reduce risk skip the leverage and market checks. Pausing never blocks `settle` |
+| Unbounded loops over positions | An account only lists markets the admin enabled and its owner opened |
+| MON stuck in the engine | The exact Pyth fee is required and forwarded; there is no refund path and no `receive` |
+| Re-entrancy through the oracle | `nonReentrant` on every state-changing entry point; Pyth and the manager are fixed at initialization |
+
+Markets must publish around the clock. A feed that pauses (metals, equities) cannot settle a tournament that ends while it is closed, so only crypto feeds are enabled.
+
+Invariants (`test/invariant/PerpsEngine.invariant.t.sol`): the open-market list matches the positions exactly, a flat account never owes, and the engine never holds MON.
