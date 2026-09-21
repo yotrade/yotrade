@@ -11,6 +11,7 @@ contract Handler is Test {
     TournamentManager public immutable manager;
     MockERC20 public immutable usdc;
     MockAccountCore public immutable core;
+    address public immutable venue;
     address public immutable admin;
     address public immutable scorer;
 
@@ -26,9 +27,18 @@ contract Handler is Test {
     uint256 public claimed;
     uint256 public swept;
     uint256 public refunded;
+    uint256 public donated;
+    uint256 public rescued;
 
-    constructor(TournamentManager manager_, MockERC20 usdc_, MockAccountCore core_, address admin_, address scorer_) {
-        (manager, usdc, core, admin, scorer) = (manager_, usdc_, core_, admin_, scorer_);
+    constructor(
+        TournamentManager manager_,
+        MockERC20 usdc_,
+        MockAccountCore core_,
+        address venue_,
+        address admin_,
+        address scorer_
+    ) {
+        (manager, usdc, core, venue, admin, scorer) = (manager_, usdc_, core_, venue_, admin_, scorer_);
         for (uint256 i; i < 6; ++i) {
             actors.push(makeAddr(string.concat("actor-", vm.toString(i))));
         }
@@ -59,6 +69,7 @@ contract Handler is Test {
         ITournamentManager.Config memory config = ITournamentManager.Config({
             prizeToken: address(usdc),
             capitalToken: address(usdc),
+            venue: venue,
             prizePool: pool,
             startingCapital: CAPITAL,
             startTime: start,
@@ -160,6 +171,20 @@ contract Handler is Test {
         vm.prank(organizer);
         try manager.reclaim(id) {
             refunded += unpaid;
+        } catch {}
+    }
+
+    /// @dev Tokens sent to the contract by mistake. They must never count as escrow.
+    function donate(uint256 amount) external {
+        amount = bound(amount, 1, 1e12);
+        usdc.mint(address(manager), amount);
+        donated += amount;
+    }
+
+    function rescue(uint256 actorSeed) external {
+        vm.prank(admin);
+        try manager.rescue(address(usdc), _actor(actorSeed)) returns (uint256 amount) {
+            rescued += amount;
         } catch {}
     }
 
