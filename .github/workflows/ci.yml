@@ -27,7 +27,7 @@ jobs:
           version: v1.8.3
       - run: bun install --frozen-lockfile
       - run: bunx biome ci .
-      - run: bunx turbo run lint build test
+      - run: bunx turbo run lint typecheck build test
 
   contracts:
     runs-on: ubuntu-latest

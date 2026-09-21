@@ -1,3 +1,3 @@
 # Same fast path as the CI `check` job, so a red pipeline is caught before it leaves the machine.
 bunx biome ci .
-bunx turbo run lint build test
+bunx turbo run lint typecheck build test
