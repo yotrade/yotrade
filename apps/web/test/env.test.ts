@@ -34,4 +34,18 @@ describe("createAppRuntime", () => {
     const runtime = createAppRuntime(parsePublicEnv({ NEXT_PUBLIC_ALCHEMY_API_KEY: "key" }));
     expect(runtime.publicClient.transport.url).toBe("https://monad-testnet.g.alchemy.com/v2/key");
   });
+
+  test("a seed gives local runs one stable account without a passkey prompt", async () => {
+    const env = parsePublicEnv({ NEXT_PUBLIC_E2E_PRF_SEED: `0x${"11".repeat(32)}` });
+    const first = await createAppRuntime(env).mera.signIn();
+    const second = await createAppRuntime(env).mera.register({ name: "x", displayName: "x" });
+    expect(first.wallet.account.address).toBe(second.wallet.account.address);
+    expect(first.tournamentWallet(1n).account.address).not.toBe(first.wallet.account.address);
+  });
+
+  test("rejects a seed that is not 32 bytes", () => {
+    expect(() => parsePublicEnv({ NEXT_PUBLIC_E2E_PRF_SEED: "0x1234" })).toThrow(
+      "NEXT_PUBLIC_E2E_PRF_SEED",
+    );
+  });
 });
