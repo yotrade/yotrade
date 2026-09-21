@@ -10,12 +10,21 @@ export interface Bar {
   readonly volume: number;
 }
 
+/** Candles per chart. Ninety-six 15-minute candles are exactly one day. */
+export const CANDLES = 96;
+
+/**
+ * Candle timeframes, the way a trading screen offers them. `kuru` is the nearest interval Kuru's API serves;
+ * `seconds` is the length of one candle at that interval, so the window is always `CANDLES` real candles wide.
+ */
 export const RANGES = {
-  "1H": { interval: "1m", seconds: 3_600 },
-  "24H": { interval: "5m", seconds: 86_400 },
-  "1W": { interval: "1h", seconds: 604_800 },
-  "1M": { interval: "6h", seconds: 2_592_000 },
-  All: { interval: "1d", seconds: 31_536_000 },
+  "1s": { interval: "1s", seconds: 1 },
+  "1m": { interval: "1m", seconds: 60 },
+  "5m": { interval: "5m", seconds: 300 },
+  "15m": { interval: "5m", seconds: 300 },
+  "1h": { interval: "1h", seconds: 3_600 },
+  "4h": { interval: "1h", seconds: 3_600 },
+  "1D": { interval: "1d", seconds: 86_400 },
 } as const;
 export type RangeName = keyof typeof RANGES;
 

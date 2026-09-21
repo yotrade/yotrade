@@ -1,4 +1,4 @@
-import type { Bar, RangeName } from "@/lib/chart.ts";
+import { type Bar, CANDLES, type RangeName } from "@/lib/chart.ts";
 import type { MarketSlug } from "@/lib/markets.ts";
 
 /**
@@ -15,16 +15,20 @@ const SOURCES = {
   { venue: "binance" | "gate"; symbol: string; label: string }
 >;
 
-/** Candle size and count per range, chosen to land near 100 to 170 points. */
-const PLAN: Record<RangeName, { binance: string; gate: string; limit: number; seconds: number }> = {
-  "1H": { binance: "1m", gate: "1m", limit: 60, seconds: 3_600 },
-  "24H": { binance: "15m", gate: "15m", limit: 96, seconds: 86_400 },
-  "1W": { binance: "1h", gate: "1h", limit: 168, seconds: 604_800 },
-  "1M": { binance: "4h", gate: "4h", limit: 180, seconds: 2_592_000 },
-  All: { binance: "1d", gate: "1d", limit: 365, seconds: 31_536_000 },
+/** Interval per venue and the length of one candle there. Gate's shortest candle is ten seconds. */
+const PLAN: Record<RangeName, { binance: [string, number]; gate: [string, number] }> = {
+  "1s": { binance: ["1s", 1], gate: ["10s", 10] },
+  "1m": { binance: ["1m", 60], gate: ["1m", 60] },
+  "5m": { binance: ["5m", 300], gate: ["5m", 300] },
+  "15m": { binance: ["15m", 900], gate: ["15m", 900] },
+  "1h": { binance: ["1h", 3_600], gate: ["1h", 3_600] },
+  "4h": { binance: ["4h", 14_400], gate: ["4h", 14_400] },
+  "1D": { binance: ["1d", 86_400], gate: ["1d", 86_400] },
 };
 
 const CACHE_MS = 30_000;
+/** One-second and one-minute candles go stale faster than the rest. */
+const FAST_CACHE_MS = 3_000;
 const TIMEOUT_MS = 8_000;
 
 export interface Reference {
@@ -83,11 +87,11 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
 
   async function load(market: MarketSlug, range: RangeName): Promise<Reference> {
     const source = SOURCES[market];
-    const plan = PLAN[range];
+    const [interval, seconds] = PLAN[range][source.venue];
     const url =
       source.venue === "binance"
-        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${plan.binance}&limit=${plan.limit}`
-        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${plan.gate}&limit=${plan.limit}`;
+        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${interval}&limit=${CANDLES}`
+        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${interval}&limit=${CANDLES}`;
     const response = await fetcher(url, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -98,13 +102,14 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     const body: unknown = await response.json();
     const bars = source.venue === "binance" ? parseBinance(body) : parseGate(body);
     const to = Math.floor(now() / 1000);
-    return { label: source.label, from: to - plan.seconds, to, bars };
+    return { label: source.label, from: to - seconds * CANDLES, to, bars };
   }
 
   return function reference(market: MarketSlug, range: RangeName): Promise<Reference> {
     const key = `${market}:${range}`;
     const hit = cache.get(key);
-    if (hit && now() - hit.at < CACHE_MS) {
+    const ttl = range === "1s" || range === "1m" ? FAST_CACHE_MS : CACHE_MS;
+    if (hit && now() - hit.at < ttl) {
       return Promise.resolve(hit.value);
     }
     const running = inFlight.get(key);

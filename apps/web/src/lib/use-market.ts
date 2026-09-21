@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { type MarketSymbol, markets } from "@yotrade/core/addresses";
 
-import { bookRows, RANGES, type RangeName, summarize, toBars } from "./chart.ts";
+import { bookRows, CANDLES, RANGES, type RangeName, summarize, toBars } from "./chart.ts";
 import { roiBps } from "./ticket.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
@@ -33,8 +33,12 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     queryKey: ["candles", orderBook, range],
     queryFn: async () => {
       const to = Math.floor(Date.now() / 1000);
-      const from = to - RANGES[range].seconds;
-      const rows = await kuru.data.candles(orderBook, { interval: RANGES[range].interval, from });
+      const from = to - RANGES[range].seconds * CANDLES;
+      const rows = await kuru.data.candles(orderBook, {
+        interval: RANGES[range].interval,
+        from,
+        countback: CANDLES,
+      });
       return { from, to, rows };
     },
     refetchInterval: 10_000,

@@ -73,22 +73,23 @@ describe("reference prices", () => {
       },
       () => time,
     );
-    const gold = await reference("xaut0", "24H");
+    const gold = await reference("xaut0", "15m");
     expect(gold.label).toContain("PAXG");
     expect(gold.to - gold.from).toBe(86_400);
-    await reference("xaut0", "24H");
-    await reference("mon", "1W");
+    await reference("xaut0", "15m");
+    await reference("mon", "1s");
     expect(urls).toEqual([
       "https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=96",
-      "https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=MON_USDT&interval=1h&limit=168",
+      // Gate has no one-second candle, so the shortest timeframe falls back to ten seconds.
+      "https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=MON_USDT&interval=10s&limit=96",
     ]);
     time += 30_000;
-    await reference("xaut0", "24H");
+    await reference("xaut0", "15m");
     expect(urls).toHaveLength(3);
   });
 
   test("surfaces an upstream failure instead of caching it", async () => {
     const reference = createReference(() => Promise.resolve(new Response("{}", { status: 429 })));
-    await expect(reference("cbbtc", "1H")).rejects.toThrow("429");
+    await expect(reference("cbbtc", "1h")).rejects.toThrow("429");
   });
 });

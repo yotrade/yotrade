@@ -178,7 +178,7 @@ interface ScreenProps {
 
 export function MarketScreen({ id, slug, market }: ScreenProps) {
   const [view, setView] = useState<View>("Chart");
-  const [range, setRange] = useState<RangeName>("24H");
+  const [range, setRange] = useState<RangeName>("15m");
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
   const [done, setDone] = useState<string>();
@@ -192,7 +192,7 @@ export function MarketScreen({ id, slug, market }: ScreenProps) {
   const summary = global ? summarize(reference.data?.bars ?? []) : data.summary;
 
   return (
-    <main className="flex flex-1 flex-col gap-5 pb-28 pt-4">
+    <main className="flex flex-1 flex-col gap-5 pb-24 pt-4">
       <MarketHeader base={data.base} roi={data.roi} />
       <Segmented<View> label="View" options={VIEWS} value={view} onChange={setView} />
 

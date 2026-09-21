@@ -14,7 +14,7 @@ export function ArenaScreen() {
     refetchInterval: 5_000,
   });
   return (
-    <main className="flex flex-1 flex-col gap-6 pt-4">
+    <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold leading-[26px] tracking-tight">Arena</h1>
         <Link

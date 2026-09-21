@@ -17,7 +17,8 @@ export function useReference(slug: MarketSlug, range: RangeName, enabled = true)
   return useQuery({
     queryKey: ["reference", slug, range],
     enabled,
-    refetchInterval: 30_000,
+    // Short timeframes are watched live; the server and the CDN still bound the upstream calls.
+    refetchInterval: range === "1s" ? 3_000 : range === "1m" ? 10_000 : 30_000,
     queryFn: async (): Promise<ReferenceSeries> => {
       const response = await fetch(`/api/reference/${slug}?range=${range}`);
       if (!response.ok) {
