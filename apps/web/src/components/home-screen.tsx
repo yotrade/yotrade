@@ -40,7 +40,7 @@ export function HomeScreen() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 pt-4">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center">
         <button
           type="button"
           aria-label="Account and settings"
@@ -48,14 +48,6 @@ export function HomeScreen() {
           className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Avatar address={address} />
-        </button>
-        <button
-          type="button"
-          aria-label="Settings"
-          onClick={() => setSettings(true)}
-          className="grid size-10 place-items-center rounded-full bg-well transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          <Icon name="cog" size={20} />
         </button>
       </header>
 
