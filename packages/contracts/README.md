@@ -18,10 +18,28 @@ Scores are computed offchain from Kuru's public trade and balance data, so anyon
 ## Usage
 
 ```bash
-forge build
-forge test
-forge fmt
+bun run build
+bun run test              # unit, guard, regression and invariant suites
+bun run test:fork         # against the live Kuru testnet AccountCore (needs MONAD_TESTNET_RPC_URL)
+bun run coverage
+bun run snapshot:check
 ```
+
+## Tests
+
+| Suite | Path | Purpose |
+|---|---|---|
+| Unit | `test/TournamentManager.t.sol` | Lifecycle, payouts, upgrades |
+| Guards | `test/TournamentManager.guards.t.sol` | Every validation and access-control revert |
+| Regression | `test/regression` | One test per fixed defect, named after its issue |
+| Invariant | `test/invariant` | Solvency and conservation of funds under random call sequences |
+| Fork | `test/fork` | `join` against Kuru's deployed `AccountCore` |
+
+CI enforces 100% line and branch coverage of `src/`, a gas snapshot within 5%, and Slither with no medium or high findings.
+
+## Operations
+
+Give `DEFAULT_ADMIN_ROLE` and `UPGRADER_ROLE` to a multisig, keep `SCORER_ROLE` on a separate hot key, and set a dispute window long enough for participants to check the published scores.
 
 ## Deploy
 
@@ -38,7 +56,7 @@ Upgrade with `script/Upgrade.s.sol` after setting `TOURNAMENT_MANAGER_PROXY`.
 
 ```
 src/                 TournamentManager and interfaces
-test/                unit, fuzz and upgrade tests
+test/                unit, guard, regression, invariant and fork suites
 script/              deployment and upgrade
 lib/                 forge-std, OpenZeppelin (git submodules)
 ```
