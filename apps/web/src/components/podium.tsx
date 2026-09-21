@@ -1,11 +1,13 @@
 import type { Address } from "viem";
 
-import { shortAddress } from "@/lib/format.ts";
 import { Avatar } from "./ui/avatar.tsx";
 import { Icon } from "./ui/icon.tsx";
 
 export interface PodiumEntry {
   readonly address: Address;
+  /** What to call them: "You", a chosen name, or a short address. */
+  readonly name: string;
+  readonly avatar?: number | undefined;
   /** What the pill under the name says: a return, or a prize. */
   readonly score: string;
   readonly you: boolean;
@@ -51,10 +53,10 @@ function Step({ entry, step }: { entry: PodiumEntry | undefined; step: (typeof S
       <span
         className={`mt-1 rounded-full ring-[3px] ring-offset-2 ring-offset-surface ${step.ring}`}
       >
-        <Avatar address={entry.address} size={step.avatar} />
+        <Avatar address={entry.address} size={step.avatar} avatar={entry.avatar} />
       </span>
       <p className="mt-3 w-full truncate text-center text-sm font-semibold leading-tight">
-        {entry.you ? "You" : shortAddress(entry.address)}
+        {entry.name}
       </p>
       <span className="tabular mt-1.5 rounded-full bg-surface-raised px-2.5 py-0.5 font-mono text-[11px] font-bold shadow-row">
         {entry.score}
@@ -84,10 +86,7 @@ export function Podium({ entries }: { entries: readonly PodiumEntry[] }) {
       role="img"
       aria-label={`Podium: ${entries
         .slice(0, 3)
-        .map(
-          (entry, index) =>
-            `${index + 1}. ${entry.you ? "you" : shortAddress(entry.address)}, ${entry.score}`,
-        )
+        .map((entry, index) => `${index + 1}. ${entry.name}, ${entry.score}`)
         .join("; ")}`}
       className="flex items-end gap-1 rounded-[32px] bg-gradient-to-b from-accent-soft/60 to-transparent px-3 pt-5"
     >

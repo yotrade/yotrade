@@ -3,8 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Address } from "viem";
 
-import { formatUsdc, shortAddress } from "@/lib/format.ts";
+import { formatUsdc } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
+import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import { Podium } from "./podium.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
@@ -30,6 +31,9 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
     },
     refetchInterval: 5_000,
   });
+  const profileOf = useProfiles((data ?? []).map((row) => row.participant));
+  const nameOf = (row: LeaderboardRow) =>
+    traderName(row.participant, profileOf(row.participant), row.participant === you);
 
   if (isPending) {
     return (
@@ -60,6 +64,8 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
       <Podium
         entries={data.slice(0, 3).map((row) => ({
           address: row.participant,
+          name: nameOf(row),
+          avatar: profileOf(row.participant)?.avatar,
           score: formatRoi(row.roiPpm),
           you: row.participant === you,
         }))}
@@ -68,7 +74,7 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
       <ol className="-mt-2 flex flex-col gap-2 rounded-[32px] bg-surface p-2 shadow-[0_-8px_24px_#0e091c0f]">
         {data.slice(0, 3).map((row) => (
           <li key={row.participant} className="sr-only">
-            {row.rank}. {shortAddress(row.participant)} {formatRoi(row.roiPpm)}
+            {row.rank}. {nameOf(row)} {formatRoi(row.roiPpm)}
           </li>
         ))}
         {rest.length === 0 ? (
@@ -82,11 +88,15 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
             className="flex animate-enter items-center gap-3 rounded-full bg-surface-raised py-2 pl-2 pr-3"
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
-            <Avatar address={row.participant} size={44} />
+            <Avatar
+              address={row.participant}
+              size={44}
+              avatar={profileOf(row.participant)?.avatar}
+            />
             <div className="flex min-w-0 flex-1 flex-col">
               <p className="truncate font-semibold leading-tight">
                 <span className="tabular mr-1.5 font-mono text-xs text-ink-muted">{row.rank}</span>
-                {row.participant === you ? "You" : shortAddress(row.participant)}
+                {nameOf(row)}
               </p>
               <p className="tabular truncate text-[13px] font-medium text-ink-muted">
                 {formatPnl(row.pnl)} USDC · {row.fills} fills

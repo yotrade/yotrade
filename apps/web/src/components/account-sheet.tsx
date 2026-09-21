@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { shortAddress } from "@/lib/format.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { useLocalProfile } from "@/lib/use-local-profile.ts";
+import { ProfileEditor } from "./profile-editor.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Sheet, SheetRow } from "./ui/sheet.tsx";
@@ -14,6 +16,7 @@ const EXPLORER = "https://testnet.monadvision.com/address/";
 export function AccountSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   const { identity, signOut } = useIdentity();
   const [copied, setCopied] = useState(false);
+  const [profile] = useLocalProfile();
   if (!identity) {
     return null;
   }
@@ -22,7 +25,8 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose(): void
   return (
     <Sheet open={open} onClose={onClose} label="Account">
       <div className="flex flex-col items-center gap-3 rounded-[32px] bg-surface-raised p-6">
-        <Avatar address={address} size={72} />
+        <Avatar address={address} size={72} avatar={profile.avatar} />
+        {profile.name ? <p className="text-lg font-bold tracking-tight">{profile.name}</p> : null}
         <p className="font-mono text-sm font-semibold">{shortAddress(address)}</p>
         <button
           type="button"
@@ -35,6 +39,8 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose(): void
           {copied ? "Copied" : "Copy address"}
         </button>
       </div>
+
+      <ProfileEditor identity={identity} />
 
       <div className="flex flex-col divide-y divide-border/60">
         <SheetRow icon={<Icon name="face-scan" size={20} />} label="Secured by">

@@ -4,10 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 import { useState } from "react";
 
-import { formatUsdc, shortAddress, timeUntil } from "@/lib/format.ts";
+import { formatUsdc, timeUntil } from "@/lib/format.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Podium } from "./podium.tsx";
 import { Button } from "./ui/button.tsx";
@@ -26,6 +27,7 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const profileOf = useProfiles(tournament.entries.map((entry) => entry.participant_id));
 
   if (phase !== "scoring" && phase !== "dispute" && phase !== "claimable") {
     return null;
@@ -105,6 +107,12 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
           <Podium
             entries={standings.slice(0, 3).map((entry) => ({
               address: entry.participant_id,
+              name: traderName(
+                entry.participant_id,
+                profileOf(entry.participant_id),
+                entry === mine,
+              ),
+              avatar: profileOf(entry.participant_id)?.avatar,
               score: `$${formatUsdc(entry.prize)}${entry.claimed ? " ✓" : ""}`,
               you: entry === mine,
             }))}
@@ -117,7 +125,11 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
               >
                 <span>
                   #{entry.rank}{" "}
-                  <span className="font-mono">{shortAddress(entry.participant_id)}</span>
+                  {traderName(
+                    entry.participant_id,
+                    profileOf(entry.participant_id),
+                    entry === mine,
+                  )}
                 </span>
                 <span className={entry.claimed ? "text-ink-muted" : "font-semibold text-up"}>
                   {formatUsdc(entry.prize)} USDC{entry.claimed ? " · claimed" : ""}
