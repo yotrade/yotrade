@@ -30,10 +30,13 @@
     "verified": "sourcify (MonadVision)"
   },
   "config": {
-    "disputeWindowSeconds": 3600,
+    "disputeWindowSeconds": 120,
     "adminTransferDelaySeconds": 0,
     "admin": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
-    "scorer": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
+    "scorers": [
+      "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
+      "0x76146c5eae1559A7a4a66D2CDC57318Cb9F9ea14"
+    ],
     "approvedVenues": ["0xADefe39B43673641e94cE99613c54266af2490e6"]
   },
   "retired": [
