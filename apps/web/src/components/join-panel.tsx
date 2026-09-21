@@ -129,6 +129,10 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
     // The onboarding gate guarantees an identity before any page renders.
     return null;
   }
+  // Nothing to offer until we know: the join card must not flash for someone who is already in.
+  if (entry.isPending) {
+    return <Card className="h-[72px] animate-pulse" aria-busy />;
+  }
   if (entry.data) {
     return (
       <MyStatus

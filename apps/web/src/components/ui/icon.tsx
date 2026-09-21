@@ -48,6 +48,9 @@ export function Icon({
       width={size}
       height={size}
       unoptimized
+      // Tiny and everywhere: fetch them with the page. The explicit box keeps non-square marks undistorted.
+      loading="eager"
+      style={{ width: size, height: size }}
       className={`shrink-0 ${className}`}
     />
   );
