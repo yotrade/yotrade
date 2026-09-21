@@ -50,16 +50,29 @@ export function timeUntil(targetSeconds: bigint, nowSeconds: bigint): string {
   return parts.join(" ");
 }
 
-/** What the schedule means to a visitor right now: a countdown while it matters, nothing afterwards. */
-export function countdown(
+/** Time to the next boundary that matters: the start while upcoming, the end while live, nothing afterwards. */
+export function timeLeft(
   phase: string,
   schedule: { startTime: bigint; endTime: bigint },
   nowSeconds: bigint,
 ): string {
   if (phase === "upcoming") {
-    return `Starts in ${timeUntil(schedule.startTime, nowSeconds)}`;
+    return timeUntil(schedule.startTime, nowSeconds);
   }
-  return phase === "live" ? `${timeUntil(schedule.endTime, nowSeconds)} left` : "";
+  return phase === "live" ? timeUntil(schedule.endTime, nowSeconds) : "";
+}
+
+/** The same as a sentence fragment for list rows: "Starts in 2h 5m", "3h left". */
+export function countdown(
+  phase: string,
+  schedule: { startTime: bigint; endTime: bigint },
+  nowSeconds: bigint,
+): string {
+  const left = timeLeft(phase, schedule, nowSeconds);
+  if (left === "") {
+    return "";
+  }
+  return phase === "upcoming" ? `Starts in ${left}` : `${left} left`;
 }
 
 /** Token amount for display: up to six decimals, no trailing noise. */
