@@ -19,3 +19,11 @@ bun run test:live        # real events through HyperSync (needs ENVIO_API_TOKEN)
 `ResultsVoided` reverses what `ResultsPosted` wrote, so ranks and podium counters stay correct when results are reposted.
 
 After changing events in the contract, update `config.yaml` and run `bun run codegen`.
+
+## Deployment
+
+Envio Cloud deploys every push to the `envio` branch, from `apps/indexer` alone with pnpm. Keep this package free of workspace imports, and push to `envio` only when the indexer changes: each push re-indexes from the start block.
+
+```bash
+git push origin main:envio
+```
