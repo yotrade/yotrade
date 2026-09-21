@@ -22,6 +22,7 @@ import { OrderBook } from "./order-book.tsx";
 import { OrderTicket, type Side } from "./order-ticket.tsx";
 import { PriceChart } from "./price-chart.tsx";
 import { BackButton } from "./ui/back-button.tsx";
+import { Dropdown } from "./ui/dropdown.tsx";
 import { Segmented } from "./ui/segmented.tsx";
 import { Sheet } from "./ui/sheet.tsx";
 import { TokenIcon } from "./ui/token-icon.tsx";
@@ -178,7 +179,7 @@ interface ScreenProps {
 export function MarketScreen({ id, slug, market }: ScreenProps) {
   const [view, setView] = useState<View>("Chart");
   const [range, setRange] = useState<RangeName>("24H");
-  const [type, setType] = useState<ChartType>("Line");
+  const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
   const [done, setDone] = useState<string>();
   const [source, setSource] = useState<Source>("Kuru");
@@ -198,8 +199,7 @@ export function MarketScreen({ id, slug, market }: ScreenProps) {
       <div className="flex items-end justify-between gap-3">
         <Headline summary={summary} range={range} />
         {chart ? (
-          <Segmented<ChartType>
-            compact
+          <Dropdown<ChartType>
             label="Chart type"
             options={CHART_TYPES}
             value={type}
