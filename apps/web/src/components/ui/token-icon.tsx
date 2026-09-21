@@ -1,18 +1,30 @@
 import type { TokenSymbol } from "@yotrade/core/addresses";
+import Image from "next/image";
 
 import { Icon } from "./icon.tsx";
 
-const BADGES: Record<Exclude<TokenSymbol, "usdc">, { glyph: string; color: string }> = {
+const BADGES: Record<Exclude<TokenSymbol, "usdc" | "mon">, { glyph: string; color: string }> = {
   cbBtc: { glyph: "₿", color: "#f7931a" },
   xaut0: { glyph: "Au", color: "#d4a017" },
-  mon: { glyph: "M", color: "#6e54ff" },
   weth: { glyph: "Ξ", color: "#627eea" },
 };
 
-/** USDC comes from the kit's icon set; the other tokens get a plain badge in their own colour. */
+/** USDC comes from the kit's icon set and MON is Monad's own mark; the rest get a plain badge. */
 export function TokenIcon({ token, size = 40 }: { token: TokenSymbol; size?: number }) {
   if (token === "usdc") {
     return <Icon name="token-usdc" size={size} />;
+  }
+  if (token === "mon") {
+    return (
+      <Image
+        src="/brands/monad.png"
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        className="shrink-0 rounded-full"
+      />
+    );
   }
   const { glyph, color } = BADGES[token];
   return (
