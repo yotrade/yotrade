@@ -1,0 +1,27 @@
+{
+  "name": "@yotrade/plugin-mera",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./plugin": "./src/plugin.ts",
+    "./derive": "./src/derive.ts",
+    "./vault": "./src/vault.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@category-labs/mera": "^0.2.0",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@yotrade/core": "workspace:*",
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@yotrade/tsconfig": "workspace:*",
+    "typescript": "^7.0.2"
+  }
+}
