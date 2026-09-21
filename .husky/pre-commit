@@ -1,1 +1,5 @@
 bunx biome check --staged --no-errors-on-unmatched --files-ignore-unknown=true
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '\.sol$'; then
+  (cd packages/contracts && forge fmt --check)
+fi
