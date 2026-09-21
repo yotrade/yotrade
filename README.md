@@ -13,7 +13,7 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 | Path | Description |
 |---|---|
 | `apps/` | Deployable applications |
-| `packages/contracts` | Tournament contracts (Foundry, Solidity 0.8.28) |
+| [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 
 ## Requirements
 
