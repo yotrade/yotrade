@@ -95,7 +95,7 @@ contract TournamentManager is
     // ---------------------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITournamentManager
-    function createTournament(Config calldata config) external whenNotPaused nonReentrant returns (uint256 id) {
+    function createTournament(Config calldata config) external nonReentrant whenNotPaused returns (uint256 id) {
         if (config.startTime <= block.timestamp || config.endTime <= config.startTime) revert InvalidSchedule();
         if (config.endTime - config.startTime > MAX_DURATION) revert InvalidSchedule();
         if (config.maxParticipants == 0) revert InvalidCap();
@@ -110,6 +110,9 @@ contract TournamentManager is
         t.status = Status.Open;
         t.config = config;
 
+        // Logs before external calls: a token callback must not be able to interleave its own events.
+        emit TournamentCreated(id, msg.sender, config);
+
         if (config.prizePool != 0) {
             IERC20 token = IERC20(config.prizeToken);
             uint256 before = token.balanceOf(address(this));
@@ -119,8 +122,6 @@ contract TournamentManager is
             if (received != config.prizePool) revert PrizeTransferMismatch(config.prizePool, received);
             t.unpaid = received;
         }
-
-        emit TournamentCreated(id, msg.sender, config);
     }
 
     /// @inheritdoc ITournamentManager
@@ -157,8 +158,8 @@ contract TournamentManager is
         amount = t.unpaid - owed;
         if (amount == 0) revert NothingToSweep();
         t.unpaid = owed;
-        IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
         emit RemainderSwept(id, amount);
+        IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -202,9 +203,9 @@ contract TournamentManager is
         t.claimed[msg.sender] = true;
         amount = _prize(t, rankPlusOne - 1);
         t.unpaid -= amount;
-        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(msg.sender, amount);
 
         emit PrizeClaimed(id, msg.sender, rankPlusOne, amount);
+        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(msg.sender, amount);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -220,7 +221,10 @@ contract TournamentManager is
 
         for (uint256 i; i < winners.length; ++i) {
             address winner = winners[i];
+            // Input validation over at most MAX_WINNERS entries; reverting on the first bad one is intended.
+            // forge-lint: disable-next-line(require-revert-in-loop)
             if (t.tradingAccountOf[winner] == address(0)) revert NotParticipant(winner);
+            // forge-lint: disable-next-line(require-revert-in-loop)
             if (t.rankOf[winner] != 0) revert DuplicateWinner(winner);
             t.rankOf[winner] = i + 1;
         }
@@ -228,6 +232,8 @@ contract TournamentManager is
         t.winners = winners;
         t.status = Status.ResultsPosted;
         // Fixed at posting time so later changes to the window never move a pending tournament.
+        // A uint64 timestamp cannot truncate for roughly 5e11 years.
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint64 claimableAt = uint64(block.timestamp) + _layout().disputeWindow;
         t.claimableAt = claimableAt;
 
@@ -319,8 +325,10 @@ contract TournamentManager is
     function prizeOf(uint256 id, address account) external view returns (uint256 amount, bool claimed) {
         Tournament storage t = _layout().tournaments[id];
         uint256 rankPlusOne = t.rankOf[account];
-        if (rankPlusOne == 0) return (0, false);
-        return (_prize(t, rankPlusOne - 1), t.claimed[account]);
+        if (rankPlusOne != 0) {
+            amount = _prize(t, rankPlusOne - 1);
+            claimed = t.claimed[account];
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -373,8 +381,8 @@ contract TournamentManager is
         uint256 amount = t.unpaid;
         t.unpaid = 0;
         t.status = Status.Cancelled;
-        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
         emit TournamentCancelled(id, amount);
+        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
     }
 
     function _validateSplit(uint16[] calldata split) private pure {
@@ -382,6 +390,7 @@ contract TournamentManager is
         if (length == 0 || length > MAX_WINNERS) revert InvalidSplit();
         uint256 total = 0;
         for (uint256 i; i < length; ++i) {
+            // forge-lint: disable-next-line(require-revert-in-loop)
             if (split[i] == 0) revert InvalidSplit();
             total += split[i];
         }
