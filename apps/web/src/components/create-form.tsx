@@ -16,9 +16,7 @@ import {
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
-import { PasskeyCard } from "./passkey-card.tsx";
 import { Button } from "./ui/button.tsx";
-import { Card } from "./ui/card.tsx";
 import { Field } from "./ui/field.tsx";
 import { Select } from "./ui/select.tsx";
 
@@ -43,12 +41,8 @@ export function CreateForm() {
   const [pending, setPending] = useState(false);
 
   if (!identity) {
-    return (
-      <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">Sign in to host</h2>
-        <PasskeyCard />
-      </section>
-    );
+    // The onboarding gate guarantees an identity before any page renders.
+    return null;
   }
   const wallet = identity.wallet;
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
@@ -108,60 +102,58 @@ export function CreateForm() {
   }
 
   return (
-    <Card>
-      <form className="flex flex-col gap-4" onSubmit={submit}>
-        <Field
-          label="Name"
-          placeholder="Jogja Trading Cup"
-          maxLength={60}
-          value={form.name}
-          onChange={(event) => set("name", event.target.value)}
-          {...errorFor("name")}
-        />
-        <Field
-          label="Prize pool in USDC"
-          inputMode="decimal"
-          value={form.prizePool}
-          onChange={(event) => set("prizePool", event.target.value)}
-          hint="Escrowed by the contract now, paid to the winners automatically. Test funds are claimed for you."
-          {...errorFor("prizePool")}
+    <form className="flex flex-col gap-4" onSubmit={submit}>
+      <Field
+        label="Name"
+        placeholder="Jogja Trading Cup"
+        maxLength={60}
+        value={form.name}
+        onChange={(event) => set("name", event.target.value)}
+        {...errorFor("name")}
+      />
+      <Field
+        label="Prize pool in USDC"
+        inputMode="decimal"
+        value={form.prizePool}
+        onChange={(event) => set("prizePool", event.target.value)}
+        hint="Escrowed by the contract now, paid to the winners automatically. Test funds are claimed for you."
+        {...errorFor("prizePool")}
+      />
+      <Select
+        label="Prize split"
+        options={keys(SPLITS)}
+        value={form.split}
+        onChange={(v) => set("split", v)}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <Select
+          label="Starts"
+          options={keys(START_DELAYS)}
+          value={form.startDelay}
+          onChange={(v) => set("startDelay", v)}
         />
         <Select
-          label="Prize split"
-          options={keys(SPLITS)}
-          value={form.split}
-          onChange={(v) => set("split", v)}
+          label="Runs for"
+          options={keys(DURATIONS)}
+          value={form.duration}
+          onChange={(v) => set("duration", v)}
         />
-        <div className="grid grid-cols-2 gap-3">
-          <Select
-            label="Starts"
-            options={keys(START_DELAYS)}
-            value={form.startDelay}
-            onChange={(v) => set("startDelay", v)}
-          />
-          <Select
-            label="Runs for"
-            options={keys(DURATIONS)}
-            value={form.duration}
-            onChange={(v) => set("duration", v)}
-          />
-        </div>
-        <Field
-          label="Max traders"
-          inputMode="numeric"
-          value={form.maxParticipants}
-          onChange={(event) => set("maxParticipants", event.target.value)}
-          {...errorFor("maxParticipants")}
-        />
-        {failure ? (
-          <p role="alert" className="text-sm text-down">
-            {failure}
-          </p>
-        ) : null}
-        <Button type="submit" pending={pending}>
-          Create tournament
-        </Button>
-      </form>
-    </Card>
+      </div>
+      <Field
+        label="Max traders"
+        inputMode="numeric"
+        value={form.maxParticipants}
+        onChange={(event) => set("maxParticipants", event.target.value)}
+        {...errorFor("maxParticipants")}
+      />
+      {failure ? (
+        <p role="alert" className="text-sm text-down">
+          {failure}
+        </p>
+      ) : null}
+      <Button type="submit" pending={pending}>
+        Create tournament
+      </Button>
+    </form>
   );
 }

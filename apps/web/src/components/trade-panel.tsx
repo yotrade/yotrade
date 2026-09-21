@@ -16,7 +16,8 @@ import { useRuntime } from "@/lib/use-runtime.ts";
 import { Amount } from "./ui/amount.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
-import { Field } from "./ui/field.tsx";
+import { Icon } from "./ui/icon.tsx";
+import { TokenIcon } from "./ui/token-icon.tsx";
 
 const MARKET_SYMBOLS = Object.keys(markets) as MarketSymbol[];
 /** The deepest book on testnet. Thin books turn ordinary sizes into double-digit price impact. */
@@ -67,7 +68,7 @@ function Toggle<T extends string>({
   label: string;
 }) {
   return (
-    <fieldset className="flex gap-1 rounded-2xl bg-surface p-1">
+    <fieldset className="flex gap-1 rounded-[18px] bg-well p-1">
       <legend className="sr-only">{label}</legend>
       {options.map((option) => (
         <button
@@ -75,7 +76,7 @@ function Toggle<T extends string>({
           type="button"
           aria-pressed={option === value}
           onClick={() => onChange(option)}
-          className={`min-h-10 flex-1 rounded-lg px-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${option === value ? "bg-surface-raised text-ink ring-2 ring-accent" : "text-ink-muted hover:text-ink"}`}
+          className={`min-h-10 flex-1 rounded-2xl px-2 font-mono text-[13px] font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${option === value ? "bg-surface text-ink shadow-row ring-2 ring-accent" : "text-ink-muted hover:text-ink"}`}
         >
           {option}
         </button>
@@ -98,49 +99,86 @@ function PortfolioCard({
 }) {
   const roi = portfolio ? roiBps(portfolio.totalUsdc, capitalAtJoin) : null;
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm text-ink-muted">Account value</p>
-          {portfolio ? (
-            <Amount value={portfolio.totalUsdc} size="xl" />
-          ) : (
-            <p className="text-5xl font-bold text-ink-muted">…</p>
-          )}
-        </div>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-[13px] font-medium text-ink-muted">Account value</p>
+        {portfolio ? (
+          <Amount value={portfolio.totalUsdc} size="xl" />
+        ) : (
+          <p className="text-5xl font-bold text-ink-muted">…</p>
+        )}
         {roi === null ? null : (
-          <p className={`tabular text-lg font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
-            {formatBps(roi)}
+          <p className={`tabular text-sm font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
+            {formatBps(roi)} since joining
           </p>
         )}
       </div>
-      <ul className="flex flex-wrap gap-2">
+      <ul className="flex flex-wrap gap-1.5">
         {Object.entries(portfolio?.holdings ?? {})
           .filter(([, holding]) => holding.free + holding.reserved > 0n)
           .map(([symbol, holding]) => (
             <li
               key={symbol}
-              className="tabular rounded-full bg-surface px-3 py-1 text-sm font-medium"
+              className="tabular flex items-center gap-1.5 rounded-full bg-well py-1 pl-1 pr-3 text-sm font-semibold"
             >
+              <TokenIcon token={symbol as TokenSymbol} size={24} />
               {formatToken(holding.free + holding.reserved, tokens[symbol as TokenSymbol].decimals)}{" "}
               {LABELS[symbol]}
             </li>
           ))}
       </ul>
+    </div>
+  );
+}
+
+function InfoCard({
+  book,
+  quote,
+}: {
+  book: Book | undefined;
+  quote: SwapQuote | null | undefined;
+}) {
+  const tooMuch = (quote?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
+  return (
+    <Card className="flex flex-col gap-2" aria-live="polite">
+      <div className="flex items-center justify-between text-sm font-medium">
+        <span className="text-ink-muted">Market</span>
+        <span className="tabular">{bookLine(book)}</span>
+      </div>
+      <div className="flex items-center justify-between text-sm font-medium">
+        <span className="text-ink-muted">Price impact</span>
+        <span className={`tabular ${tooMuch ? "font-bold text-down" : ""}`}>
+          {quote ? `${(quote.impactBps / 100).toFixed(2)}%` : "—"}
+        </span>
+      </div>
+      {tooMuch ? (
+        <p className="text-[13px] leading-5 text-down">
+          Too high for this size: try a smaller amount.
+        </p>
+      ) : null}
     </Card>
   );
 }
 
-function QuoteLine({ quote, tokenOut }: { quote: SwapQuote; tokenOut: TokenSymbol }) {
-  const tooMuch = quote.impactBps > DEFAULT_MAX_IMPACT_BPS;
+function ReceiveRow({ token, amount }: { token: TokenSymbol; amount: bigint | undefined }) {
   return (
-    <p className={`tabular text-sm ${tooMuch ? "text-down" : "text-ink-muted"}`} aria-live="polite">
-      You receive about {formatToken(quote.quotedOut, tokens[tokenOut].decimals)} {LABELS[tokenOut]}{" "}
-      · price impact {(quote.impactBps / 100).toFixed(2)}%
-      {tooMuch ? ". Too high for this size: try a smaller amount." : ""}
-    </p>
+    <div className="flex min-h-[72px] items-center gap-2 px-4">
+      <TokenIcon token={token} />
+      <div className="flex flex-col">
+        <span className="font-semibold leading-tight">{LABELS[token]}</span>
+        <span className="text-[11px] font-semibold text-ink-muted">You receive about</span>
+      </div>
+      <p
+        className={`tabular flex-1 text-right text-xl font-bold ${amount === undefined ? "text-border" : ""}`}
+      >
+        {amount === undefined ? "0" : formatToken(amount, tokens[token].decimals)}
+      </p>
+    </div>
   );
 }
+
+const CHIP =
+  "rounded-lg bg-accent-soft px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent disabled:opacity-40";
 
 export function TradePanel({
   wallet,
@@ -188,6 +226,7 @@ export function TradePanel({
     refetchInterval: 3_000,
     retry: false,
   });
+  const tokenOut: TokenSymbol = isBuy ? base : "usdc";
   const canFill = isBuy ? book.data?.hasAsk : book.data?.hasBid;
   const tooMuchImpact = (quote.data?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
 
@@ -222,56 +261,81 @@ export function TradePanel({
     <section className="flex flex-col gap-3">
       <PortfolioCard portfolio={portfolio.data} capitalAtJoin={capitalAtJoin} />
 
-      <Card>
-        <form className="flex flex-col gap-3" onSubmit={submit}>
-          <Toggle<MarketSymbol>
-            label="Market"
-            options={MARKET_SYMBOLS}
-            value={market}
-            onChange={setMarket}
-          />
-          <Toggle<Side>
-            label="Side"
-            options={["Buy", "Sell"] as const}
-            value={side}
-            onChange={setSide}
-          />
-          <p className="tabular text-sm text-ink-muted">{bookLine(book.data)}</p>
-          <Field
-            label={`Amount in ${LABELS[tokenIn]}`}
-            inputMode="decimal"
-            placeholder="0.00"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            hint={`Available ${formatToken(available, decimals)} ${LABELS[tokenIn]}`}
-            {...(error ? { error } : {})}
-          />
-          <div className="flex gap-2">
-            {SHORTCUTS.map((percent) => (
-              <Button
-                key={percent.toString()}
-                variant="secondary"
-                className="min-h-10"
-                disabled={available === 0n}
-                onClick={() => setInput(formatUnits((available * percent) / 100n, decimals))}
-              >
-                {percent.toString()}%
-              </Button>
-            ))}
+      <form className="flex flex-col gap-3" onSubmit={submit}>
+        <Toggle<MarketSymbol>
+          label="Market"
+          options={MARKET_SYMBOLS}
+          value={market}
+          onChange={setMarket}
+        />
+
+        {/* Kit exchange field: a grey well holding two white rows, with the flip button on the seam. */}
+        <div className="relative flex flex-col gap-1 rounded-[18px] bg-well p-1">
+          <div className="flex min-h-[72px] items-center gap-2 rounded-2xl bg-surface px-4 shadow-row">
+            <TokenIcon token={tokenIn} />
+            <div className="flex flex-col">
+              <span className="font-semibold leading-tight">{LABELS[tokenIn]}</span>
+              <span className="tabular text-[11px] font-semibold text-ink-muted">
+                Balance: {formatToken(available, decimals)}
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
+              <div className="flex gap-1">
+                {SHORTCUTS.map((percent) => (
+                  <button
+                    key={percent.toString()}
+                    type="button"
+                    className={CHIP}
+                    disabled={available === 0n}
+                    onClick={() => setInput(formatUnits((available * percent) / 100n, decimals))}
+                  >
+                    {percent === 100n ? "MAX" : `${percent}%`}
+                  </button>
+                ))}
+              </div>
+              <input
+                aria-label={`Amount in ${LABELS[tokenIn]}`}
+                aria-invalid={error ? true : undefined}
+                inputMode="decimal"
+                placeholder="0"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                className="tabular w-full bg-transparent text-right text-xl font-bold text-ink placeholder:text-border focus:outline-none"
+              />
+            </div>
           </div>
-          {quote.data && settled.ok ? (
-            <QuoteLine quote={quote.data} tokenOut={isBuy ? base : "usdc"} />
-          ) : null}
-          <Button type="submit" pending={pending} disabled={!canFill || tooMuchImpact}>
-            {side} {LABELS[base]}
-          </Button>
-          {done ? (
-            <p role="status" className="text-sm text-up">
-              {done}
-            </p>
-          ) : null}
-        </form>
-      </Card>
+
+          <button
+            type="button"
+            aria-label={`Switch to ${isBuy ? "selling" : "buying"} ${LABELS[base]}`}
+            onClick={() => {
+              setSide(isBuy ? "Sell" : "Buy");
+              setInput("");
+            }}
+            className="absolute left-1/2 top-1/2 grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-border bg-surface focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <Icon name="swap" size={16} />
+          </button>
+
+          <ReceiveRow token={tokenOut} amount={settled.ok ? quote.data?.quotedOut : undefined} />
+        </div>
+        {error ? (
+          <p role="alert" className="text-[13px] leading-5 text-down">
+            {error}
+          </p>
+        ) : null}
+
+        <InfoCard book={book.data} quote={settled.ok ? quote.data : null} />
+
+        <Button type="submit" pending={pending} disabled={!canFill || tooMuchImpact}>
+          {side} {LABELS[base]}
+        </Button>
+        {done ? (
+          <p role="status" className="animate-enter text-center text-sm font-semibold text-up">
+            {done}
+          </p>
+        ) : null}
+      </form>
     </section>
   );
 }

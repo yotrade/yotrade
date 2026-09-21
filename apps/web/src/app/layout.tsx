@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { Inter, Roboto_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { OnboardingGate } from "@/components/onboarding-gate.tsx";
 import { Providers } from "./providers.tsx";
 import "./globals.css";
 
@@ -9,7 +10,7 @@ const DESCRIPTION = "Who's the best trader in your community? Find out live on M
 const SHARE_IMAGE = { url: "/icon-512.png", width: 512, height: 512, alt: "YoTrade" };
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const robotoMono = Roboto_Mono({ variable: "--font-roboto-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "YoTrade", template: "%s · YoTrade" },
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f4f4f6",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -36,11 +37,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${robotoMono.variable}`}>
       <body className="min-h-dvh font-sans antialiased">
         <Providers>
-          <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-[env(safe-area-inset-bottom)]">
-            {children}
+          <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-[env(safe-area-inset-bottom)]">
+            <OnboardingGate>{children}</OnboardingGate>
           </div>
         </Providers>
       </body>

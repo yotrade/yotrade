@@ -14,10 +14,10 @@ import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/
 import type { AppRuntime } from "@/lib/runtime.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
-import { PasskeyCard } from "./passkey-card.tsx";
 import { TradePanel } from "./trade-panel.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
+import { Icon } from "./ui/icon.tsx";
 
 const STEP_LABELS: Record<JoinStep, string> = {
   gas: "Getting gas",
@@ -64,22 +64,24 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   });
 
   if (!(wallet && address)) {
-    return (
-      <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">Sign in to join</h2>
-        <PasskeyCard />
-      </section>
-    );
+    // The onboarding gate guarantees an identity before any page renders.
+    return null;
   }
   if (entry.data) {
     return (
       <section className="flex flex-col gap-3">
-        <Card className="flex flex-col gap-1">
-          <p className="font-semibold text-up">You're in</p>
-          <p className="text-sm text-ink-muted">
-            Trading account <span className="font-mono">{shortAddress(address)}</span> ·{" "}
-            <span className="tabular">{formatUsdc(entry.data.capitalAtJoin)} USDC at join</span>
-          </p>
+        <Card className="flex items-center gap-3">
+          <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
+            <Icon name="check" size={20} />
+            <Icon name="sparkle" size={16} className="absolute -right-1.5 -top-1.5" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="font-semibold leading-tight">You're in</p>
+            <p className="truncate text-sm font-medium text-ink-muted">
+              Account <span className="font-mono">{shortAddress(address)}</span> ·{" "}
+              <span className="tabular">{formatUsdc(entry.data.capitalAtJoin)} USDC at join</span>
+            </p>
+          </div>
         </Card>
         {phase === "live" ? (
           <TradePanel wallet={wallet} capitalAtJoin={entry.data.capitalAtJoin} />
@@ -121,8 +123,8 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   }
 
   return (
-    <Card className="flex flex-col gap-3">
-      <p className="text-sm text-ink-muted">
+    <Card className="flex flex-col gap-3 py-4">
+      <p className="text-sm font-medium text-ink-muted">
         You get a fresh trading account for this tournament, funded with Kuru test funds. No wallet
         needed.
       </p>

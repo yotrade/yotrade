@@ -19,7 +19,9 @@
       "!**/coverage",
       "!**/generated",
       "!**/.envio",
-      "!**/envio-env.d.ts"
+      "!**/envio-env.d.ts",
+      "!**/public/icons",
+      "!**/public/illustrations"
     ]
   },
   "formatter": {
