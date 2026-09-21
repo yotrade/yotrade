@@ -3,37 +3,37 @@ import Image from "next/image";
 
 import { Icon } from "./icon.tsx";
 
-const BADGES: Record<Exclude<TokenSymbol, "usdc" | "mon">, { glyph: string; color: string }> = {
-  cbBtc: { glyph: "₿", color: "#f7931a" },
-  xaut0: { glyph: "Au", color: "#d4a017" },
-  weth: { glyph: "Ξ", color: "#627eea" },
+/** Official marks where we have them. USDC comes from the kit's icon set. */
+const MARKS: Partial<Record<TokenSymbol, string>> = {
+  mon: "/brands/monad.png",
+  cbBtc: "/brands/cbbtc.png",
+  xaut0: "/brands/xaut0.png",
 };
 
-/** USDC comes from the kit's icon set and MON is Monad's own mark; the rest get a plain badge. */
 export function TokenIcon({ token, size = 40 }: { token: TokenSymbol; size?: number }) {
-  if (token === "usdc") {
-    return <Icon name="token-usdc" size={size} />;
-  }
-  if (token === "mon") {
+  const mark = MARKS[token];
+  if (mark) {
     return (
       <Image
-        src="/brands/monad.png"
+        src={mark}
         alt=""
         aria-hidden
         width={size}
         height={size}
-        className="shrink-0 rounded-full"
+        className="shrink-0 rounded-full bg-surface"
       />
     );
   }
-  const { glyph, color } = BADGES[token];
+  if (token === "usdc") {
+    return <Icon name="token-usdc" size={size} />;
+  }
   return (
     <span
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-full font-bold text-white"
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.4 }}
+      className="grid shrink-0 place-items-center rounded-full bg-[#627eea] font-bold text-white"
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
-      {glyph}
+      Ξ
     </span>
   );
 }
