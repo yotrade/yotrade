@@ -43,9 +43,14 @@ function Badge() {
   return (
     <div className="relative animate-pop">
       <span aria-hidden className="absolute inset-3 animate-glow rounded-full bg-accent blur-2xl" />
-      <span className="relative grid size-[118px] place-items-center rounded-full bg-ink">
-        <Image src="/icon-512.png" alt="YoTrade" width={78} height={78} priority />
-      </span>
+      <Image
+        src="/logo.png"
+        alt="YoTrade"
+        width={118}
+        height={118}
+        priority
+        className="relative rounded-full"
+      />
       <Icon name="sparkle" size={32} className="absolute -right-5 -top-1 animate-float" />
       <Icon
         name="sparkle-small"
