@@ -13,8 +13,12 @@ const TABS = [
   { href: "/activity", label: "Activity", icon: "crown" },
 ] as const satisfies readonly { href: string; label: string; icon: IconName }[];
 
+/*
+ * Widths are fixed and share one duration and easing: while one item shrinks from 128 to 56 px the other
+ * grows by the same amount, so the bar's own width never changes. Labels fade; they do not push.
+ */
 const ITEM =
-  "flex h-12 items-center justify-center rounded-full transition-all duration-300 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "flex h-12 items-center justify-center overflow-hidden rounded-full transition-[width,background-color] duration-300 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /**
  * Floating pill: white icons on ink, and the active tab grows into a white pill with its label.
@@ -30,7 +34,7 @@ export function TabBar() {
     <>
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-[max(env(safe-area-inset-bottom),16px)] z-10 mx-auto flex w-fit animate-enter items-center gap-1 rounded-full bg-ink p-1.5 shadow-[0_8px_24px_#0e091c40]"
+        className="fixed inset-x-0 bottom-[max(env(safe-area-inset-bottom),16px)] z-10 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink p-1.5 shadow-[0_8px_24px_#0e091c40]"
       >
         {TABS.map((tab) => {
           const active = tab.href === pathname;
@@ -40,22 +44,21 @@ export function TabBar() {
               href={tab.href}
               aria-label={tab.label}
               aria-current={active ? "page" : undefined}
-              className={`${ITEM} gap-2 ${active ? "bg-surface px-5 text-ink" : "w-14 hover:bg-white/10"}`}
+              className={`${ITEM} gap-2 ${active ? "w-32 bg-surface text-ink" : "w-14 hover:bg-white/10"}`}
             >
               <Icon
                 name={tab.icon}
                 size={22}
                 className={active ? "brightness-0" : "brightness-0 invert"}
               />
-              {/* The label's column goes from 0fr to 1fr, so the pill widens instead of jumping. */}
-              <span
-                aria-hidden
-                className={`grid transition-[grid-template-columns] duration-300 ease-out-soft ${active ? "grid-cols-[1fr]" : "grid-cols-[0fr]"}`}
-              >
-                <span className="overflow-hidden whitespace-nowrap text-[15px] font-bold italic">
+              {active ? (
+                <span
+                  aria-hidden
+                  className="animate-enter whitespace-nowrap text-[15px] font-bold italic"
+                >
                   {tab.label}
                 </span>
-              </span>
+              ) : null}
             </Link>
           );
         })}

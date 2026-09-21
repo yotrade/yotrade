@@ -8,8 +8,8 @@ import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { useNow } from "@/lib/use-now.ts";
+import { AccountSheet } from "./account-sheet.tsx";
 import { EntryCard } from "./entry-card.tsx";
-import { SettingsSheet } from "./settings-sheet.tsx";
 import { TournamentBrowser } from "./tournament-browser.tsx";
 import { Amount } from "./ui/amount.tsx";
 import { Avatar } from "./ui/avatar.tsx";
@@ -27,7 +27,7 @@ export function HomeScreen() {
   const now = useNow();
   const { identity } = useIdentity();
   const { tournaments, mine } = useMyTournaments();
-  const [settings, setSettings] = useState(false);
+  const [account, setAccount] = useState(false);
 
   if (!identity) {
     return null;
@@ -40,37 +40,23 @@ export function HomeScreen() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 pt-4">
-      <header className="flex items-center">
+      <header>
         <button
           type="button"
-          aria-label="Account and settings"
-          onClick={() => setSettings(true)}
-          className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-haspopup="dialog"
+          onClick={() => setAccount(true)}
+          className="flex items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4 text-left transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
-          <Avatar address={address} />
-        </button>
-      </header>
-
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4">
-          <span className="grid size-9 place-items-center rounded-full bg-accent-soft">
-            <Icon name="credit-card" size={18} />
-          </span>
-          <div className="flex flex-col">
+          <Avatar address={address} size={36} />
+          <span className="flex flex-col">
             <span className="text-[11px] font-semibold leading-4 text-ink-muted">Main account</span>
             <span className="font-mono text-[13px] font-semibold leading-4">
               {shortAddress(address)}
             </span>
-          </div>
-        </div>
-        <Link
-          href="/new"
-          aria-label="Host a tournament"
-          className="grid size-11 place-items-center rounded-full bg-ink transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95"
-        >
-          <Icon name="plus" size={20} className="brightness-0 invert" />
-        </Link>
-      </div>
+          </span>
+          <Icon name="chevron-right" size={14} className="ml-1 rotate-90" />
+        </button>
+      </header>
 
       <div className="flex flex-col gap-1">
         <Amount value={value} size="xl" />
@@ -118,7 +104,7 @@ export function HomeScreen() {
 
       <TournamentBrowser tournaments={tournaments.data} failed={tournaments.isError} />
 
-      <SettingsSheet open={settings} onClose={() => setSettings(false)} />
+      <AccountSheet open={account} onClose={() => setAccount(false)} />
     </main>
   );
 }
