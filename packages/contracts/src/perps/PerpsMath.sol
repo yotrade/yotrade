@@ -19,6 +19,8 @@ library PerpsMath {
     /// @dev Pyth exponents are negative in practice (crypto and metals use -8). Exponents below -18 would lose
     /// precision silently, so they are rejected together with non-positive prices.
     function toWad(int64 price, int32 expo) internal pure returns (uint256) {
+        // Callers price every market of one account: a single invalid price must fail the whole valuation.
+        // forge-lint: disable-next-line(require-revert-in-loop)
         if (price <= 0 || expo > 0 || expo < -18) revert InvalidPrice();
         // `price` is positive and `expo` is within [-18, 0], so neither cast can truncate or wrap.
         // forge-lint: disable-next-line(unsafe-typecast)
