@@ -64,8 +64,18 @@ Upgrade with `script/Upgrade.s.sol` after setting `TOURNAMENT_MANAGER_PROXY`.
 ## Layout
 
 ```
-src/                 TournamentManager and interfaces
-test/                unit, guard, regression, invariant and fork suites
-script/              deployment and upgrade
-lib/                 forge-std, OpenZeppelin (git submodules)
+src/
+  TournamentManager.sol          entry point: initializer, administration, views, upgrade authorisation
+  TournamentBase.sol             roles, pause, reentrancy guard, shared status checks
+  TournamentStorage.sol          the single ERC-7201 namespace (append only)
+  libraries/PrizeSplit.sol       split validation and prize arithmetic
+  modules/EscrowModule.sol       create, cancel, reclaim, sweep
+  modules/RegistrationModule.sol join, allowlist, trading-account checks
+  modules/ResultsModule.sol      postResults, voidResults, claim
+  interfaces/                    ITournamentManager, IAccountCore
+test/                            unit, guard, regression, invariant and fork suites
+script/                          deployment and upgrade
+lib/                             forge-std, OpenZeppelin (git submodules)
 ```
+
+Modules are abstract contracts over one shared storage namespace, compiled into a single implementation behind one UUPS proxy.
