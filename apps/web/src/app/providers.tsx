@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 
 import { publicEnv } from "@/lib/env.ts";
 import { createAppRuntime } from "@/lib/runtime.ts";
+import { IdentityProvider } from "@/lib/use-identity.tsx";
 import { RuntimeContext } from "@/lib/use-runtime.ts";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -17,7 +18,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RuntimeContext value={runtime}>{children}</RuntimeContext>
+      <RuntimeContext value={runtime}>
+        <IdentityProvider>{children}</IdentityProvider>
+      </RuntimeContext>
     </QueryClientProvider>
   );
 }
