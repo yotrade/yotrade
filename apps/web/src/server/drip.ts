@@ -1,8 +1,9 @@
 import { type Address, type Hash, parseEther } from "viem";
 
-export const DRIP_AMOUNT = parseEther("1");
+/** Joining costs about 0.13 MON and a swap about 0.05, so this covers a join and a few trades. */
+export const DRIP_AMOUNT = parseEther("0.4");
 /** Below this an account cannot reliably pay for a swap: Monad charges the gas limit, about 0.05 MON each. */
-export const MIN_BALANCE = parseEther("0.3");
+export const MIN_BALANCE = parseEther("0.1");
 const ADDRESS_COOLDOWN_MS = 10 * 60_000;
 const HOUR_MS = 60 * 60_000;
 const MAX_PER_IP_PER_HOUR = 5;
