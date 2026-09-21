@@ -103,8 +103,12 @@ abstract contract EscrowModule is TournamentBase {
         returns (uint256 amount)
     {
         if (token == address(0) || to == address(0)) revert ZeroAddress();
-        amount = IERC20(token).balanceOf(address(this)) - _layout().escrowed[token];
-        if (amount == 0) revert NothingToRescue();
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 owed = _layout().escrowed[token];
+        // An inequality, not `== 0`: if a misbehaving token ever shrank the balance below what is owed, this
+        // reverts cleanly instead of underflowing, and nothing leaves.
+        if (balance <= owed) revert NothingToRescue();
+        amount = balance - owed;
         emit Rescued(token, to, amount);
         IERC20(token).safeTransfer(to, amount);
     }
