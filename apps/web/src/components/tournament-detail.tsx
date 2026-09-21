@@ -8,6 +8,7 @@ import { formatUsdc, shortAddress, timeLeft, tournamentName } from "@/lib/format
 import { indexer } from "@/lib/indexer-client.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
+import { venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
@@ -84,6 +85,7 @@ export function TournamentDetail({ id }: { id: string }) {
   }
 
   const phase = phaseAt(data, now);
+  const venue = venueOf(data.venue);
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
@@ -92,6 +94,9 @@ export function TournamentDetail({ id }: { id: string }) {
         <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-[26px] tracking-tight">
           {tournamentName(data.id, data.metadataURI)}
         </h1>
+        <span className="rounded-lg bg-surface-raised px-2 py-1 font-mono text-[11px] font-bold uppercase text-ink-muted">
+          {venue}
+        </span>
         <PhaseBadge phase={phase} />
       </header>
 
@@ -128,8 +133,12 @@ export function TournamentDetail({ id }: { id: string }) {
             </dd>
           </div>
           <div className="flex flex-col gap-0.5">
-            <dt className="font-medium opacity-80">Min. capital</dt>
-            <dd className="tabular font-semibold">${formatUsdc(data.startingCapital)}</dd>
+            <dt className="font-medium opacity-80">
+              {venue === "futures" ? "Start balance" : "Min. capital"}
+            </dt>
+            <dd className="tabular font-semibold">
+              {venue === "futures" ? "$10,000" : `$${formatUsdc(data.startingCapital)}`}
+            </dd>
           </div>
         </dl>
       </section>
@@ -144,15 +153,16 @@ export function TournamentDetail({ id }: { id: string }) {
           <Card className="flex flex-col gap-2">
             <p className="text-sm font-semibold tracking-tight">How it is scored</p>
             <p className="text-sm font-medium leading-5 text-ink-muted">
-              Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a
-              score, and anyone can recompute the table. Hosted by{" "}
+              {venue === "futures"
+                ? "Return on a virtual $10,000, traded long or short at Pyth prices with up to 20x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by "
+                : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
               <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
             </p>
           </Card>
         </div>
       ) : (
         <div key="leaderboard" className="animate-enter">
-          <Leaderboard id={id} you={you} />
+          <Leaderboard id={id} you={you} venue={venue} />
         </div>
       )}
     </main>

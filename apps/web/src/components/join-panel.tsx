@@ -12,11 +12,14 @@ import { formatUsdc, shortAddress } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
+import { toUsdc } from "@/lib/perps-markets.ts";
 import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { usePerps } from "@/lib/use-perps.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
@@ -57,21 +60,29 @@ function MyStatus({
   wallet,
   capitalAtJoin,
   phase,
+  venue,
 }: {
   id: bigint;
   wallet: MeraWallet;
   capitalAtJoin: bigint;
   phase: Phase;
+  venue: Venue;
 }) {
   const { kuru } = useRuntime();
   const address = wallet.account.address;
+  const open = phase === "upcoming" || phase === "live";
   const portfolio = useQuery({
     queryKey: ["portfolio", address],
     queryFn: () => kuru.portfolio(address),
     refetchInterval: 3_000,
-    enabled: phase === "upcoming" || phase === "live",
+    enabled: open && venue === "spot",
   });
-  const value = portfolio.data?.totalUsdc ?? capitalAtJoin;
+  // A futures account is worth its equity at live Pyth prices, in the same six-decimal dollars.
+  const futures = usePerps(id.toString(), venue === "futures" ? address : undefined);
+  const equity = futures.data
+    ? toUsdc(futures.data.risk.equity < 0n ? 0n : futures.data.risk.equity)
+    : undefined;
+  const value = (venue === "futures" ? equity : portfolio.data?.totalUsdc) ?? capitalAtJoin;
   const roi = roiBps(value, capitalAtJoin);
 
   return (
@@ -120,6 +131,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   const [error, setError] = useState<string>();
 
   const wallet = identity?.tournamentWallet(tournament.id);
+  const venue = venueOf(tournament.venue);
   const address = wallet?.account.address;
   const entry = useQuery({
     queryKey: ["entry", tournament.id.toString(), address],
@@ -146,6 +158,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
         wallet={wallet}
         capitalAtJoin={entry.data.capitalAtJoin}
         phase={phase}
+        venue={venue}
       />
     );
   }
@@ -165,7 +178,12 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
     }
     setError(undefined);
     try {
-      await runJoin(joinDeps(runtime, wallet, tournament.id), tournament.startingCapital, setStep);
+      await runJoin(
+        joinDeps(runtime, wallet, tournament.id),
+        tournament.startingCapital,
+        setStep,
+        venue,
+      );
       const profile = loadProfile();
       if (!isEmpty(profile)) {
         // Cosmetic: a trader who joined must never see "joining failed" because a name did not save.
@@ -187,17 +205,23 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   return (
     <Card className="flex flex-col gap-3 py-4">
       <p className="text-sm font-medium text-ink-muted">
-        You get a fresh trading account for this tournament, funded with Kuru test funds. No wallet
-        needed.
+        {venue === "futures"
+          ? "You get a fresh account with a virtual $10,000 to go long or short. No wallet needed."
+          : "You get a fresh trading account for this tournament, funded with Kuru test funds. No wallet needed."}
       </p>
       {step ? (
         <ol className="flex flex-col gap-1 text-sm" aria-live="polite">
-          {JOIN_STEPS.map((name) => (
-            <li key={name} className={name === step ? "font-semibold text-ink" : "text-ink-muted"}>
-              {name === step ? "→ " : ""}
-              {STEP_LABELS[name]}
-            </li>
-          ))}
+          {JOIN_STEPS.filter((name) => venue === "spot" || name === "gas" || name === "join").map(
+            (name) => (
+              <li
+                key={name}
+                className={name === step ? "font-semibold text-ink" : "text-ink-muted"}
+              >
+                {name === step ? "→ " : ""}
+                {STEP_LABELS[name]}
+              </li>
+            ),
+          )}
         </ol>
       ) : null}
       {error ? (
