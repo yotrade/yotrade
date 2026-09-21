@@ -149,7 +149,7 @@ contract TournamentManager is
     /// @dev Returns whatever is not owed to an unclaimed winner: unfilled ranks and rounding dust.
     function sweep(uint256 id) external nonReentrant returns (uint256 amount) {
         Tournament storage t = _claimable(id);
-        uint256 owed;
+        uint256 owed = 0;
         uint256 length = t.winners.length;
         for (uint256 i; i < length; ++i) {
             if (!t.claimed[t.winners[i]]) owed += _prize(t, i);
@@ -182,20 +182,7 @@ contract TournamentManager is
             if (!MerkleProof.verifyCalldata(allowlistProof, config.allowlistRoot, leaf)) revert NotAllowlisted();
         }
 
-        uint256 capital;
-        IAccountCore core = $.accountCore;
-        if (address(core) != address(0)) {
-            if (core.userRegistry(tradingAccount) == 0) revert AccountNotRegistered();
-            if (core.getAccountOwner(tradingAccount) != msg.sender) revert NotAccountOwner();
-            if (config.startingCapital != 0) {
-                // Not an equality check: `depositForAccount` is permissionless, so anyone could push one unit into
-                // the account and block the join. The recorded balance is the ROI denominator instead.
-                capital = core.getBalance(tradingAccount, config.capitalToken);
-                if (capital < config.startingCapital) {
-                    revert InsufficientStartingCapital(config.startingCapital, capital);
-                }
-            }
-        }
+        uint256 capital = _checkTradingAccount($.accountCore, tradingAccount, config);
 
         t.tradingAccountOf[msg.sender] = tradingAccount;
         t.tradingAccountUsed[tradingAccount] = true;
@@ -360,6 +347,24 @@ contract TournamentManager is
         if (block.timestamp < t.claimableAt) revert DisputeWindowActive(t.claimableAt);
     }
 
+    /// @dev Venue-side checks for `join`. Returns the account's free balance of the capital token, or zero when
+    /// no venue is configured or the tournament has no capital requirement.
+    function _checkTradingAccount(IAccountCore core, address tradingAccount, Config storage config)
+        private
+        view
+        returns (uint256 capital)
+    {
+        if (address(core) == address(0)) return 0;
+        if (core.userRegistry(tradingAccount) == 0) revert AccountNotRegistered();
+        if (core.getAccountOwner(tradingAccount) != msg.sender) revert NotAccountOwner();
+        if (config.startingCapital == 0) return 0;
+
+        // Not an equality check: `depositForAccount` is permissionless, so anyone could push one unit into the
+        // account and block the join. The recorded balance is the ROI denominator instead.
+        capital = core.getBalance(tradingAccount, config.capitalToken);
+        if (capital < config.startingCapital) revert InsufficientStartingCapital(config.startingCapital, capital);
+    }
+
     function _prize(Tournament storage t, uint256 rank) private view returns (uint256) {
         return (t.config.prizePool * t.config.prizeSplitBps[rank]) / BPS;
     }
@@ -375,7 +380,7 @@ contract TournamentManager is
     function _validateSplit(uint16[] calldata split) private pure {
         uint256 length = split.length;
         if (length == 0 || length > MAX_WINNERS) revert InvalidSplit();
-        uint256 total;
+        uint256 total = 0;
         for (uint256 i; i < length; ++i) {
             if (split[i] == 0) revert InvalidSplit();
             total += split[i];
