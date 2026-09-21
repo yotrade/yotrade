@@ -18,3 +18,13 @@ export class TransactionRevertedError extends Error {
     super(`Transaction ${hash} reverted`);
   }
 }
+
+export class PriceImpactError extends Error {
+  override readonly name = "PriceImpactError";
+  constructor(
+    readonly impactBps: number,
+    readonly maxImpactBps: number,
+  ) {
+    super(`Price impact ${impactBps} bps exceeds the ${maxImpactBps} bps limit`);
+  }
+}
