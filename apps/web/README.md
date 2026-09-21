@@ -27,6 +27,7 @@ bun run dev
 | `DRIP_PRIVATE_KEY` | New accounts get no gas: `/api/drip` answers 503 |
 | `SCORER_PRIVATE_KEY` (holds `SCORER_ROLE` only) | Results cannot be posted: finalize answers 503 |
 | `KIMI_API_KEY` | The commentary card stays hidden |
+| `PYTH_API_KEY` | Futures cannot be traded or scored: `/api/pyth` answers 503 |
 
 ## Deployment (Vercel)
 
