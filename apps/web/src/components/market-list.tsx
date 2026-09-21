@@ -12,11 +12,11 @@ import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
-import { useReference } from "@/lib/use-reference.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Amount } from "./ui/amount.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { SectionLabel } from "./ui/section-label.tsx";
+import { Loading, RowSkeleton, Skeleton } from "./ui/skeleton.tsx";
 import { TokenIcon } from "./ui/token-icon.tsx";
 
 const SPARK = { width: 56, height: 28, padY: 3 };
@@ -81,7 +81,8 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
       ]);
       const bars = toBars(candles, info.pricePrecision);
       return {
-        from,
+        // The line starts at the first trade: a thin market's few bars would otherwise hug the right edge.
+        from: bars[0]?.time ?? from,
         to,
         bars,
         summary: summarize(bars),
@@ -91,12 +92,15 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     },
   });
 
-  const reference = useReference(slug, "15m");
-  // Kuru sets the price you trade at. The line and the change come from the real-world market, labelled so.
+  if (data.isPending) {
+    return (
+      <Loading label={`Loading ${TOKEN_NAMES[base]}`}>
+        <RowSkeleton />
+      </Loading>
+    );
+  }
   const price = data.data?.mid ?? data.data?.summary?.close ?? null;
-  const spark = reference.data ?? data.data;
-  const bars = spark?.bars ?? [];
-  const summary = summarize(bars);
+  const summary = data.data?.summary ?? null;
   const up = (summary?.changeBps ?? 0) >= 0;
 
   // A market nobody can trade is noise, unless the viewer still holds its token and needs the way out.
@@ -111,21 +115,19 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     >
       <TokenIcon token={base} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <p className="truncate font-semibold leading-[21px]">{TOKEN_NAMES[base]}</p>
+        {/* Ticker first: it always fits, and it is what traders scan for. */}
+        <p className="truncate font-semibold leading-[21px]">{TOKEN_LABELS[base]}</p>
         <p className="tabular truncate text-sm font-medium leading-5 text-ink-muted">
-          {TOKEN_LABELS[base]}
-          {heldUsdc > 0n ? ` · you hold $${formatUsdc(heldUsdc)}` : ""}
+          {heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : TOKEN_NAMES[base]}
         </p>
       </div>
-      <Sparkline series={spark} up={up} />
+      <Sparkline series={data.data} up={up} />
       <div className="flex shrink-0 flex-col items-end">
         <p className="tabular font-semibold leading-[21px]">
           {price === null ? "—" : `$${money(price)}`}
         </p>
         <p className={`tabular text-sm font-medium leading-5 ${up ? "text-up" : "text-down"}`}>
-          {summary
-            ? `${formatBps(summary.changeBps)} ${reference.data ? "24h" : "4d"}`
-            : "No trades"}
+          {summary ? `${formatBps(summary.changeBps)} 4d` : "No trades"}
         </p>
       </div>
     </Link>
@@ -170,7 +172,9 @@ export function MarketList({ id }: { id: string }) {
         {portfolio.data ? (
           <Amount value={portfolio.data.totalUsdc} size="xl" />
         ) : (
-          <p className="text-5xl font-bold text-ink-muted">…</p>
+          <Loading label="Loading your account value">
+            <Skeleton className="h-12 w-44" />
+          </Loading>
         )}
         {roi === null ? null : (
           <p className={`tabular text-sm font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
@@ -182,11 +186,16 @@ export function MarketList({ id }: { id: string }) {
       <section className="flex flex-col gap-3">
         <SectionLabel>Pick a market</SectionLabel>
         <p className="-mt-1 text-[13px] font-medium leading-5 text-ink-muted">
-          Prices are Kuru testnet quotes. Lines and 24h changes follow the global market.
+          Prices and charts are Kuru testnet fills: what you see is what you trade at.
         </p>
         <ul className="flex flex-col gap-2">
           {SLUGS.map((slug, index) => (
-            <li key={slug} className="animate-enter" style={{ animationDelay: `${index * 50}ms` }}>
+            // A market hidden for lack of liquidity renders nothing: its slot must not leave a gap.
+            <li
+              key={slug}
+              className="animate-enter empty:hidden"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
               <MarketRow
                 id={id}
                 slug={slug}
