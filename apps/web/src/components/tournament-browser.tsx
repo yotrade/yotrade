@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { TournamentRow } from "./tournament-row.tsx";
+import { RowsSkeleton } from "./ui/skeleton.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
 
 const TABS = ["Live", "Upcoming", "Finished"] as const;
@@ -37,7 +38,7 @@ export function TournamentBrowser({ tournaments, failed }: Props) {
   const now = useNow();
   const [tab, setTab] = useState<Tab>("Live");
 
-  let body = <p className="text-sm font-medium text-ink-muted">Loading tournaments…</p>;
+  let body = <RowsSkeleton label="Loading tournaments" />;
   if (failed) {
     body = (
       <p role="alert" className="text-sm font-medium text-down">

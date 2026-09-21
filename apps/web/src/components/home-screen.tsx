@@ -15,6 +15,7 @@ import { Amount } from "./ui/amount.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Icon, type IconName } from "./ui/icon.tsx";
 import { SectionLabel } from "./ui/section-label.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 const ACTIONS = [
   { href: "/arena", icon: "stars", label: "Join" },
@@ -37,6 +38,8 @@ export function HomeScreen() {
   const value = open.reduce((sum, item) => sum + (item.value ?? 0n), 0n);
   const capital = open.reduce((sum, item) => sum + item.entry.capitalAtJoin, 0n);
   const roi = roiBps(value, capital);
+  // Until the accounts are known, zero is not an answer. A failed load falls through to the real states.
+  const loading = !(mine.data || mine.isError || tournaments.isError);
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
@@ -58,19 +61,26 @@ export function HomeScreen() {
         </button>
       </header>
 
-      <div className="flex flex-col gap-1">
-        <Amount value={value} size="xl" />
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
-          <Icon name="arrow" size={16} />
-          {roi === null ? (
-            "Join a tournament to start trading"
-          ) : (
-            <span className={roi >= 0 ? "text-up" : "text-down"}>
-              {formatBps(roi)} across live accounts
-            </span>
-          )}
-        </p>
-      </div>
+      {loading ? (
+        <Loading label="Loading your accounts" className="flex flex-col gap-2">
+          <Skeleton className="h-12 w-44" />
+          <Skeleton className="h-4 w-56" />
+        </Loading>
+      ) : (
+        <div className="flex animate-fade flex-col gap-1">
+          <Amount value={value} size="xl" />
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
+            <Icon name="arrow" size={16} />
+            {roi === null ? (
+              "Join a tournament to start trading"
+            ) : (
+              <span className={roi >= 0 ? "text-up" : "text-down"}>
+                {formatBps(roi)} across live accounts
+              </span>
+            )}
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         {ACTIONS.map((action) => (
@@ -84,6 +94,16 @@ export function HomeScreen() {
           </Link>
         ))}
       </div>
+
+      {loading ? (
+        <Loading label="Loading your tournaments" className="flex flex-col gap-3">
+          <Skeleton className="h-4 w-32" />
+          <div className="flex gap-2">
+            <Skeleton className="h-[168px] w-[150px] rounded-3xl" />
+            <Skeleton className="h-[168px] w-[150px] rounded-3xl" />
+          </div>
+        </Loading>
+      ) : null}
 
       {mine.data && mine.data.length > 0 ? (
         <section className="flex flex-col gap-3">

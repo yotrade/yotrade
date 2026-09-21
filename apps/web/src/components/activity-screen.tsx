@@ -6,6 +6,7 @@ import { formatUsdc, tournamentName } from "@/lib/format.ts";
 import { type MyTournament, useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { Icon } from "./ui/icon.tsx";
+import { RowsSkeleton } from "./ui/skeleton.tsx";
 
 function outcome({ entry, phase }: MyTournament): { text: string; tone: string } {
   if (entry.claimed) {
@@ -26,10 +27,11 @@ function outcome({ entry, phase }: MyTournament): { text: string; tone: string }
 
 /** Everything this passkey took part in, newest first, with what came of it. */
 export function ActivityScreen() {
-  const { mine } = useMyTournaments();
+  const { tournaments, mine } = useMyTournaments();
 
-  let body = <p className="text-sm font-medium text-ink-muted">Loading your activity…</p>;
-  if (mine.isError) {
+  let body = <RowsSkeleton label="Loading your activity" />;
+  // `mine` waits for the tournament list, so a failed list would otherwise load forever.
+  if (mine.isError || tournaments.isError) {
     body = (
       <p role="alert" className="text-sm font-medium text-down">
         Your activity could not be loaded. Retrying…
