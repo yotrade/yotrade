@@ -7,3 +7,7 @@ IDEA-*.md
 .env.*
 !.env.example
 .DS_Store
+
+# dependencies and build caches
+node_modules/
+.turbo/
