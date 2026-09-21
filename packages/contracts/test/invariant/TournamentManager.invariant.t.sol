@@ -2,7 +2,9 @@
 pragma solidity 0.8.37;
 
 import {TournamentManager} from "../../src/TournamentManager.sol";
+import {IAccountCore} from "../../src/interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../../src/interfaces/ITournamentManager.sol";
+import {KuruVenueAdapter} from "../../src/venues/KuruVenueAdapter.sol";
 import {MockAccountCore, MockERC20} from "../mocks/Mocks.sol";
 import {Handler} from "./Handler.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -18,28 +20,35 @@ contract TournamentManagerInvariantTest is Test {
         address scorer = makeAddr("scorer");
         usdc = new MockERC20();
         MockAccountCore core = new MockAccountCore();
-        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, address(core), 1 hours));
+        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, 1 hours, 0));
         manager = TournamentManager(address(new ERC1967Proxy(address(new TournamentManager()), init)));
+        address venue = address(new KuruVenueAdapter(IAccountCore(address(core))));
+        vm.prank(admin);
+        manager.setVenueApproval(venue, true);
 
-        handler = new Handler(manager, usdc, core, admin, scorer);
+        handler = new Handler(manager, usdc, core, venue, admin, scorer);
         targetContract(address(handler));
     }
 
-    /// @dev The contract holds exactly what it still owes across all tournaments: never insolvent, never hoarding.
-    function invariant_BalanceEqualsSumOfUnpaid() public view {
+    /// @dev The escrow counter is exactly what tournaments are still owed, and the balance always covers it.
+    /// Anything above it is a stray donation, the only thing `rescue` can take.
+    function invariant_EscrowIsSolventAndExact() public view {
         uint256 owed;
         for (uint256 i; i < handler.idCount(); ++i) {
             (,,,, uint256 unpaid) = manager.getState(handler.ids(i));
             owed += unpaid;
         }
-        assertEq(usdc.balanceOf(address(manager)), owed);
+        assertEq(manager.escrowed(address(usdc)), owed);
+        assertGe(usdc.balanceOf(address(manager)), owed);
+        assertEq(usdc.balanceOf(address(manager)) - owed, handler.donated() - handler.rescued());
     }
 
     /// @dev Every escrowed token is either still held, claimed by a winner, or back with an organizer.
     function invariant_FundsAreConserved() public view {
         assertEq(
-            handler.escrowed(),
-            handler.claimed() + handler.swept() + handler.refunded() + usdc.balanceOf(address(manager))
+            handler.escrowed() + handler.donated(),
+            handler.claimed() + handler.swept() + handler.refunded() + handler.rescued()
+                + usdc.balanceOf(address(manager))
         );
     }
 
@@ -63,5 +72,7 @@ contract TournamentManagerInvariantTest is Test {
         console2.log("claimed", handler.claimed());
         console2.log("swept", handler.swept());
         console2.log("refunded", handler.refunded());
+        console2.log("donated", handler.donated());
+        console2.log("rescued", handler.rescued());
     }
 }

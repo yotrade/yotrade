@@ -13,6 +13,7 @@ interface ITournamentManager {
 
     /// @param prizeToken ERC-20 escrowed as the prize pool. May be zero when `prizePool` is zero.
     /// @param capitalToken Token the starting capital is denominated in (the venue's quote asset).
+    /// @param venue Admin-approved `IVenueAdapter` that proves participants own their trading accounts.
     /// @param prizePool Amount of `prizeToken` pulled from the organizer at creation.
     /// @param startingCapital Minimum free balance of `capitalToken` a trading account must hold to join. The actual
     /// balance is recorded and used as the ROI denominator. Zero skips the check.
@@ -25,6 +26,7 @@ interface ITournamentManager {
     struct Config {
         address prizeToken;
         address capitalToken;
+        address venue;
         uint256 prizePool;
         uint256 startingCapital;
         uint64 startTime;
@@ -44,7 +46,8 @@ interface ITournamentManager {
     event PrizeClaimed(uint256 indexed id, address indexed winner, uint256 rank, uint256 amount);
     event TournamentCancelled(uint256 indexed id, uint256 refunded);
     event RemainderSwept(uint256 indexed id, uint256 amount);
-    event AccountCoreUpdated(address indexed accountCore);
+    event VenueApprovalUpdated(address indexed venue, bool approved);
+    event Rescued(address indexed token, address indexed to, uint256 amount);
     event DisputeWindowUpdated(uint64 disputeWindow);
 
     error ZeroAddress();
@@ -52,6 +55,9 @@ interface ITournamentManager {
     error InvalidSplit();
     error InvalidCap();
     error InvalidPrizeToken();
+    error VenueNotApproved(address venue);
+    error MetadataTooLong();
+    error NothingToRescue();
     error PrizeTransferMismatch(uint256 expected, uint256 received);
     error WrongStatus(Status current);
     error TournamentEnded();
@@ -61,8 +67,6 @@ interface ITournamentManager {
     error AlreadyJoined();
     error TradingAccountTaken();
     error NotAllowlisted();
-    error AccountNotRegistered();
-    error NotAccountOwner();
     error InsufficientStartingCapital(uint256 required, uint256 actual);
     error TooManyWinners();
     error NotParticipant(address account);
@@ -90,6 +94,12 @@ interface ITournamentManager {
     function reclaim(uint256 id) external;
 
     function sweep(uint256 id) external returns (uint256 amount);
+
+    function rescue(address token, address to) external returns (uint256 amount);
+
+    function isVenueApproved(address venue) external view returns (bool);
+
+    function escrowed(address token) external view returns (uint256);
 
     function tournamentCount() external view returns (uint256);
 

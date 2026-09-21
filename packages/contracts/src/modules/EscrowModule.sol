@@ -17,6 +17,8 @@ abstract contract EscrowModule is TournamentBase {
     uint64 public constant MAX_DURATION = 365 days;
     /// @notice Time after `endTime` without results before the organizer can take the pool back.
     uint64 public constant RESULTS_GRACE = 7 days;
+    /// @notice The URI is stored and emitted, so its size is bounded.
+    uint256 public constant MAX_METADATA_LENGTH = 512;
 
     /// @inheritdoc ITournamentManager
     function createTournament(Config calldata config) external nonReentrant whenNotPaused returns (uint256 id) {
@@ -25,9 +27,13 @@ abstract contract EscrowModule is TournamentBase {
         if (config.maxParticipants == 0) revert InvalidCap();
         if (config.startingCapital != 0 && config.capitalToken == address(0)) revert ZeroAddress();
         if (config.prizePool != 0 && config.prizeToken == address(0)) revert InvalidPrizeToken();
+        if (bytes(config.metadataURI).length > MAX_METADATA_LENGTH) revert MetadataTooLong();
         PrizeSplit.validate(config.prizeSplitBps);
 
         Layout storage $ = _layout();
+        // Without a venue nobody proves they own the trading account they register.
+        if (!$.approvedVenues[config.venue]) revert VenueNotApproved(config.venue);
+
         id = ++$.count;
         Tournament storage t = $.tournaments[id];
         t.organizer = msg.sender;
@@ -45,6 +51,7 @@ abstract contract EscrowModule is TournamentBase {
             // Fee-on-transfer and rebasing tokens would make the pool insolvent.
             if (received != config.prizePool) revert PrizeTransferMismatch(config.prizePool, received);
             t.unpaid = received;
+            $.escrowed[config.prizeToken] += received;
         }
     }
 
@@ -82,8 +89,28 @@ abstract contract EscrowModule is TournamentBase {
         amount = t.unpaid - owed;
         if (amount == 0) revert NothingToSweep();
         t.unpaid = owed;
+        _layout().escrowed[t.config.prizeToken] -= amount;
         emit RemainderSwept(id, amount);
         IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
+    }
+
+    /// @inheritdoc ITournamentManager
+    /// @dev Only the surplus above what is owed to tournaments can leave, so escrowed prizes are out of reach.
+    function rescue(address token, address to)
+        external
+        nonReentrant
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (uint256 amount)
+    {
+        if (token == address(0) || to == address(0)) revert ZeroAddress();
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 owed = _layout().escrowed[token];
+        // An inequality, not `== 0`: if a misbehaving token ever shrank the balance below what is owed, this
+        // reverts cleanly instead of underflowing, and nothing leaves.
+        if (balance <= owed) revert NothingToRescue();
+        amount = balance - owed;
+        emit Rescued(token, to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function _refund(uint256 id, Tournament storage t) private {
@@ -91,6 +118,9 @@ abstract contract EscrowModule is TournamentBase {
         t.unpaid = 0;
         t.status = Status.Cancelled;
         emit TournamentCancelled(id, amount);
-        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
+        if (amount != 0) {
+            _layout().escrowed[t.config.prizeToken] -= amount;
+            IERC20(t.config.prizeToken).safeTransfer(t.organizer, amount);
+        }
     }
 }

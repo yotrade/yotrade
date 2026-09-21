@@ -2,7 +2,9 @@
 pragma solidity 0.8.37;
 
 import {TournamentManager} from "../../src/TournamentManager.sol";
+import {IAccountCore} from "../../src/interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../../src/interfaces/ITournamentManager.sol";
+import {KuruVenueAdapter} from "../../src/venues/KuruVenueAdapter.sol";
 import {MockAccountCore, MockERC20} from "../mocks/Mocks.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
@@ -12,6 +14,7 @@ contract RegressionTest is Test {
     TournamentManager internal manager;
     MockERC20 internal usdc;
     MockAccountCore internal core;
+    KuruVenueAdapter internal venue;
 
     address internal admin = makeAddr("admin");
     address internal scorer = makeAddr("scorer");
@@ -28,8 +31,11 @@ contract RegressionTest is Test {
     function setUp() public {
         usdc = new MockERC20();
         core = new MockAccountCore();
-        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, address(core), 1 hours));
+        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, 1 hours, 0));
         manager = TournamentManager(address(new ERC1967Proxy(address(new TournamentManager()), init)));
+        venue = new KuruVenueAdapter(IAccountCore(address(core)));
+        vm.prank(admin);
+        manager.setVenueApproval(address(venue), true);
         start = uint64(block.timestamp + 1 hours);
         end = start + 1 days;
         usdc.mint(organizer, POOL);
@@ -41,7 +47,7 @@ contract RegressionTest is Test {
         uint16[] memory split = new uint16[](2);
         (split[0], split[1]) = (7000, 3000);
         config = ITournamentManager.Config(
-            address(usdc), address(usdc), POOL, CAPITAL, start, end, 10, bytes32(0), split, "ipfs://t"
+            address(usdc), address(usdc), address(venue), POOL, CAPITAL, start, end, 10, bytes32(0), split, "ipfs://t"
         );
     }
 

@@ -11,6 +11,8 @@
     "snapshot": "forge snapshot --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'",
     "snapshot:check": "forge snapshot --check --tolerance 5 --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'",
     "lint": "forge fmt --check && forge lint src --deny warnings",
-    "format": "forge fmt"
+    "format": "forge fmt",
+    "deploy": "forge clean && forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast",
+    "upgrade": "forge clean && forge script script/Upgrade.s.sol --rpc-url monad_testnet --broadcast"
   }
 }

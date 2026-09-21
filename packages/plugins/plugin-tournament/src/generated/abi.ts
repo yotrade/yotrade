@@ -59,6 +59,19 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_METADATA_LENGTH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_WINNERS",
     "inputs": [],
     "outputs": [
@@ -137,16 +150,23 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "function",
-    "name": "accountCore",
+    "name": "acceptDefaultAdminTransfer",
     "inputs": [],
-    "outputs": [
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "beginDefaultAdminTransfer",
+    "inputs": [
       {
-        "name": "",
+        "name": "newAdmin",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -158,6 +178,13 @@ export const tournamentManagerAbi = [
         "internalType": "uint256"
       }
     ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelDefaultAdminTransfer",
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -184,6 +211,19 @@ export const tournamentManagerAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "changeDefaultAdminDelay",
+    "inputs": [
+      {
+        "name": "newDelay",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -220,6 +260,11 @@ export const tournamentManagerAbi = [
           },
           {
             "name": "capitalToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "venue",
             "type": "address",
             "internalType": "address"
           },
@@ -277,6 +322,45 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "function",
+    "name": "defaultAdmin",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "defaultAdminDelay",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "defaultAdminDelayIncreaseWait",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "disputeWindow",
     "inputs": [],
     "outputs": [
@@ -284,6 +368,25 @@ export const tournamentManagerAbi = [
         "name": "",
         "type": "uint64",
         "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "escrowed",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -311,6 +414,11 @@ export const tournamentManagerAbi = [
           },
           {
             "name": "capitalToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "venue",
             "type": "address",
             "internalType": "address"
           },
@@ -493,18 +601,37 @@ export const tournamentManagerAbi = [
         "internalType": "address"
       },
       {
-        "name": "accountCore_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "disputeWindow_",
         "type": "uint64",
         "internalType": "uint64"
+      },
+      {
+        "name": "adminTransferDelay",
+        "type": "uint48",
+        "internalType": "uint48"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isVenueApproved",
+    "inputs": [
+      {
+        "name": "venue",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -531,6 +658,19 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "pause",
     "inputs": [],
     "outputs": [],
@@ -545,6 +685,42 @@ export const tournamentManagerAbi = [
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingDefaultAdmin",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "newAdmin",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "schedule",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingDefaultAdminDelay",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "newDelay",
+        "type": "uint48",
+        "internalType": "uint48"
+      },
+      {
+        "name": "schedule",
+        "type": "uint48",
+        "internalType": "uint48"
       }
     ],
     "stateMutability": "view"
@@ -632,12 +808,36 @@ export const tournamentManagerAbi = [
         "internalType": "bytes32"
       },
       {
-        "name": "callerConfirmation",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rescue",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -660,14 +860,8 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "function",
-    "name": "setAccountCore",
-    "inputs": [
-      {
-        "name": "accountCore_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
+    "name": "rollbackDefaultAdminDelay",
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -679,6 +873,24 @@ export const tournamentManagerAbi = [
         "name": "disputeWindow_",
         "type": "uint64",
         "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setVenueApproval",
+    "inputs": [
+      {
+        "name": "venue",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -799,13 +1011,50 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "event",
-    "name": "AccountCoreUpdated",
+    "name": "DefaultAdminDelayChangeCanceled",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefaultAdminDelayChangeScheduled",
     "inputs": [
       {
-        "name": "accountCore",
+        "name": "newDelay",
+        "type": "uint48",
+        "indexed": false,
+        "internalType": "uint48"
+      },
+      {
+        "name": "effectSchedule",
+        "type": "uint48",
+        "indexed": false,
+        "internalType": "uint48"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefaultAdminTransferCanceled",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefaultAdminTransferScheduled",
+    "inputs": [
+      {
+        "name": "newAdmin",
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "acceptSchedule",
+        "type": "uint48",
+        "indexed": false,
+        "internalType": "uint48"
       }
     ],
     "anonymous": false
@@ -920,6 +1169,31 @@ export const tournamentManagerAbi = [
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Rescued",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
         "name": "amount",
@@ -1095,6 +1369,11 @@ export const tournamentManagerAbi = [
             "internalType": "address"
           },
           {
+            "name": "venue",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "prizePool",
             "type": "uint256",
             "internalType": "uint256"
@@ -1166,9 +1445,55 @@ export const tournamentManagerAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "VenueApprovalUpdated",
+    "inputs": [
+      {
+        "name": "venue",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AccessControlBadConfirmation",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AccessControlEnforcedDefaultAdminDelay",
+    "inputs": [
+      {
+        "name": "schedule",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AccessControlEnforcedDefaultAdminRules",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AccessControlInvalidDefaultAdmin",
+    "inputs": [
+      {
+        "name": "defaultAdmin",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   },
   {
     "type": "error",
@@ -1185,11 +1510,6 @@ export const tournamentManagerAbi = [
         "internalType": "bytes32"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "AccountNotRegistered",
-    "inputs": []
   },
   {
     "type": "error",
@@ -1324,7 +1644,7 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "error",
-    "name": "NotAccountOwner",
+    "name": "MetadataTooLong",
     "inputs": []
   },
   {
@@ -1360,6 +1680,11 @@ export const tournamentManagerAbi = [
   },
   {
     "type": "error",
+    "name": "NothingToRescue",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NothingToSweep",
     "inputs": []
   },
@@ -1383,6 +1708,22 @@ export const tournamentManagerAbi = [
     "type": "error",
     "name": "ReentrancyGuardReentrantCall",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -1438,6 +1779,17 @@ export const tournamentManagerAbi = [
         "name": "slot",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "VenueNotApproved",
+    "inputs": [
+      {
+        "name": "venue",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },

@@ -5,17 +5,42 @@
   "foundry": "1.8.3",
   "solc": "0.8.37",
   "TournamentManager": {
-    "proxy": "0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D",
-    "implementation": "0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c",
-    "deployBlock": 64412306,
-    "implementationTx": "0x033b228a00fed6605b09563ceea8f3bef407530f54bd224b30945bb295ada2e1",
-    "proxyTx": "0x434b2feb036bf796605da32482f0b2e03dfb4d1885df77d12d056aff43f0d39f",
+    "proxy": "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
+    "implementation": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
+    "deployBlock": 64421055,
+    "verified": "sourcify (MonadVision)",
+    "implementationHistory": [
+      {
+        "address": "0xdbC26eF2765912BF0B77e4A4cE0395e91089C698",
+        "note": "initial implementation, verified"
+      },
+      {
+        "address": "0x8Ee5FD21d00d3189B0a63932C1311C4Be37263da",
+        "note": "rescue inequality fix, built from a stale cache after a coverage run: bytecode not reproducible, superseded within minutes"
+      },
+      {
+        "address": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
+        "note": "same source, clean build, verified; current"
+      }
+    ]
+  },
+  "KuruVenueAdapter": {
+    "address": "0xADefe39B43673641e94cE99613c54266af2490e6",
+    "accountCore": "0x6384e9b2Bf3b65e1535403a0A543b5FDA905eE22",
     "verified": "sourcify (MonadVision)"
   },
   "config": {
-    "accountCore": "0x6384e9b2Bf3b65e1535403a0A543b5FDA905eE22",
     "disputeWindowSeconds": 3600,
+    "adminTransferDelaySeconds": 0,
     "admin": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
-    "scorer": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5"
-  }
+    "scorer": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
+    "approvedVenues": ["0xADefe39B43673641e94cE99613c54266af2490e6"]
+  },
+  "retired": [
+    {
+      "proxy": "0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D",
+      "implementation": "0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c",
+      "reason": "pre-modular layout without venue adapters; never held a tournament"
+    }
+  ]
 }
