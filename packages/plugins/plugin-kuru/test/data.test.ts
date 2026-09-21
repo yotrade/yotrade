@@ -173,6 +173,8 @@ describe("market data", () => {
                 pricePrecision: "100",
                 sizePrecision: "1000000",
                 takerFeePps: 7000,
+                tickSize: "1",
+                minQuoteNotionalX18: "10000000000000000000",
               },
             };
         return Promise.resolve(new Response(JSON.stringify(body)));
@@ -188,6 +190,8 @@ describe("market data", () => {
       pricePrecision: 100n,
       sizePrecision: 1_000_000n,
       takerFeeBps: 7,
+      tickSize: 1n,
+      minQuoteNotional: 10_000_000n,
     });
     expect(urls[0]).toBe("https://gateway.test/api/depth?symbol=MONUSDC&levels=5&state=finalized");
   });
