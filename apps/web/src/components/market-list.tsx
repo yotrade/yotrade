@@ -6,7 +6,7 @@ import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import Image from "next/image";
 import Link from "next/link";
 
-import { linePath, plotOf, RANGES, summarize, toBars } from "@/lib/chart.ts";
+import { CANDLES, linePath, plotOf, RANGES, summarize, toBars } from "@/lib/chart.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
@@ -21,8 +21,8 @@ import { TokenIcon } from "./ui/token-icon.tsx";
 
 const SPARK = { width: 56, height: 28, padY: 3 };
 const SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
-/** A week of hourly candles: thin testnet markets rarely trade inside a single day. */
-const RANGE = RANGES["1W"];
+/** Four days of hourly candles: thin testnet markets rarely trade inside a single day. */
+const RANGE = RANGES["1h"];
 
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
@@ -37,7 +37,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     refetchInterval: 10_000,
     queryFn: async () => {
       const to = Math.floor(Date.now() / 1000);
-      const from = to - RANGE.seconds;
+      const from = to - RANGE.seconds * CANDLES;
       const [info, candles, book] = await Promise.all([
         kuru.data.market(orderBook),
         kuru.data.candles(orderBook, { interval: RANGE.interval, from }),
@@ -54,7 +54,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     },
   });
 
-  const reference = useReference(slug, "24H");
+  const reference = useReference(slug, "15m");
   // Kuru sets the price you trade at. The line and the change come from the real-world market, labelled so.
   const price = data.data?.mid ?? data.data?.summary?.close ?? null;
   const spark = reference.data ?? data.data;
@@ -106,7 +106,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
         </p>
         <p className={`tabular text-sm font-medium leading-5 ${up ? "text-up" : "text-down"}`}>
           {summary
-            ? `${formatBps(summary.changeBps)} ${reference.data ? "24h" : "7d"}`
+            ? `${formatBps(summary.changeBps)} ${reference.data ? "24h" : "4d"}`
             : "No trades"}
         </p>
       </div>
