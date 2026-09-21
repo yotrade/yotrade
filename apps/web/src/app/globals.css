@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #0e0b1a;
+  --color-surface-raised: #17132a;
+  --color-border: #2a2447;
+  --color-ink: #f4f2ff;
+  --color-ink-muted: #a59fc4;
+  --color-accent: #836ef9;
+  --color-accent-ink: #0e0b1a;
+  --color-up: #3ddc97;
+  --color-down: #ff5c7a;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Numbers that change every block must not make the layout jump. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

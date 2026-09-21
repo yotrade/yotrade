@@ -109,7 +109,19 @@
         },
         "useNamingConvention": {
           "level": "error",
-          "options": { "strictCase": false }
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": { "kind": "objectLiteralMember" },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE", "snake_case"]
+              },
+              {
+                "selector": { "kind": "typeMember" },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE", "snake_case"]
+              }
+            ]
+          }
         }
       },
       "suspicious": {
@@ -140,6 +152,7 @@
     }
   },
   "css": {
+    "parser": { "tailwindDirectives": true },
     "formatter": { "enabled": true },
     "linter": { "enabled": true }
   },
@@ -153,8 +166,8 @@
     {
       "includes": [
         "**/*.config.{ts,mts,js,mjs}",
-        "apps/*/app/**/{page,layout,loading,error,not-found,template,default,route,manifest,robots,sitemap,opengraph-image}.{ts,tsx}",
-        "apps/*/middleware.ts"
+        "apps/*/src/app/**/{page,layout,loading,error,not-found,template,default,route,manifest,robots,sitemap,opengraph-image}.{ts,tsx}",
+        "apps/*/src/middleware.ts"
       ],
       "linter": {
         "rules": {
