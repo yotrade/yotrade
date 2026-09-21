@@ -1,11 +1,24 @@
 {
-  "extends": "@yotrade/tsconfig/base.json",
+  // Self-contained on purpose: Envio Cloud installs this directory alone, outside the workspace.
   "compilerOptions": {
+    "target": "ES2023",
     "lib": ["ES2023"],
     "types": ["node"],
-    "allowImportingTsExtensions": false,
-    "exactOptionalPropertyTypes": false,
-    "noPropertyAccessFromIndexSignature": false
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
   },
   "include": ["src", "test", "envio-env.d.ts"]
 }
