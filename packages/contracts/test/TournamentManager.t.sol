@@ -2,7 +2,10 @@
 pragma solidity 0.8.37;
 
 import {TournamentManager} from "../src/TournamentManager.sol";
+import {IAccountCore} from "../src/interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../src/interfaces/ITournamentManager.sol";
+import {IVenueAdapter} from "../src/interfaces/IVenueAdapter.sol";
+import {KuruVenueAdapter} from "../src/venues/KuruVenueAdapter.sol";
 import {FeeOnTransferERC20, MockAccountCore, MockERC20, TournamentManagerV2} from "./mocks/Mocks.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -13,6 +16,7 @@ contract TournamentManagerTest is Test {
     TournamentManager internal manager;
     MockERC20 internal usdc;
     MockAccountCore internal core;
+    KuruVenueAdapter internal venue;
 
     address internal admin = makeAddr("admin");
     address internal scorer = makeAddr("scorer");
@@ -31,8 +35,11 @@ contract TournamentManagerTest is Test {
         usdc = new MockERC20();
         core = new MockAccountCore();
         TournamentManager implementation = new TournamentManager();
-        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, address(core), DISPUTE_WINDOW));
+        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, DISPUTE_WINDOW, 0));
         manager = TournamentManager(address(new ERC1967Proxy(address(implementation), init)));
+        venue = new KuruVenueAdapter(IAccountCore(address(core)));
+        vm.prank(admin);
+        manager.setVenueApproval(address(venue), true);
 
         start = uint64(block.timestamp + 1 hours);
         end = start + 1 days;
@@ -51,6 +58,7 @@ contract TournamentManagerTest is Test {
         config = ITournamentManager.Config({
             prizeToken: address(usdc),
             capitalToken: address(usdc),
+            venue: address(venue),
             prizePool: POOL,
             startingCapital: CAPITAL,
             startTime: start,
@@ -102,19 +110,20 @@ contract TournamentManagerTest is Test {
         assertTrue(manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(manager.hasRole(manager.UPGRADER_ROLE(), admin));
         assertTrue(manager.hasRole(manager.SCORER_ROLE(), scorer));
-        assertEq(manager.accountCore(), address(core));
+        assertTrue(manager.isVenueApproved(address(venue)));
+        assertEq(manager.defaultAdmin(), admin);
         assertEq(manager.disputeWindow(), DISPUTE_WINDOW);
     }
 
     function test_Initialize_RevertsOnSecondCall() public {
         vm.expectRevert();
-        manager.initialize(admin, scorer, address(core), DISPUTE_WINDOW);
+        manager.initialize(admin, scorer, DISPUTE_WINDOW, 0);
     }
 
     function test_Implementation_CannotBeInitialized() public {
         TournamentManager implementation = new TournamentManager();
         vm.expectRevert();
-        implementation.initialize(admin, scorer, address(core), DISPUTE_WINDOW);
+        implementation.initialize(admin, scorer, DISPUTE_WINDOW, 0);
     }
 
     function test_Upgrade_KeepsStateAndAddsLogic() public {
@@ -152,6 +161,7 @@ contract TournamentManagerTest is Test {
 
         assertEq(id, 1);
         assertEq(usdc.balanceOf(address(manager)), POOL);
+        assertEq(manager.escrowed(address(usdc)), POOL);
         (address org, ITournamentManager.Status status,,, uint256 unpaid) = manager.getState(id);
         assertEq(org, organizer);
         assertEq(uint8(status), uint8(ITournamentManager.Status.Open));
@@ -233,7 +243,7 @@ contract TournamentManagerTest is Test {
 
     function test_Join_RevertsWhenAccountUnregistered() public {
         uint256 id = _create();
-        vm.expectRevert(ITournamentManager.AccountNotRegistered.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVenueAdapter.AccountNotRegistered.selector, makeAddr("ghost")));
         vm.prank(alice);
         manager.join(id, makeAddr("ghost"), new bytes32[](0));
     }
@@ -241,7 +251,7 @@ contract TournamentManagerTest is Test {
     function test_Join_RevertsWhenAccountOwnedBySomeoneElse() public {
         uint256 id = _create();
         address bobsAccount = _tradingAccount(bob);
-        vm.expectRevert(ITournamentManager.NotAccountOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVenueAdapter.NotAccountOwner.selector, bobsAccount, alice));
         vm.prank(alice);
         manager.join(id, bobsAccount, new bytes32[](0));
     }
@@ -310,13 +320,21 @@ contract TournamentManagerTest is Test {
         manager.join(id, carolsAccount, proof);
     }
 
-    function test_Join_SkipsVenueChecksWhenAccountCoreUnset() public {
+    function test_Create_RevertsOnUnapprovedOrRevokedVenue() public {
+        ITournamentManager.Config memory config = _config();
+        config.venue = address(0);
+        vm.expectRevert(abi.encodeWithSelector(ITournamentManager.VenueNotApproved.selector, address(0)));
+        vm.prank(organizer);
+        manager.createTournament(config);
+
+        // Revoking stops new tournaments but leaves running ones untouched.
+        uint256 running = _create();
         vm.prank(admin);
-        manager.setAccountCore(address(0));
-        uint256 id = _create();
-        vm.prank(alice);
-        manager.join(id, makeAddr("any"), new bytes32[](0));
-        assertEq(manager.tradingAccountOf(id, alice), makeAddr("any"));
+        manager.setVenueApproval(address(venue), false);
+        vm.expectRevert(abi.encodeWithSelector(ITournamentManager.VenueNotApproved.selector, address(venue)));
+        vm.prank(organizer);
+        manager.createTournament(_config());
+        _join(running, alice);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -451,6 +469,7 @@ contract TournamentManagerTest is Test {
         vm.prank(alice);
         manager.claim(id);
         assertEq(usdc.balanceOf(address(manager)), 0);
+        assertEq(manager.escrowed(address(usdc)), 0);
     }
 
     function test_Cancel_RefundsOrganizerBeforeStart() public {

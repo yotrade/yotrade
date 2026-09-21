@@ -4,6 +4,8 @@ pragma solidity 0.8.37;
 import {TournamentManager} from "../../src/TournamentManager.sol";
 import {IAccountCore} from "../../src/interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../../src/interfaces/ITournamentManager.sol";
+import {IVenueAdapter} from "../../src/interfaces/IVenueAdapter.sol";
+import {KuruVenueAdapter} from "../../src/venues/KuruVenueAdapter.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -11,13 +13,14 @@ interface IAccountCoreExtra is IAccountCore {
     function userAddressById(uint40 id) external view returns (address);
 }
 
-/// @notice Runs `join` against the live Kuru Spot V2 AccountCore on Monad testnet, so an interface drift is caught
-/// before users hit it. Skipped unless MONAD_TESTNET_RPC_URL is set.
+/// @notice Runs `join` through KuruVenueAdapter against the live Kuru Spot V2 AccountCore on Monad testnet, so an
+/// interface drift is caught before users hit it. Skipped unless MONAD_TESTNET_RPC_URL is set.
 contract KuruAccountCoreForkTest is Test {
     IAccountCoreExtra internal constant CORE = IAccountCoreExtra(0x6384e9b2Bf3b65e1535403a0A543b5FDA905eE22);
     address internal constant USDC = 0xEe0722ead54f1B4fe97bE399Be43BC0226a6f97E;
 
     TournamentManager internal manager;
+    KuruVenueAdapter internal venue;
     address internal trader;
 
     function setUp() public {
@@ -25,9 +28,10 @@ contract KuruAccountCoreForkTest is Test {
         if (bytes(rpc).length == 0) vm.skip(true);
         vm.createSelectFork(rpc);
 
-        bytes memory init =
-            abi.encodeCall(TournamentManager.initialize, (address(this), address(this), address(CORE), 0));
+        bytes memory init = abi.encodeCall(TournamentManager.initialize, (address(this), address(this), 0, 0));
         manager = TournamentManager(address(new ERC1967Proxy(address(new TournamentManager()), init)));
+        venue = new KuruVenueAdapter(CORE);
+        manager.setVenueApproval(address(venue), true);
         trader = CORE.userAddressById(1);
     }
 
@@ -38,6 +42,7 @@ contract KuruAccountCoreForkTest is Test {
             ITournamentManager.Config({
                 prizeToken: address(0),
                 capitalToken: USDC,
+                venue: address(venue),
                 prizePool: 0,
                 startingCapital: startingCapital,
                 startTime: uint64(block.timestamp + 1),
@@ -69,11 +74,13 @@ contract KuruAccountCoreForkTest is Test {
     function testFork_JoinRejectsForeignAndUnknownAccounts() public {
         uint256 id = _create(0);
 
-        vm.expectRevert(ITournamentManager.NotAccountOwner.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVenueAdapter.NotAccountOwner.selector, trader, makeAddr("stranger")));
         vm.prank(makeAddr("stranger"));
         manager.join(id, trader, new bytes32[](0));
 
-        vm.expectRevert(ITournamentManager.AccountNotRegistered.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IVenueAdapter.AccountNotRegistered.selector, makeAddr("never-registered"))
+        );
         vm.prank(makeAddr("stranger"));
         manager.join(id, makeAddr("never-registered"), new bytes32[](0));
     }
