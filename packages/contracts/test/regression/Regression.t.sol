@@ -130,7 +130,7 @@ contract RegressionTest is Test {
         _assertManagerLogsFirst(ITournamentManager.RemainderSwept.selector);
     }
 
-    function _assertManagerLogsFirst(bytes32 expectedTopic) internal {
+    function _assertManagerLogsFirst(bytes32 expectedTopic) internal view {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 2, "one lifecycle event and one ERC-20 Transfer");
         assertEq(logs[0].emitter, address(manager));
