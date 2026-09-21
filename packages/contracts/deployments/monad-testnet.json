@@ -29,6 +29,13 @@
     "accountCore": "0x6384e9b2Bf3b65e1535403a0A543b5FDA905eE22",
     "verified": "sourcify (MonadVision)"
   },
+  "ProfileRegistry": {
+    "address": "0x9d8B6852705dD7585B3907244d603547a4eA32d6",
+    "deployBlock": 64468058,
+    "deployTx": "0xee644f0b11c386663462e25cd49e7002b53b5a1065ce1509f85411c278fa4d68",
+    "upgradeable": false,
+    "verified": "sourcify (MonadVision)"
+  },
   "config": {
     "disputeWindowSeconds": 120,
     "adminTransferDelaySeconds": 0,

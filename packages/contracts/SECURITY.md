@@ -61,3 +61,14 @@ Scores are computed offchain from the venue's public data and are reproducible b
 ## Reporting
 
 Open a private security advisory on the repository. Please do not file public issues for vulnerabilities.
+
+## ProfileRegistry
+
+Display names and avatars, set by each account for itself. It is immutable, has no owner and cannot hold value, so there is no role to compromise and nothing to drain.
+
+| Threat | Mitigation |
+|---|---|
+| Setting someone else's profile | Only `msg.sender` is ever written |
+| Storage or gas griefing through long names | Names are capped at 32 bytes; every write is paid by the writer into its own slot |
+| Markup or script in a name | The contract stores bytes; clients must render names as text and never as HTML |
+| Impersonation by choosing another trader's name | Not preventable onchain; clients show the address next to the name where it matters (results, claims) |
