@@ -29,11 +29,17 @@
   --animate-pop: pop 0.6s var(--ease-out-soft) both;
   --animate-float: float 4s ease-in-out infinite;
   --animate-glow: glow 2.4s ease-in-out infinite;
+  --animate-sheet: sheet 0.35s var(--ease-out-soft) both;
 
   @keyframes enter {
     from {
       opacity: 0;
       transform: translateY(10px);
+    }
+  }
+  @keyframes sheet {
+    from {
+      transform: translateY(100%);
     }
   }
   @keyframes pop {
@@ -77,5 +83,6 @@ body {
     --animate-pop: none;
     --animate-float: none;
     --animate-glow: none;
+    --animate-sheet: none;
   }
 }

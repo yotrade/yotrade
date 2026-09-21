@@ -1,0 +1,132 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+import { shortAddress } from "@/lib/format.ts";
+import { formatBps, roiBps } from "@/lib/ticket.ts";
+import { useIdentity } from "@/lib/use-identity.tsx";
+import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
+import { useNow } from "@/lib/use-now.ts";
+import { EntryCard } from "./entry-card.tsx";
+import { SettingsSheet } from "./settings-sheet.tsx";
+import { TournamentBrowser } from "./tournament-browser.tsx";
+import { Amount } from "./ui/amount.tsx";
+import { Avatar } from "./ui/avatar.tsx";
+import { Icon, type IconName } from "./ui/icon.tsx";
+import { SectionLabel } from "./ui/section-label.tsx";
+
+const ACTIONS = [
+  { href: "/arena", icon: "stars", label: "Join" },
+  { href: "/new", icon: "plus", label: "Host" },
+  { href: "/activity", icon: "gift", label: "Results" },
+] as const satisfies readonly { href: string; icon: IconName; label: string }[];
+
+/** The kit's wallet home: account chip, balance, action tiles, cards, tabbed list. */
+export function HomeScreen() {
+  const now = useNow();
+  const { identity } = useIdentity();
+  const { tournaments, mine } = useMyTournaments();
+  const [settings, setSettings] = useState(false);
+
+  if (!identity) {
+    return null;
+  }
+  const { address } = identity.wallet.account;
+  const open = (mine.data ?? []).filter((item) => item.value !== null);
+  const value = open.reduce((sum, item) => sum + (item.value ?? 0n), 0n);
+  const capital = open.reduce((sum, item) => sum + item.entry.capitalAtJoin, 0n);
+  const roi = roiBps(value, capital);
+
+  return (
+    <main className="flex flex-1 flex-col gap-6 pt-4">
+      <header className="flex items-center justify-between">
+        <button
+          type="button"
+          aria-label="Account and settings"
+          onClick={() => setSettings(true)}
+          className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Avatar address={address} />
+        </button>
+        <button
+          type="button"
+          aria-label="Settings"
+          onClick={() => setSettings(true)}
+          className="grid size-10 place-items-center rounded-full bg-well transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <Icon name="cog" size={20} />
+        </button>
+      </header>
+
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4">
+          <span className="grid size-9 place-items-center rounded-full bg-accent-soft">
+            <Icon name="credit-card" size={18} />
+          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] font-semibold leading-4 text-ink-muted">Main account</span>
+            <span className="font-mono text-[13px] font-semibold leading-4">
+              {shortAddress(address)}
+            </span>
+          </div>
+        </div>
+        <Link
+          href="/new"
+          aria-label="Host a tournament"
+          className="grid size-11 place-items-center rounded-full bg-ink transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95"
+        >
+          <Icon name="plus" size={20} className="brightness-0 invert" />
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Amount value={value} size="xl" />
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
+          <Icon name="arrow" size={16} />
+          {roi === null ? (
+            "Join a tournament to start trading"
+          ) : (
+            <span className={roi >= 0 ? "text-up" : "text-down"}>
+              {formatBps(roi)} across live accounts
+            </span>
+          )}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {ACTIONS.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="flex flex-col items-start gap-3 rounded-2xl border border-border p-3 transition duration-200 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.98]"
+          >
+            <Icon name={action.icon} />
+            <span className="font-semibold leading-tight">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
+      {mine.data && mine.data.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <SectionLabel>Your tournaments</SectionLabel>
+          <ul className="-mx-5 flex snap-x gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+            {mine.data.map((item, index) => (
+              <li
+                key={item.tournament.id.toString()}
+                className="animate-enter"
+                style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
+              >
+                <EntryCard item={item} now={now} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <TournamentBrowser tournaments={tournaments.data} failed={tournaments.isError} />
+
+      <SettingsSheet open={settings} onClose={() => setSettings(false)} />
+    </main>
+  );
+}
