@@ -1,0 +1,11 @@
+{
+  "extends": "@yotrade/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "allowImportingTsExtensions": false,
+    "exactOptionalPropertyTypes": false,
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": ["src", "test", "envio-env.d.ts"]
+}
