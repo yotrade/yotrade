@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type MarketSymbol, markets, tokens } from "@yotrade/core/addresses";
-import { EmptyBookError } from "@yotrade/plugin-kuru/errors";
+import { type MarketSymbol, markets, type TokenSymbol, tokens } from "@yotrade/core/addresses";
+import { EmptyBookError, PriceImpactError } from "@yotrade/plugin-kuru/errors";
+import { DEFAULT_MAX_IMPACT_BPS, type SwapQuote } from "@yotrade/plugin-kuru/plugin";
 import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { type FormEvent, useState } from "react";
@@ -10,12 +11,15 @@ import { formatUnits } from "viem";
 
 import { formatToken, formatUsdc } from "@/lib/format.ts";
 import { formatBps, parseTicket, roiBps } from "@/lib/ticket.ts";
+import { useDebounced } from "@/lib/use-debounced.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Field } from "./ui/field.tsx";
 
 const MARKET_SYMBOLS = Object.keys(markets) as MarketSymbol[];
+/** The deepest book on testnet. Thin books turn ordinary sizes into double-digit price impact. */
+const DEFAULT_MARKET: MarketSymbol = "XAUt0/USDC";
 const SHORTCUTS = [25n, 50n, 100n] as const;
 const LABELS: Record<string, string> = {
   usdc: "USDC",
@@ -26,6 +30,16 @@ const LABELS: Record<string, string> = {
 };
 
 type Side = "Buy" | "Sell";
+
+function failureCopy(cause: unknown): string {
+  if (cause instanceof EmptyBookError) {
+    return "This market has no liquidity right now.";
+  }
+  if (cause instanceof PriceImpactError) {
+    return "The book is too thin for this size. Nothing was traded. Try a smaller amount.";
+  }
+  return "The order did not go through. Nothing was traded.";
+}
 
 function Toggle<T extends string>({
   options,
@@ -56,6 +70,62 @@ function Toggle<T extends string>({
   );
 }
 
+interface Portfolio {
+  readonly holdings: Record<string, { free: bigint; reserved: bigint }>;
+  readonly totalUsdc: bigint;
+}
+
+function PortfolioCard({
+  portfolio,
+  capitalAtJoin,
+}: {
+  portfolio: Portfolio | undefined;
+  capitalAtJoin: bigint;
+}) {
+  const roi = portfolio ? roiBps(portfolio.totalUsdc, capitalAtJoin) : null;
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-ink-muted">Account value</p>
+          <p className="tabular text-2xl font-bold">
+            {portfolio ? `${formatUsdc(portfolio.totalUsdc)} USDC` : "…"}
+          </p>
+        </div>
+        {roi === null ? null : (
+          <p className={`tabular text-lg font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
+            {formatBps(roi)}
+          </p>
+        )}
+      </div>
+      <ul className="flex flex-wrap gap-2">
+        {Object.entries(portfolio?.holdings ?? {})
+          .filter(([, holding]) => holding.free + holding.reserved > 0n)
+          .map(([symbol, holding]) => (
+            <li
+              key={symbol}
+              className="tabular rounded-lg border border-border px-2.5 py-1 text-sm"
+            >
+              {formatToken(holding.free + holding.reserved, tokens[symbol as TokenSymbol].decimals)}{" "}
+              {LABELS[symbol]}
+            </li>
+          ))}
+      </ul>
+    </Card>
+  );
+}
+
+function QuoteLine({ quote, tokenOut }: { quote: SwapQuote; tokenOut: TokenSymbol }) {
+  const tooMuch = quote.impactBps > DEFAULT_MAX_IMPACT_BPS;
+  return (
+    <p className={`tabular text-sm ${tooMuch ? "text-down" : "text-ink-muted"}`} aria-live="polite">
+      You receive about {formatToken(quote.quotedOut, tokens[tokenOut].decimals)} {LABELS[tokenOut]}{" "}
+      · price impact {(quote.impactBps / 100).toFixed(2)}%
+      {tooMuch ? ". Too high for this size: try a smaller amount." : ""}
+    </p>
+  );
+}
+
 export function TradePanel({
   wallet,
   capitalAtJoin,
@@ -66,7 +136,7 @@ export function TradePanel({
   const { kuru } = useRuntime();
   const queryClient = useQueryClient();
   const address = wallet.account.address;
-  const [market, setMarket] = useState<MarketSymbol>("cbBTC/USDC");
+  const [market, setMarket] = useState<MarketSymbol>(DEFAULT_MARKET);
   const [side, setSide] = useState<Side>("Buy");
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -89,7 +159,20 @@ export function TradePanel({
   const tokenIn = isBuy ? "usdc" : base;
   const decimals = tokens[tokenIn].decimals;
   const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
-  const roi = portfolio.data ? roiBps(portfolio.data.totalUsdc, capitalAtJoin) : null;
+
+  const settledInput = useDebounced(input, 300);
+  const settled = parseTicket(settledInput, decimals, available);
+  const quote = useQuery({
+    queryKey: ["quote", market, side, settled.ok ? settled.amount.toString() : null],
+    queryFn: () =>
+      settled.ok
+        ? kuru.market.quote({ market, side: isBuy ? "buy" : "sell", amountIn: settled.amount })
+        : null,
+    enabled: settled.ok,
+    refetchInterval: 3_000,
+    retry: false,
+  });
+  const tooMuchImpact = (quote.data?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,11 +195,7 @@ export function TradePanel({
       await queryClient.invalidateQueries({ queryKey: ["portfolio", address] });
     } catch (cause) {
       console.error("swap failed", cause);
-      setError(
-        cause instanceof EmptyBookError
-          ? "This market has no liquidity right now."
-          : "The order did not go through. Nothing was traded.",
-      );
+      setError(failureCopy(cause));
     } finally {
       setPending(false);
     }
@@ -124,37 +203,7 @@ export function TradePanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <Card className="flex flex-col gap-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-sm text-ink-muted">Account value</p>
-            <p className="tabular text-2xl font-bold">
-              {portfolio.data ? `${formatUsdc(portfolio.data.totalUsdc)} USDC` : "…"}
-            </p>
-          </div>
-          {roi === null ? null : (
-            <p className={`tabular text-lg font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
-              {formatBps(roi)}
-            </p>
-          )}
-        </div>
-        <ul className="flex flex-wrap gap-2">
-          {Object.entries(portfolio.data?.holdings ?? {})
-            .filter(([, holding]) => holding.free + holding.reserved > 0n)
-            .map(([symbol, holding]) => (
-              <li
-                key={symbol}
-                className="tabular rounded-lg border border-border px-2.5 py-1 text-sm"
-              >
-                {formatToken(
-                  holding.free + holding.reserved,
-                  tokens[symbol as keyof typeof tokens].decimals,
-                )}{" "}
-                {LABELS[symbol]}
-              </li>
-            ))}
-        </ul>
-      </Card>
+      <PortfolioCard portfolio={portfolio.data} capitalAtJoin={capitalAtJoin} />
 
       <Card>
         <form className="flex flex-col gap-3" onSubmit={submit}>
@@ -197,7 +246,14 @@ export function TradePanel({
               </Button>
             ))}
           </div>
-          <Button type="submit" pending={pending} disabled={!book.data?.hasLiquidity}>
+          {quote.data && settled.ok ? (
+            <QuoteLine quote={quote.data} tokenOut={isBuy ? base : "usdc"} />
+          ) : null}
+          <Button
+            type="submit"
+            pending={pending}
+            disabled={!book.data?.hasLiquidity || tooMuchImpact}
+          >
             {side} {LABELS[base]}
           </Button>
           {done ? (
