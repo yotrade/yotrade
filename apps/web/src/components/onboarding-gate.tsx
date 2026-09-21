@@ -168,7 +168,40 @@ function CreateScreen({ pending, error, onBack, onCreate }: CreateProps) {
   );
 }
 
+/** The logo while the app opens and for returning visitors; the kit illustration for first-timers. */
+function Hero({ badge }: { badge: boolean }) {
+  return badge ? (
+    <Badge />
+  ) : (
+    <Image
+      src="/illustrations/onboarding.svg"
+      alt=""
+      aria-hidden
+      width={294}
+      height={278}
+      unoptimized
+      priority
+      className="animate-enter"
+    />
+  );
+}
+
+function StepDots({ current }: { current: number }) {
+  return (
+    <div className="flex gap-1.5" role="img" aria-label={`Step ${current + 1} of ${SLIDES.length}`}>
+      {SLIDES.map((item, index) => (
+        <span
+          key={item.title}
+          className={`h-1 rounded-full transition-all ${index === current ? "w-3 bg-ink" : "w-1 bg-border"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface IntroProps {
+  /** Splash: only the logo shows, centred. Expanding slides it up as the content grows in below. */
+  readonly collapsed: boolean;
   readonly returning: boolean;
   readonly pending: boolean;
   readonly error: string | undefined;
@@ -177,7 +210,7 @@ interface IntroProps {
 }
 
 /** Kit onboarding layout: illustration on top; title, description, step dots and two buttons below. */
-function IntroScreen({ returning, pending, error, onCreate, onSignIn }: IntroProps) {
+function IntroScreen({ collapsed, returning, pending, error, onCreate, onSignIn }: IntroProps) {
   const [slide, setSlide] = useState(0);
   const current = SLIDES[slide] ?? SLIDES[0];
   const last = slide === SLIDES.length - 1;
@@ -194,61 +227,44 @@ function IntroScreen({ returning, pending, error, onCreate, onSignIn }: IntroPro
     : { label: "I already have a passkey", action: onSignIn };
 
   return (
-    <main className="flex flex-1 animate-enter flex-col pb-6">
+    <main className="flex flex-1 flex-col pb-6">
       <div className="grid flex-1 place-items-center py-8">
-        {returning ? (
-          <Badge />
-        ) : (
-          <Image
-            src="/illustrations/onboarding.svg"
-            alt=""
-            aria-hidden
-            width={294}
-            height={278}
-            unoptimized
-            priority
-          />
-        )}
+        <Hero badge={collapsed || returning} />
       </div>
-      <div className="flex flex-col items-center gap-6 px-2">
-        <div key={title} className="flex animate-enter flex-col gap-3 text-center">
-          <h1 className="text-[34px] font-bold leading-[1.2] tracking-tight">{title}</h1>
-          <p className="font-semibold leading-snug text-ink-muted">{body}</p>
-        </div>
-        {returning ? null : (
-          <div
-            className="flex gap-1.5"
-            role="img"
-            aria-label={`Step ${slide + 1} of ${SLIDES.length}`}
-          >
-            {SLIDES.map((item, index) => (
-              <span
-                key={item.title}
-                className={`h-1 rounded-full transition-all ${index === slide ? "w-3 bg-ink" : "w-1 bg-border"}`}
-              />
-            ))}
+      {/* Height "auto" cannot be transitioned, a grid row from 0fr to 1fr can: the logo above rides on it. */}
+      <div
+        inert={collapsed}
+        className={`grid transition-[grid-template-rows,opacity] duration-700 ease-out-soft ${collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"}`}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-col items-center gap-6 px-2">
+            <div key={title} className="flex animate-enter flex-col gap-3 text-center">
+              <h1 className="text-[34px] font-bold leading-[1.2] tracking-tight">{title}</h1>
+              <p className="font-semibold leading-snug text-ink-muted">{body}</p>
+            </div>
+            {returning ? null : <StepDots current={slide} />}
+            {error ? (
+              <p role="alert" className="text-center text-[13px] leading-5 text-down">
+                {error}
+              </p>
+            ) : null}
+            <div className="flex w-full flex-col gap-4">
+              <Button pending={returning && pending} disabled={pending} onClick={primary.action}>
+                {primary.label}
+              </Button>
+              <Button
+                variant="secondary"
+                className="bg-surface shadow-button ring-1 ring-border"
+                pending={!returning && pending}
+                disabled={pending}
+                onClick={secondary.action}
+              >
+                {secondary.label}
+              </Button>
+            </div>
+            <Disclaimer />
           </div>
-        )}
-        {error ? (
-          <p role="alert" className="text-center text-[13px] leading-5 text-down">
-            {error}
-          </p>
-        ) : null}
-        <div className="flex w-full flex-col gap-4">
-          <Button pending={returning && pending} disabled={pending} onClick={primary.action}>
-            {primary.label}
-          </Button>
-          <Button
-            variant="secondary"
-            className="bg-surface shadow-button ring-1 ring-border"
-            pending={!returning && pending}
-            disabled={pending}
-            onClick={secondary.action}
-          >
-            {secondary.label}
-          </Button>
         </div>
-        <Disclaimer />
       </div>
     </main>
   );
@@ -261,10 +277,13 @@ function IntroScreen({ returning, pending, error, onCreate, onSignIn }: IntroPro
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { identity, register, signIn } = useIdentity();
   const [step, setStep] = useState<Step>("splash");
+  // Known right after mount, before the splash ends, so the logo never swaps mid-flight.
+  const [returningUser, setReturningUser] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
+    setReturningUser(hasOnboarded());
     const timer = setTimeout(() => {
       const next: Step = hasOnboarded() ? "returning" : "slides";
       setStep((current) => (current === "splash" ? next : current));
@@ -301,13 +320,6 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       children
     );
   }
-  if (step === "splash") {
-    return (
-      <main className="grid flex-1 place-items-center">
-        <Badge />
-      </main>
-    );
-  }
   if (step === "create") {
     return (
       <CreateScreen
@@ -320,7 +332,8 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   }
   return (
     <IntroScreen
-      returning={step === "returning"}
+      collapsed={step === "splash"}
+      returning={returningUser || step === "returning"}
       pending={pending}
       error={error}
       onCreate={() => {
