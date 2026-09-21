@@ -2,7 +2,9 @@
 pragma solidity 0.8.37;
 
 import {TournamentManager} from "../src/TournamentManager.sol";
+import {IAccountCore} from "../src/interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../src/interfaces/ITournamentManager.sol";
+import {KuruVenueAdapter} from "../src/venues/KuruVenueAdapter.sol";
 import {MockAccountCore, MockERC20} from "./mocks/Mocks.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -14,6 +16,7 @@ contract TournamentManagerGuardsTest is Test {
     TournamentManager internal manager;
     MockERC20 internal usdc;
     MockAccountCore internal core;
+    KuruVenueAdapter internal venue;
 
     address internal admin = makeAddr("admin");
     address internal scorer = makeAddr("scorer");
@@ -23,8 +26,11 @@ contract TournamentManagerGuardsTest is Test {
     function setUp() public {
         usdc = new MockERC20();
         core = new MockAccountCore();
-        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, address(core), 1 hours));
+        bytes memory init = abi.encodeCall(TournamentManager.initialize, (admin, scorer, 1 hours, 1 days));
         manager = TournamentManager(address(new ERC1967Proxy(address(new TournamentManager()), init)));
+        venue = new KuruVenueAdapter(IAccountCore(address(core)));
+        vm.prank(admin);
+        manager.setVenueApproval(address(venue), true);
     }
 
     function _config() internal view returns (ITournamentManager.Config memory config) {
@@ -33,6 +39,7 @@ contract TournamentManagerGuardsTest is Test {
         config = ITournamentManager.Config({
             prizeToken: address(0),
             capitalToken: address(usdc),
+            venue: address(venue),
             prizePool: 0,
             startingCapital: 0,
             startTime: uint64(block.timestamp + 1 hours),
@@ -53,13 +60,9 @@ contract TournamentManagerGuardsTest is Test {
     function test_Initialize_RevertsOnZeroAdminOrScorer() public {
         address implementation = address(new TournamentManager());
         vm.expectRevert(ITournamentManager.ZeroAddress.selector);
-        new ERC1967Proxy(
-            implementation, abi.encodeCall(TournamentManager.initialize, (address(0), scorer, address(0), 0))
-        );
+        new ERC1967Proxy(implementation, abi.encodeCall(TournamentManager.initialize, (address(0), scorer, 0, 0)));
         vm.expectRevert(ITournamentManager.ZeroAddress.selector);
-        new ERC1967Proxy(
-            implementation, abi.encodeCall(TournamentManager.initialize, (admin, address(0), address(0), 0))
-        );
+        new ERC1967Proxy(implementation, abi.encodeCall(TournamentManager.initialize, (admin, address(0), 0, 0)));
     }
 
     function test_Create_RevertsOnZeroCap() public {
@@ -107,6 +110,7 @@ contract TournamentManagerGuardsTest is Test {
 
         vm.prank(admin);
         manager.pause();
+        core.register(alice, alice);
         vm.expectRevert(Pausable.EnforcedPause.selector);
         vm.prank(alice);
         manager.join(id, alice, new bytes32[](0));
@@ -158,10 +162,9 @@ contract TournamentManagerGuardsTest is Test {
     }
 
     function test_Claim_ZeroPoolStillRecordsTheWin() public {
-        vm.prank(admin);
-        manager.setAccountCore(address(0));
         vm.prank(organizer);
         uint256 id = manager.createTournament(_config());
+        core.register(alice, alice);
         vm.prank(alice);
         manager.join(id, alice, new bytes32[](0));
 
@@ -184,7 +187,9 @@ contract TournamentManagerGuardsTest is Test {
         );
         vm.startPrank(alice);
         vm.expectRevert(unauthorized);
-        manager.setAccountCore(address(1));
+        manager.setVenueApproval(address(1), true);
+        vm.expectRevert(unauthorized);
+        manager.rescue(address(usdc), alice);
         vm.expectRevert(unauthorized);
         manager.setDisputeWindow(1);
         vm.expectRevert(unauthorized);
@@ -201,5 +206,95 @@ contract TournamentManagerGuardsTest is Test {
         vm.expectRevert(ITournamentManager.InvalidSchedule.selector);
         vm.prank(admin);
         manager.setDisputeWindow(tooLong);
+    }
+
+    function test_SetVenueApproval_RejectsZeroAddress() public {
+        vm.expectRevert(ITournamentManager.ZeroAddress.selector);
+        vm.prank(admin);
+        manager.setVenueApproval(address(0), true);
+    }
+
+    function test_KuruVenueAdapter_RejectsZeroAccountCore() public {
+        vm.expectRevert(KuruVenueAdapter.ZeroAddress.selector);
+        new KuruVenueAdapter(IAccountCore(address(0)));
+    }
+
+    function test_Create_RevertsOnOversizedMetadata() public {
+        ITournamentManager.Config memory config = _config();
+        config.metadataURI = string(new bytes(manager.MAX_METADATA_LENGTH() + 1));
+        _expectCreateRevert(config, ITournamentManager.MetadataTooLong.selector);
+    }
+
+    function test_PostResults_RevertsWhenPaused() public {
+        vm.prank(organizer);
+        uint256 id = manager.createTournament(_config());
+        vm.warp(block.timestamp + 2 hours);
+        vm.prank(admin);
+        manager.pause();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.prank(scorer);
+        manager.postResults(id, new address[](0));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Rescue: only the surplus can ever leave
+    // ---------------------------------------------------------------------------------------------------------
+
+    function test_Rescue_ReturnsStrayTokensButNeverEscrowedPrizes() public {
+        ITournamentManager.Config memory config = _config();
+        (config.prizeToken, config.prizePool) = (address(usdc), 1000e6);
+        usdc.mint(organizer, 1000e6);
+        vm.startPrank(organizer);
+        usdc.approve(address(manager), 1000e6);
+        manager.createTournament(config);
+        vm.stopPrank();
+        usdc.mint(address(manager), 25e6); // someone sent tokens by mistake
+
+        vm.prank(admin);
+        assertEq(manager.rescue(address(usdc), alice), 25e6);
+        assertEq(usdc.balanceOf(alice), 25e6);
+        assertEq(usdc.balanceOf(address(manager)), manager.escrowed(address(usdc)));
+
+        vm.expectRevert(ITournamentManager.NothingToRescue.selector);
+        vm.prank(admin);
+        manager.rescue(address(usdc), alice);
+    }
+
+    function test_Rescue_RejectsZeroAddresses() public {
+        vm.startPrank(admin);
+        vm.expectRevert(ITournamentManager.ZeroAddress.selector);
+        manager.rescue(address(0), alice);
+        vm.expectRevert(ITournamentManager.ZeroAddress.selector);
+        manager.rescue(address(usdc), address(0));
+        vm.stopPrank();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Default admin: two steps and a delay
+    // ---------------------------------------------------------------------------------------------------------
+
+    function test_DefaultAdmin_TransferNeedsAcceptanceAfterTheDelay() public {
+        address next = makeAddr("next-admin");
+        vm.prank(admin);
+        manager.beginDefaultAdminTransfer(next);
+        assertEq(manager.defaultAdmin(), admin, "nothing changes until the new admin accepts");
+
+        vm.expectRevert();
+        vm.prank(next);
+        manager.acceptDefaultAdminTransfer();
+
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(next);
+        manager.acceptDefaultAdminTransfer();
+        assertEq(manager.defaultAdmin(), next);
+        assertFalse(manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), admin));
+    }
+
+    function test_DefaultAdmin_CannotBeGrantedToASecondAccount() public {
+        bytes32 role = manager.DEFAULT_ADMIN_ROLE();
+        vm.expectRevert();
+        vm.prank(admin);
+        manager.grantRole(role, alice);
     }
 }
