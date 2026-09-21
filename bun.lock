@@ -69,6 +69,20 @@
         "typescript": "^7.0.2",
       },
     },
+    "packages/plugins/plugin-tournament": {
+      "name": "@yotrade/plugin-tournament",
+      "version": "0.0.0",
+      "dependencies": {
+        "@yotrade/core": "workspace:*",
+        "viem": "^2.56.8",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+        "@yotrade/contracts": "workspace:*",
+        "@yotrade/tsconfig": "workspace:*",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/tsconfig": {
       "name": "@yotrade/tsconfig",
       "version": "0.0.0",
@@ -176,6 +190,8 @@
     "@yotrade/plugin-kuru": ["@yotrade/plugin-kuru@workspace:packages/plugins/plugin-kuru"],
 
     "@yotrade/plugin-mera": ["@yotrade/plugin-mera@workspace:packages/plugins/plugin-mera"],
+
+    "@yotrade/plugin-tournament": ["@yotrade/plugin-tournament@workspace:packages/plugins/plugin-tournament"],
 
     "@yotrade/tsconfig": ["@yotrade/tsconfig@workspace:packages/tsconfig"],
 
