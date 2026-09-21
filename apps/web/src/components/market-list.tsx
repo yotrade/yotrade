@@ -6,7 +6,7 @@ import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import Image from "next/image";
 import Link from "next/link";
 
-import { CANDLES, linePath, plotOf, RANGES, summarize, toBars } from "@/lib/chart.ts";
+import { type Bar, CANDLES, linePath, plotOf, RANGES, summarize, toBars } from "@/lib/chart.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
@@ -26,6 +26,42 @@ const RANGE = RANGES["1h"];
 
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
+
+interface Series {
+  readonly from: number;
+  readonly to: number;
+  readonly bars: readonly Bar[];
+}
+
+function Sparkline({ series, up }: { series: Series | undefined; up: boolean }) {
+  return (
+    <svg
+      viewBox={`0 0 ${SPARK.width} ${SPARK.height}`}
+      aria-hidden
+      className="h-7 w-14 shrink-0 overflow-visible"
+    >
+      {series && series.bars.length > 0 ? (
+        <path
+          d={linePath(series.bars, plotOf(series.bars, series.from, series.to, SPARK), series.to)}
+          fill="none"
+          className={up ? "stroke-up" : "stroke-down"}
+          strokeWidth={1.75}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      ) : (
+        <line
+          x1={0}
+          x2={SPARK.width}
+          y1={14}
+          y2={14}
+          className="stroke-border"
+          strokeDasharray="2 3"
+        />
+      )}
+    </svg>
+  );
+}
 
 function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldUsdc: bigint }) {
   const { kuru } = useRuntime();
@@ -50,6 +86,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
         bars,
         summary: summarize(bars),
         mid: book.hasLiquidity ? midPrice(book) : null,
+        tradable: book.hasLiquidity,
       };
     },
   });
@@ -61,6 +98,11 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
   const bars = spark?.bars ?? [];
   const summary = summarize(bars);
   const up = (summary?.changeBps ?? 0) >= 0;
+
+  // A market nobody can trade is noise, unless the viewer still holds its token and needs the way out.
+  if (data.data && !data.data.tradable && heldUsdc === 0n) {
+    return null;
+  }
 
   return (
     <Link
@@ -75,31 +117,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
           {heldUsdc > 0n ? ` · you hold $${formatUsdc(heldUsdc)}` : ""}
         </p>
       </div>
-      <svg
-        viewBox={`0 0 ${SPARK.width} ${SPARK.height}`}
-        aria-hidden
-        className="h-7 w-14 shrink-0 overflow-visible"
-      >
-        {spark && bars.length > 0 ? (
-          <path
-            d={linePath(bars, plotOf(bars, spark.from, spark.to, SPARK), spark.to)}
-            fill="none"
-            className={up ? "stroke-up" : "stroke-down"}
-            strokeWidth={1.75}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        ) : (
-          <line
-            x1={0}
-            x2={SPARK.width}
-            y1={16}
-            y2={16}
-            className="stroke-border"
-            strokeDasharray="2 3"
-          />
-        )}
-      </svg>
+      <Sparkline series={spark} up={up} />
       <div className="flex shrink-0 flex-col items-end">
         <p className="tabular font-semibold leading-[21px]">
           {price === null ? "—" : `$${money(price)}`}

@@ -74,6 +74,10 @@ export interface MarketInfo {
   readonly sizePrecision: bigint;
   /** Taker fee in basis points, for display. The fee itself is already inside every quote. */
   readonly takerFeeBps: number;
+  /** Prices must be a multiple of this, in price precision. */
+  readonly tickSize: bigint;
+  /** Smallest order the market accepts, in raw USDC. */
+  readonly minQuoteNotional: bigint;
 }
 
 /** Prices in the market's price precision, volume in raw quote (USDC) units. Oldest first. */
@@ -155,6 +159,8 @@ export function createDataClient(
           pricePrecision: string;
           sizePrecision: string;
           takerFeePps: number;
+          tickSize: string;
+          minQuoteNotionalX18: string;
         };
       }>(`/markets/${address.toLowerCase()}`);
       return {
@@ -163,6 +169,8 @@ export function createDataClient(
         sizePrecision: BigInt(body.data.sizePrecision),
         // Kuru's pps are parts per ten million: 7000 is 0.07 %, which is 7 bps.
         takerFeeBps: body.data.takerFeePps / 1_000,
+        tickSize: BigInt(body.data.tickSize),
+        minQuoteNotional: BigInt(body.data.minQuoteNotionalX18) / PNL_TO_USDC,
       };
     },
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatBps, parseTicket, roiBps } from "../src/lib/ticket.ts";
+import { formatBps, parseTicket, roiBps, shortcutAmount } from "../src/lib/ticket.ts";
 
 describe("parseTicket", () => {
   test("parses against the token's decimals", () => {
@@ -30,5 +30,32 @@ describe("roi", () => {
     expect(roiBps(1n, 0n)).toBeNull();
     expect(formatBps(250)).toBe("+2.50%");
     expect(formatBps(-1000)).toBe("-10.00%");
+  });
+});
+
+describe("shortcutAmount", () => {
+  test("rounds down to cents for a dollar token, never above the balance", () => {
+    // 25 % of 9,950.005028 USDC is 2,487.501257: the field gets 2487.5.
+    expect(shortcutAmount(9_950_005_028n, 25n, 6, true)).toBe("2487.5");
+    expect(shortcutAmount(9_950_005_028n, 100n, 6, true)).toBe("9950");
+    expect(shortcutAmount(1_999_999n, 100n, 6, true)).toBe("1.99");
+  });
+
+  test("keeps six decimals at most for other tokens and drops trailing zeros", () => {
+    expect(shortcutAmount(1_800n * 10n ** 18n, 50n, 18, false)).toBe("900");
+    expect(shortcutAmount(123_456_789_123_456_789n, 100n, 18, false)).toBe("0.123456");
+    expect(shortcutAmount(2_436_478n, 100n, 8, false)).toBe("0.024364");
+    expect(shortcutAmount(0n, 100n, 6, true)).toBe("0");
+  });
+
+  test("whatever it writes parses back to an amount the balance covers", () => {
+    for (const [available, decimals, dollar] of [
+      [9_950_005_028n, 6, true],
+      [123_456_789_123_456_789n, 18, false],
+      [2_436_478n, 8, false],
+    ] as const) {
+      const text = shortcutAmount(available, 100n, decimals, dollar);
+      expect(parseTicket(text, decimals, available).ok).toBe(true);
+    }
   });
 });

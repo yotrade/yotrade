@@ -12,7 +12,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "test:live": "KURU_LIVE=1 bun test test/live.test.ts"
+    "test:live": "KURU_LIVE=1 bun test test/live.test.ts",
+    "seed": "bun run scripts/seed-liquidity.ts"
   },
   "dependencies": {
     "@toxicflow-labs/ts-sdk": "^0.1.1",
