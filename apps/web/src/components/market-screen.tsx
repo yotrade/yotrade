@@ -4,19 +4,10 @@ import type { MarketSymbol, TokenSymbol } from "@yotrade/core/addresses";
 import Image from "next/image";
 import { useState } from "react";
 
-import {
-  CHART_TYPES,
-  type ChartType,
-  RANGES,
-  type RangeName,
-  type Summary,
-  summarize,
-} from "@/lib/chart.ts";
-import type { MarketSlug } from "@/lib/markets.ts";
+import { CHART_TYPES, type ChartType, RANGES, type RangeName, type Summary } from "@/lib/chart.ts";
 import { formatBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { type MarketData, useMarket } from "@/lib/use-market.ts";
-import { useReference } from "@/lib/use-reference.ts";
 import { DepthChart } from "./depth-chart.tsx";
 import { OrderBook } from "./order-book.tsx";
 import { OrderTicket, type Side } from "./order-ticket.tsx";
@@ -25,6 +16,7 @@ import { BackButton } from "./ui/back-button.tsx";
 import { Dropdown } from "./ui/dropdown.tsx";
 import { Segmented } from "./ui/segmented.tsx";
 import { Sheet } from "./ui/sheet.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TokenIcon } from "./ui/token-icon.tsx";
 
 const VIEWS = ["Chart", "Book", "Depth"] as const;
@@ -65,7 +57,21 @@ function MarketHeader({ base, roi }: { base: TokenSymbol; roi: number | null }) 
   );
 }
 
-function Headline({ summary, range }: { summary: Summary | null; range: RangeName }) {
+interface HeadlineProps {
+  readonly summary: Summary | null;
+  readonly range: RangeName;
+  readonly loading: boolean;
+}
+
+function Headline({ summary, range, loading }: HeadlineProps) {
+  if (loading) {
+    return (
+      <Loading label="Loading price" className="flex flex-col gap-1.5">
+        <Skeleton className="h-8 w-36" />
+        <Skeleton className="h-5 w-24 rounded-full" />
+      </Loading>
+    );
+  }
   if (!summary) {
     return <p className="text-[32px] font-bold leading-none tracking-tight text-ink-muted">—</p>;
   }
@@ -84,6 +90,13 @@ function Headline({ summary, range }: { summary: Summary | null; range: RangeNam
 }
 
 function MarketView({ view, type, data }: { view: View; type: ChartType; data: MarketData }) {
+  if (view === "Chart" ? data.chartLoading : data.bookLoading) {
+    return (
+      <Loading label={`Loading ${view.toLowerCase()}`}>
+        <Skeleton className={`rounded-2xl ${view === "Depth" ? "h-52" : "h-60"}`} />
+      </Loading>
+    );
+  }
   if (view === "Book") {
     return <OrderBook bids={data.book.bids} asks={data.book.asks} base={TOKEN_LABELS[data.base]} />;
   }
@@ -113,7 +126,7 @@ function RangeTabs({ value, onChange }: { value: RangeName; onChange(next: Range
 }
 
 function Stats({ data }: { data: MarketData }) {
-  const { summary, positionUsd, base } = data;
+  const { summary, positionUsd, base, chartLoading } = data;
   const cells: [string, string][] = [
     ["Open", summary ? money(summary.open) : "—"],
     ["High", summary ? money(summary.high) : "—"],
@@ -127,7 +140,9 @@ function Stats({ data }: { data: MarketData }) {
       {cells.map(([label, value]) => (
         <div key={label} className="flex items-center justify-between text-sm">
           <dt className="font-medium text-ink-muted">{label}</dt>
-          <dd className="tabular font-semibold">{value}</dd>
+          <dd className="tabular font-semibold">
+            {chartLoading ? <Skeleton className="h-4 w-14" /> : value}
+          </dd>
         </div>
       ))}
     </dl>
@@ -159,9 +174,16 @@ function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void
             {data.canBuy ? "Buy" : "No offers"}
           </button>
         </>
-      ) : (
+      ) : null}
+      {!data.joined && data.entryPending ? (
+        <Loading label="Loading your account" className="flex w-full gap-2">
+          <Skeleton className="h-12 flex-1 rounded-full" />
+          <Skeleton className="h-12 flex-1 rounded-full" />
+        </Loading>
+      ) : null}
+      {data.joined || data.entryPending ? null : (
         <p className="w-full py-3 text-center text-sm font-medium text-ink-muted">
-          {data.entryPending ? "Loading your account…" : "Join this tournament to trade in it."}
+          Join this tournament to trade in it.
         </p>
       )}
     </div>
@@ -169,29 +191,14 @@ function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void
 }
 
 /** A market the way traders expect it: price, chart, book, depth, and two buttons that open the ticket. */
-const SOURCES = ["Kuru", "Global"] as const;
-type Source = (typeof SOURCES)[number];
-
-interface ScreenProps {
-  readonly id: string;
-  readonly slug: MarketSlug;
-  readonly market: MarketSymbol;
-}
-
-export function MarketScreen({ id, slug, market }: ScreenProps) {
+export function MarketScreen({ id, market }: { id: string; market: MarketSymbol }) {
   const [view, setView] = useState<View>("Chart");
   const [range, setRange] = useState<RangeName>("15m");
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
   const [done, setDone] = useState<string>();
-  const [source, setSource] = useState<Source>("Kuru");
   const data = useMarket(id, market, range, view !== "Chart");
   const chart = view === "Chart";
-  const global = chart && source === "Global";
-  const reference = useReference(slug, range, global);
-  // The reference replaces the series on the chart only. The ticket always quotes Kuru.
-  const series = global && reference.data ? reference.data : data;
-  const summary = global ? summarize(reference.data?.bars ?? []) : data.summary;
 
   return (
     <main className="flex flex-1 flex-col gap-5 pb-24 pt-4">
@@ -199,7 +206,7 @@ export function MarketScreen({ id, slug, market }: ScreenProps) {
       <Segmented<View> label="View" options={VIEWS} value={view} onChange={setView} />
 
       <div className="flex items-end justify-between gap-3">
-        <Headline summary={summary} range={range} />
+        <Headline summary={data.summary} range={range} loading={data.chartLoading} />
         {chart ? (
           <Dropdown<ChartType>
             label="Chart type"
@@ -211,30 +218,10 @@ export function MarketScreen({ id, slug, market }: ScreenProps) {
       </div>
 
       <div key={view} className="animate-enter">
-        <MarketView
-          view={view}
-          type={type}
-          data={{ ...data, bars: series.bars, from: series.from, to: series.to }}
-        />
+        <MarketView view={view} type={type} data={data} />
       </div>
       {chart ? <RangeTabs value={range} onChange={setRange} /> : null}
-      {chart ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[13px] font-medium leading-5 text-ink-muted">
-            {global
-              ? `Reference: ${reference.data?.label ?? "loading…"}. Orders fill at Kuru's price.`
-              : "Kuru testnet fills. This is the price you trade at."}
-          </p>
-          <Segmented<Source>
-            compact
-            label="Price source"
-            options={SOURCES}
-            value={source}
-            onChange={setSource}
-          />
-        </div>
-      ) : null}
-      <Stats data={{ ...data, summary }} />
+      <Stats data={data} />
 
       {done ? (
         <p role="status" className="animate-enter text-center text-sm font-semibold text-up">

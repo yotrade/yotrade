@@ -15,5 +15,5 @@ export default async function MarketPage({
   if (!(/^[1-9]\d{0,18}$/.test(id) && isMarketSlug(market))) {
     notFound();
   }
-  return <MarketScreen id={id} slug={market} market={MARKET_SLUGS[market]} />;
+  return <MarketScreen id={id} market={MARKET_SLUGS[market]} />;
 }

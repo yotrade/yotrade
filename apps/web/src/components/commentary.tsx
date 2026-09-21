@@ -7,6 +7,7 @@ import { LANGUAGES, type LanguageCode } from "@/lib/languages.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 const CODES = Object.keys(LANGUAGES) as LanguageCode[];
 const STORAGE_KEY = "yotrade.language";
@@ -26,7 +27,7 @@ export function Commentary({ id, name }: { id: string; name: string }) {
   const [language, setLanguage] = useState<LanguageCode>(initialLanguage);
   const [shared, setShared] = useState(false);
 
-  const { data, error } = useQuery({
+  const { data, error, isPending } = useQuery({
     queryKey: ["commentary", id, language],
     // `null` means the server has no Kimi key: there is nothing to show.
     queryFn: async (): Promise<string | null> => {
@@ -82,9 +83,18 @@ export function Commentary({ id, name }: { id: string; name: string }) {
           ))}
         </select>
       </div>
-      <p aria-live="polite" className={data ? "leading-relaxed" : "text-sm text-ink-muted"}>
-        {data ?? (error ? "The commentator is catching their breath…" : "Watching the order book…")}
-      </p>
+      {isPending ? (
+        <Loading label="Kimi is watching the order book" className="flex flex-col gap-2 py-1">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-3/5" />
+        </Loading>
+      ) : (
+        <p aria-live="polite" className={data ? "leading-relaxed" : "text-sm text-ink-muted"}>
+          {data ??
+            (error ? "The commentator is catching their breath…" : "Watching the order book…")}
+        </p>
+      )}
       <Button variant="secondary" className="min-h-10" disabled={!data} onClick={share}>
         {shared ? "Copied, paste it in your group" : "Share with your community"}
       </Button>

@@ -23,6 +23,7 @@ import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
+import { Skeleton } from "./ui/skeleton.tsx";
 import { TokenIcon } from "./ui/token-icon.tsx";
 
 const SHORTCUTS = [25n, 50n, 100n] as const;
@@ -173,6 +174,11 @@ interface Props {
   onDone(message: string): void;
 }
 
+/** A balance that has not loaded is not a balance of zero. */
+function BalanceLine({ loaded, text }: { loaded: boolean; text: string }) {
+  return loaded ? `Balance: ${text}` : <Skeleton className="mt-1 h-3 w-20" />;
+}
+
 /** The kit's exchange field as an order ticket: pay row, flip button, receive row, the numbers, one button. */
 export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Props) {
   const { kuru, publicClient } = useRuntime();
@@ -268,8 +274,10 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
           <div className="flex shrink-0 flex-col">
             <span className="font-semibold leading-tight">{TOKEN_LABELS[tokenIn]}</span>
             <span className="tabular whitespace-nowrap text-[11px] font-semibold text-ink-muted">
-              Balance:{" "}
-              {tokenIn === "usdc" ? formatUsdc(available) : formatToken(available, decimals)}
+              <BalanceLine
+                loaded={portfolio.data !== undefined}
+                text={tokenIn === "usdc" ? formatUsdc(available) : formatToken(available, decimals)}
+              />
             </span>
           </div>
           <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
