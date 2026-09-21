@@ -1,0 +1,21 @@
+{
+  "network": "monad-testnet",
+  "chainId": 10143,
+  "deployedAt": "2026-09-21",
+  "foundry": "1.8.3",
+  "solc": "0.8.37",
+  "TournamentManager": {
+    "proxy": "0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D",
+    "implementation": "0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c",
+    "deployBlock": 64412306,
+    "implementationTx": "0x033b228a00fed6605b09563ceea8f3bef407530f54bd224b30945bb295ada2e1",
+    "proxyTx": "0x434b2feb036bf796605da32482f0b2e03dfb4d1885df77d12d056aff43f0d39f",
+    "verified": "sourcify (MonadVision)"
+  },
+  "config": {
+    "accountCore": "0x6384e9b2Bf3b65e1535403a0A543b5FDA905eE22",
+    "disputeWindowSeconds": 3600,
+    "admin": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
+    "scorer": "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5"
+  }
+}

@@ -15,6 +15,15 @@ UUPS-upgradeable (OpenZeppelin 5.7, ERC-7201 storage), role-based, pausable.
 
 Scores are computed offchain from Kuru's public trade and balance data, so anyone can reproduce them. They become claimable only after the dispute window.
 
+## Deployments
+
+| Network | Contract | Address |
+|---|---|---|
+| Monad testnet (10143) | TournamentManager (proxy) | [`0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D`](https://testnet.monadvision.com/address/0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D) |
+| Monad testnet (10143) | Implementation | [`0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c`](https://testnet.monadvision.com/address/0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c) |
+
+Both are verified on MonadVision. Machine-readable record: [`deployments/monad-testnet.json`](deployments/monad-testnet.json).
+
 ## Usage
 
 ```bash
