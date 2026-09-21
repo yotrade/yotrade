@@ -144,17 +144,19 @@ function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void
         <>
           <button
             type="button"
+            disabled={!data.canSell}
             onClick={() => onPick("Sell")}
-            className={`${ACTION} bg-ink text-white`}
+            className={`${ACTION} bg-ink text-white disabled:cursor-not-allowed disabled:opacity-40`}
           >
-            Sell
+            {data.canSell ? "Sell" : "No bids"}
           </button>
           <button
             type="button"
+            disabled={!data.canBuy}
             onClick={() => onPick("Buy")}
-            className={`${ACTION} bg-accent text-accent-ink shadow-button hover:bg-accent-strong`}
+            className={`${ACTION} bg-accent text-accent-ink shadow-button hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40`}
           >
-            Buy
+            {data.canBuy ? "Buy" : "No offers"}
           </button>
         </>
       ) : (
@@ -248,6 +250,8 @@ export function MarketScreen({ id, slug, market }: ScreenProps) {
             {side ?? "Buy"} {TOKEN_LABELS[data.base]}
           </h2>
           <OrderTicket
+            // The amount is in the token being paid, so a new side or market starts from an empty field.
+            key={`${market}-${side}`}
             wallet={data.wallet}
             market={market}
             side={side ?? "Buy"}
