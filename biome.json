@@ -123,6 +123,7 @@
     }
   },
   "javascript": {
+    "globals": ["Bun"],
     "formatter": {
       "quoteStyle": "double",
       "jsxQuoteStyle": "double",
