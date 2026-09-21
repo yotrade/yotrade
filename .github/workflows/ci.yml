@@ -9,6 +9,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FOUNDRY_PROFILE: ci
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -23,3 +26,50 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx biome ci .
       - run: bunx turbo run lint build test
+
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Gas snapshot
+        run: forge snapshot --check --tolerance 5 --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'
+        env:
+          FOUNDRY_PROFILE: default
+      - name: Coverage gate (src must stay at 100% lines and branches)
+        run: |
+          forge coverage --no-match-path 'test/fork/*' --no-match-coverage '(test|script)' --report summary | tee coverage.txt
+          grep -E '^\| Total' coverage.txt | awk -F'|' '{ if ($3 !~ /100\.00%/ || $5 !~ /100\.00%/) { print "coverage below 100%"; exit 1 } }'
+
+  fork:
+    runs-on: ubuntu-latest
+    # The public testnet RPC is outside our control: report, never block.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test --match-path 'test/fork/*' -vv
+        env:
+          MONAD_TESTNET_RPC_URL: https://testnet-rpc.monad.xyz
+
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: crytic/slither-action@v0.4.2
+        with:
+          target: packages/contracts
+          fail-on: medium
+          slither-args: --filter-paths "lib|test|script"
