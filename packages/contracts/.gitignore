@@ -12,3 +12,6 @@ docs/
 
 # Dotenv file
 .env
+
+# Keep only run-latest.json per chain
+/broadcast/**/run-[0-9]*.json
