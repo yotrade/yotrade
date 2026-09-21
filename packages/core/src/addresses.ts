@@ -19,12 +19,38 @@ export const tokens = {
   weth: { address: "0x8B6C5fafeF85B030bB1e71ae7ac085cC2380aAf8", decimals: 18 },
   cbBtc: { address: "0xef2a20a161ac9ed1117d721336226b6399F15b4D", decimals: 8 },
   xaut0: { address: "0xee1Dce135a9aB598bca8CF3a28bDEF6892100740", decimals: 6 },
+  /** Native MON inside Kuru's AccountCore is the zero address. */
+  mon: { address: "0x0000000000000000000000000000000000000000", decimals: 18 },
 } as const satisfies Record<string, { address: Address; decimals: number }>;
 
-/** Spot markets, all quoted in USDC. Each one is its own OrderBook proxy. */
+export type TokenSymbol = keyof typeof tokens;
+
+export interface Market {
+  readonly orderBook: Address;
+  readonly base: TokenSymbol;
+  readonly quote: TokenSymbol;
+}
+
+/**
+ * Spot markets, all quoted in USDC. Each one is its own OrderBook proxy.
+ * WETH/USDC exists onchain but had an empty book on 2026-09-21, so it is left out until it has liquidity.
+ */
 export const markets = {
-  "cbBTC/USDC": "0x5BDEA6F9F9abA34F4EcB9B865646A792b835ef7f",
-  "WETH/USDC": "0xa9C2936656a7D2143720BcD91Ba8506200B7CbE7",
-  "MON/USDC": "0xfdbE356828c8f5A5d5ed4f69ddE0816f4058Ef61",
-  "XAUt0/USDC": "0x0B4dD2A7b09d5c5401149fFe51301Cc589017343",
-} as const satisfies Record<string, Address>;
+  "cbBTC/USDC": {
+    orderBook: "0x5BDEA6F9F9abA34F4EcB9B865646A792b835ef7f",
+    base: "cbBtc",
+    quote: "usdc",
+  },
+  "MON/USDC": {
+    orderBook: "0xfdbE356828c8f5A5d5ed4f69ddE0816f4058Ef61",
+    base: "mon",
+    quote: "usdc",
+  },
+  "XAUt0/USDC": {
+    orderBook: "0x0B4dD2A7b09d5c5401149fFe51301Cc589017343",
+    base: "xaut0",
+    quote: "usdc",
+  },
+} as const satisfies Record<string, Market>;
+
+export type MarketSymbol = keyof typeof markets;

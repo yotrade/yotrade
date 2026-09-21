@@ -51,6 +51,11 @@ describe("createRuntime", () => {
     expect(build(["publicClient"])).toThrow(/reserved/);
   });
 
+  test("batches reads through Multicall3 to stay under public RPC rate limits", () => {
+    const runtime = createRuntime({ chain: monadTestnet, transport: offline, plugins: [] });
+    expect(runtime.publicClient.batch?.multicall).toBe(true);
+  });
+
   test("is frozen so call sites cannot swap a plugin at runtime", () => {
     const runtime = createRuntime({ chain: monadTestnet, transport: offline, plugins: [clock] });
     expect(Object.isFrozen(runtime)).toBe(true);
