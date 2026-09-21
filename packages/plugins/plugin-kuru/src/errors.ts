@@ -1,7 +1,7 @@
 export class EmptyBookError extends Error {
   override readonly name = "EmptyBookError";
   constructor(market: string) {
-    super(`${market} has no two-sided liquidity; a swap would succeed onchain and fill nothing`);
+    super(`${market} has nobody on the other side; a swap would succeed onchain and fill nothing`);
   }
 }
 

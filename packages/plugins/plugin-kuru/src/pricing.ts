@@ -8,12 +8,18 @@ export interface Book {
   readonly ask: bigint;
   /** Units per 1.0 of price, for example 100 means two decimals. */
   readonly pricePrecision: bigint;
+  /** Someone is bidding: a sell can fill. */
+  readonly hasBid: boolean;
+  /** Someone is offering: a buy can fill. */
+  readonly hasAsk: boolean;
+  /** Both sides are quoted and not crossed. */
   readonly hasLiquidity: boolean;
 }
 
 export function toBook(bid: bigint, ask: bigint, pricePrecision: bigint): Book {
-  const hasLiquidity = bid > 0n && bid !== EMPTY_BID && ask > 0n && bid < ask;
-  return { bid, ask, pricePrecision, hasLiquidity };
+  const hasBid = bid > 0n && bid !== EMPTY_BID;
+  const hasAsk = ask > 0n;
+  return { bid, ask, pricePrecision, hasBid, hasAsk, hasLiquidity: hasBid && hasAsk && bid < ask };
 }
 
 /** Mid price as a decimal number, for display only. Never use it for accounting. */
@@ -22,8 +28,10 @@ export function midPrice(book: Book): number {
 }
 
 /**
- * Value of `baseAmount` in quote-token units at the mid price, rounded down.
- * Integer math throughout: value = amount × (bid + ask) × 10^quoteDecimals / (2 × precision × 10^baseDecimals).
+ * Value of `baseAmount` in quote-token units, rounded down. Marked at the mid when the book is two-sided and at
+ * the best bid when only bids are left, because that is what the inventory can still be sold for. Worth zero
+ * when nobody is bidding.
+ * Integer math throughout: value = amount × price × 10^quoteDecimals / (precision × 10^baseDecimals).
  */
 export function valueInQuote(
   baseAmount: bigint,
@@ -31,10 +39,12 @@ export function valueInQuote(
   quoteDecimals: number,
   book: Book,
 ): bigint {
-  if (!book.hasLiquidity || baseAmount === 0n) {
+  if (!book.hasBid || baseAmount === 0n) {
     return 0n;
   }
-  const numerator = baseAmount * (book.bid + book.ask) * 10n ** BigInt(quoteDecimals);
+  // Twice the mark, so the mid needs no division before the final one.
+  const twiceMark = book.hasLiquidity ? book.bid + book.ask : 2n * book.bid;
+  const numerator = baseAmount * twiceMark * 10n ** BigInt(quoteDecimals);
   const denominator = 2n * book.pricePrecision * 10n ** BigInt(baseDecimals);
   return numerator / denominator;
 }

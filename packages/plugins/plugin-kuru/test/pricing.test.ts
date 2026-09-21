@@ -72,3 +72,20 @@ describe("priceImpactBps", () => {
     expect(priceImpactBps(true, 1_000_000n, 10n ** 12n, 8, 6, book)).toBe(0);
   });
 });
+
+describe("one-sided books", () => {
+  // MON/USDC after its ask side was bought out: bid 0.050754, no asks.
+  const bidsOnly = toBook(50_754n, 0n, 1_000_000n);
+  // cbBTC/USDC after its bid side was sold out.
+  const asksOnly = toBook(4_294_967_295n, 10_253_567n, 100n);
+
+  test("know which side can still trade", () => {
+    expect([bidsOnly.hasBid, bidsOnly.hasAsk, bidsOnly.hasLiquidity]).toEqual([true, false, false]);
+    expect([asksOnly.hasBid, asksOnly.hasAsk, asksOnly.hasLiquidity]).toEqual([false, true, false]);
+  });
+
+  test("inventory is marked at the bid when that is all there is, and at zero when nobody bids", () => {
+    expect(valueInQuote(1_800n * 10n ** 18n, 18, 6, bidsOnly)).toBe(91_357_200n);
+    expect(valueInQuote(888_740n, 8, 6, asksOnly)).toBe(0n);
+  });
+});

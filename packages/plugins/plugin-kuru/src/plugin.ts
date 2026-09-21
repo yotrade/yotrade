@@ -121,10 +121,11 @@ export function kuru(options: KuruOptions = {}) {
     ): Promise<SwapQuote> {
       const market = markets[request.market];
       const current = await book(request.market);
-      if (!current.hasLiquidity) {
+      const isBuy = request.side === "buy";
+      // A buy only needs offers and a sell only needs bids: a one-sided book must not trap a holder.
+      if (!(isBuy ? current.hasAsk : current.hasBid)) {
         throw new EmptyBookError(request.market);
       }
-      const isBuy = request.side === "buy";
       const { amountOut } = parseSwapQuote(
         await reader.spot.estimateSwap({
           market: market.orderBook,
