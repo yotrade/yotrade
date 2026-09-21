@@ -15,6 +15,8 @@ import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
 import { Amount } from "./ui/amount.tsx";
 import { Card } from "./ui/card.tsx";
+import { Icon } from "./ui/icon.tsx";
+import { SectionLabel } from "./ui/section-label.tsx";
 
 const BPS = 10_000n;
 
@@ -51,45 +53,52 @@ export function TournamentDetail({ id }: { id: string }) {
     countdown(phase, data, now) || new Date(Number(data.endTime) * 1000).toLocaleString("en-US");
 
   return (
-    <main className="flex flex-1 flex-col gap-6 py-8">
-      <Link href="/" className="text-sm text-ink-muted hover:text-ink">
-        ← All tournaments
-      </Link>
-
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold leading-tight">
-            {tournamentName(data.id, data.metadataURI)}
-          </h1>
-          <PhaseBadge phase={phase} />
+    <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
+      <header className="flex flex-col gap-4">
+        <Link
+          href="/"
+          aria-label="All tournaments"
+          className="grid size-10 place-items-center rounded-full bg-well hover:bg-border focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <Icon name="chevron-left" size={20} />
+        </Link>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold leading-tight tracking-tight">
+              {tournamentName(data.id, data.metadataURI)}
+            </h1>
+            <PhaseBadge phase={phase} />
+          </div>
+          <p className="tabular text-sm font-medium text-ink-muted">
+            {schedule} · hosted by {shortAddress(data.organizer)}
+          </p>
         </div>
-        <p className="tabular text-sm text-ink-muted">
-          {schedule} · hosted by {shortAddress(data.organizer)}
-        </p>
       </header>
 
-      <Card className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-ink-muted">Prize pool</p>
-          <Amount value={data.prizePool} size="md" />
-        </div>
-        <div>
-          <p className="text-sm text-ink-muted">Starting capital</p>
-          <Amount value={data.startingCapital} size="md" />
-        </div>
-        <ol className="col-span-2 flex flex-wrap gap-2">
-          {data.prizeSplitBps
-            .map((bps, index) => ({ rank: index + 1, bps }))
-            .map(({ rank, bps }) => (
-              <li
-                key={rank}
-                className="tabular rounded-full bg-surface px-3 py-1 text-sm font-medium"
-              >
-                #{rank} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
-              </li>
-            ))}
-        </ol>
-      </Card>
+      <div className="grid grid-cols-2 gap-1">
+        <Card className="flex flex-col gap-1">
+          <p className="text-[13px] font-medium text-ink-muted">Prize pool</p>
+          <Amount value={data.prizePool} size="lg" />
+        </Card>
+        <Card className="flex flex-col gap-1">
+          <p className="text-[13px] font-medium text-ink-muted">Starting capital</p>
+          <Amount value={data.startingCapital} size="lg" />
+        </Card>
+        <Card className="col-span-2">
+          <ol className="flex flex-wrap gap-1.5">
+            {data.prizeSplitBps
+              .map((bps, index) => ({ rank: index + 1, bps }))
+              .map(({ rank, bps }) => (
+                <li
+                  key={rank}
+                  className="tabular rounded-lg bg-accent-soft px-2 py-1 font-mono text-xs font-bold text-accent"
+                >
+                  #{rank} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
+                </li>
+              ))}
+          </ol>
+        </Card>
+      </div>
 
       <ResultsPanel tournament={data} phase={phase} now={now} />
 
@@ -98,12 +107,9 @@ export function TournamentDetail({ id }: { id: string }) {
       <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">
-          Leaderboard{" "}
-          <span className="tabular text-ink-muted">
-            {data.participantCount}/{data.maxParticipants}
-          </span>
-        </h2>
+        <SectionLabel>
+          Leaderboard · {data.participantCount}/{data.maxParticipants}
+        </SectionLabel>
         <Leaderboard id={id} you={you} />
       </section>
     </main>

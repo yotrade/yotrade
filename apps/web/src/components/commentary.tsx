@@ -6,6 +6,7 @@ import { useState } from "react";
 import { LANGUAGES, type LanguageCode } from "@/lib/languages.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
+import { Icon } from "./ui/icon.tsx";
 
 const CODES = Object.keys(LANGUAGES) as LanguageCode[];
 const STORAGE_KEY = "yotrade.language";
@@ -62,14 +63,17 @@ export function Commentary({ id, name }: { id: string; name: string }) {
   }
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-3 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-accent">Live commentary · Kimi</p>
+        <p className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          <Icon name="magic-wand" size={20} />
+          Live commentary · Kimi
+        </p>
         <select
           aria-label="Commentary language"
           value={language}
           onChange={(event) => choose(event.target.value as LanguageCode)}
-          className="rounded-lg border border-border bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
+          className="rounded-lg bg-accent-soft px-2 py-1 font-mono text-xs font-bold text-accent focus-visible:outline-2 focus-visible:outline-accent"
         >
           {CODES.map((code) => (
             <option key={code} value={code}>
