@@ -85,3 +85,91 @@ export function toWad(price: bigint, expo: number): bigint {
   }
   return price * 10n ** BigInt(18 + expo);
 }
+
+/** `PerpsMath.applyFill`: average in, reduce at the old entry, restart the entry after a flip. */
+export function applyFill(
+  position: Position,
+  sizeDelta: bigint,
+  price: bigint,
+): { readonly next: Position; readonly realized: bigint } {
+  const { size, entryPrice } = position;
+  const newSize = size + sizeDelta;
+  if (size === 0n || size > 0n === sizeDelta > 0n) {
+    const entry = (abs(size) * entryPrice + abs(sizeDelta) * price) / abs(newSize);
+    return { next: { size: newSize, entryPrice: entry }, realized: 0n };
+  }
+  const closed = abs(sizeDelta) < abs(size) ? abs(sizeDelta) : abs(size);
+  const realized = pnl({ size: size > 0n ? closed : -closed, entryPrice }, price);
+  if (newSize === 0n) {
+    return { next: { size: 0n, entryPrice: 0n }, realized };
+  }
+  return {
+    next: { size: newSize, entryPrice: newSize > 0n === size > 0n ? entryPrice : price },
+    realized,
+  };
+}
+
+/**
+ * Price at which a position alone would take the account under maintenance, other positions standing still.
+ * An estimate for the trader, never an input to anything: the contract values the whole account live.
+ */
+export function liquidationPrice(equity: bigint, size: bigint, price: bigint): bigint | null {
+  if (size === 0n) {
+    return null;
+  }
+  const held = notional(size, price);
+  if (size > 0n) {
+    // Fully collateralized longs cannot be liquidated by their own market.
+    return held <= equity ? null : ((held - equity) * WAD * BPS) / (size * (BPS - MAINTENANCE_BPS));
+  }
+  return ((equity + held) * WAD * BPS) / (-size * (BPS + MAINTENANCE_BPS));
+}
+
+export interface Held extends Valued {
+  readonly market: string;
+}
+
+export interface OrderPlan {
+  readonly sizeDelta: bigint;
+  readonly fee: bigint;
+  readonly realized: bigint;
+  readonly position: Position;
+  readonly after: Risk;
+  /** False when the contract would answer `ExceedsLeverage`. Fills that reduce risk always pass. */
+  readonly withinCap: boolean;
+  readonly liquidationPrice: bigint | null;
+}
+
+/** What a market order of `notionalUsd` would do, computed the way the contract will. */
+export function planOrder(order: {
+  readonly balance: bigint;
+  readonly positions: readonly Held[];
+  readonly market: string;
+  readonly price: bigint;
+  readonly side: "long" | "short";
+  readonly notionalUsd: bigint;
+}): OrderPlan {
+  const magnitude = (order.notionalUsd * WAD) / order.price;
+  const sizeDelta = order.side === "long" ? magnitude : -magnitude;
+  const market = order.market.toLowerCase();
+  const current = order.positions.find((p) => p.market.toLowerCase() === market);
+  const { next, realized } = applyFill(
+    current ?? { size: 0n, entryPrice: 0n },
+    sizeDelta,
+    order.price,
+  );
+  const paid = fee(sizeDelta, order.price);
+  const others = order.positions.filter((p) => p.market.toLowerCase() !== market);
+  const held = next.size === 0n ? others : [...others, { ...next, price: order.price }];
+  const after = risk(order.balance + realized - paid, held);
+  const addsRisk = abs(next.size) > abs(current?.size ?? 0n);
+  return {
+    sizeDelta,
+    fee: paid,
+    realized,
+    position: next,
+    after,
+    withinCap: !addsRisk || (after.equity > 0n && after.notional <= after.equity * MAX_LEVERAGE),
+    liquidationPrice: liquidationPrice(after.equity, next.size, order.price),
+  };
+}

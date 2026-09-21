@@ -77,6 +77,9 @@ export function perps(options: PerpsOptions) {
     return {
       account,
 
+      /** Newest prices (USD 1e18) and the signed update that proves them. */
+      latest: options.hermes.latest,
+
       /**
        * Fills `sizeDelta` at the newest Pyth price. The update covers every open market as well, because a
        * fill that adds risk values the whole account.

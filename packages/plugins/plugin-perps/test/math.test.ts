@@ -1,6 +1,18 @@
 import { describe, expect, test } from "bun:test";
 
-import { fee, maxAdd, pnl, risk, roiPpm, STARTING_BALANCE, toWad, WAD } from "../src/math.ts";
+import {
+  applyFill,
+  fee,
+  liquidationPrice,
+  maxAdd,
+  planOrder,
+  pnl,
+  risk,
+  roiPpm,
+  STARTING_BALANCE,
+  toWad,
+  WAD,
+} from "../src/math.ts";
 
 const usd = (value: number) => BigInt(value) * WAD;
 
@@ -54,5 +66,73 @@ describe("perps math mirrors the contract tests", () => {
     expect(toWad(8_123_122_227_516n, -8)).toBe(81_231_222_275_160_000_000_000n);
     expect(() => toWad(0n, -8)).toThrow();
     expect(() => toWad(1n, 1)).toThrow();
+  });
+});
+
+describe("planning an order", () => {
+  const Btc = "0xbtc";
+
+  test("the live fill from testnet: 0.5 BTC long costs five basis points and sits at 4.3x", () => {
+    const price = 86_639_971_973_890_000_000_000n;
+    const plan = planOrder({
+      balance: STARTING_BALANCE,
+      positions: [],
+      market: Btc,
+      price,
+      side: "long",
+      notionalUsd: price / 2n,
+    });
+    expect(plan.sizeDelta).toBe(WAD / 2n);
+    // The chain reported a balance of 9,978.340007006527500000 after this exact fill.
+    expect(STARTING_BALANCE - plan.fee).toBe(9_978_340_007_006_527_500_000n);
+    expect(plan.withinCap).toBe(true);
+    expect(plan.after.leverageX100).toBe(434n);
+  });
+
+  test("the cap example from PerpsEngine.t.sol: 4 BTC at 60,000 is refused, 3 BTC passes", () => {
+    const order = {
+      balance: STARTING_BALANCE,
+      positions: [],
+      market: Btc,
+      price: usd(60_000),
+      side: "long",
+    } as const;
+    expect(planOrder({ ...order, notionalUsd: usd(240_000) }).withinCap).toBe(false);
+    expect(planOrder({ ...order, notionalUsd: usd(180_000) }).withinCap).toBe(true);
+  });
+
+  test("closing realizes the move and is never capped, even under water", () => {
+    const held = [{ market: Btc, size: 3n * WAD, entryPrice: usd(60_000), price: usd(56_000) }];
+    const plan = planOrder({
+      balance: STARTING_BALANCE - usd(90),
+      positions: held,
+      market: Btc,
+      price: usd(56_000),
+      side: "short",
+      notionalUsd: usd(168_000),
+    });
+    expect(plan.position.size).toBe(0n);
+    expect(plan.realized).toBe(-usd(12_000));
+    expect(plan.withinCap).toBe(true);
+    expect(plan.liquidationPrice).toBeNull();
+  });
+
+  test("a flip restarts the entry at the fill price", () => {
+    const { next, realized } = applyFill(
+      { size: WAD, entryPrice: usd(60_000) },
+      -3n * WAD,
+      usd(61_000),
+    );
+    expect(next).toEqual({ size: -2n * WAD, entryPrice: usd(61_000) });
+    expect(realized).toBe(usd(1000));
+  });
+
+  test("liquidation estimates sit on the losing side and vanish for a fully backed long", () => {
+    // 3 BTC at 60,000 on 9,910 of equity: maintenance is reached a little under 58,200.
+    const long = liquidationPrice(usd(9910), 3n * WAD, usd(60_000)) ?? 0n;
+    expect(long > usd(58_000) && long < usd(58_300)).toBe(true);
+    const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000)) ?? 0n;
+    expect(short > usd(61_700) && short < usd(62_000)).toBe(true);
+    expect(liquidationPrice(usd(10_000), WAD / 10n, usd(60_000))).toBeNull();
   });
 });
