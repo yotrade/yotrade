@@ -1,0 +1,45 @@
+import Image from "next/image";
+
+export type IconName =
+  | "check"
+  | "chevron-left"
+  | "chevron-right"
+  | "close"
+  | "crown"
+  | "face-scan"
+  | "gift"
+  | "info"
+  | "magic-wand"
+  | "plus"
+  | "share"
+  | "sparkle"
+  | "sparkle-small"
+  | "stars"
+  | "swap"
+  | "timer"
+  | "token-usdc"
+  | "user"
+  | "wallet";
+
+/** Icons extracted from the Ghost kit and recoloured to Monad's purple duotone. Decorative by default. */
+export function Icon({
+  name,
+  size = 24,
+  className = "",
+}: {
+  name: IconName;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <Image
+      src={`/icons/${name}.svg`}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      unoptimized
+      className={`shrink-0 ${className}`}
+    />
+  );
+}
