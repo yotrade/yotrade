@@ -14,8 +14,8 @@ interface ITournamentManager {
     /// @param prizeToken ERC-20 escrowed as the prize pool. May be zero when `prizePool` is zero.
     /// @param capitalToken Token the starting capital is denominated in (the venue's quote asset).
     /// @param prizePool Amount of `prizeToken` pulled from the organizer at creation.
-    /// @param startingCapital Exact free balance of `capitalToken` a trading account must hold to join. Zero skips
-    /// the check.
+    /// @param startingCapital Minimum free balance of `capitalToken` a trading account must hold to join. The actual
+    /// balance is recorded and used as the ROI denominator. Zero skips the check.
     /// @param startTime Trading starts. Must be in the future at creation.
     /// @param endTime Trading ends. Results can be posted from this moment.
     /// @param maxParticipants Hard cap on registrations.
@@ -36,7 +36,9 @@ interface ITournamentManager {
     }
 
     event TournamentCreated(uint256 indexed id, address indexed organizer, Config config);
-    event Joined(uint256 indexed id, address indexed participant, address indexed tradingAccount);
+    event Joined(
+        uint256 indexed id, address indexed participant, address indexed tradingAccount, uint256 capitalAtJoin
+    );
     event ResultsPosted(uint256 indexed id, address[] winners, uint64 claimableAt);
     event ResultsVoided(uint256 indexed id);
     event PrizeClaimed(uint256 indexed id, address indexed winner, uint256 rank, uint256 amount);
@@ -61,7 +63,7 @@ interface ITournamentManager {
     error NotAllowlisted();
     error AccountNotRegistered();
     error NotAccountOwner();
-    error WrongStartingCapital(uint256 expected, uint256 actual);
+    error InsufficientStartingCapital(uint256 required, uint256 actual);
     error TooManyWinners();
     error NotParticipant(address account);
     error DuplicateWinner(address account);
@@ -101,6 +103,8 @@ interface ITournamentManager {
     function getWinners(uint256 id) external view returns (address[] memory);
 
     function tradingAccountOf(uint256 id, address participant) external view returns (address);
+
+    function capitalAtJoin(uint256 id, address participant) external view returns (uint256);
 
     function prizeOf(uint256 id, address account) external view returns (uint256 amount, bool claimed);
 }
