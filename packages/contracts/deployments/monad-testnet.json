@@ -6,9 +6,23 @@
   "solc": "0.8.37",
   "TournamentManager": {
     "proxy": "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
-    "implementation": "0xdbC26eF2765912BF0B77e4A4cE0395e91089C698",
+    "implementation": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
     "deployBlock": 64421055,
-    "verified": "sourcify (MonadVision)"
+    "verified": "sourcify (MonadVision)",
+    "implementationHistory": [
+      {
+        "address": "0xdbC26eF2765912BF0B77e4A4cE0395e91089C698",
+        "note": "initial implementation, verified"
+      },
+      {
+        "address": "0x8Ee5FD21d00d3189B0a63932C1311C4Be37263da",
+        "note": "rescue inequality fix, built from a stale cache after a coverage run: bytecode not reproducible, superseded within minutes"
+      },
+      {
+        "address": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
+        "note": "same source, clean build, verified; current"
+      }
+    ]
   },
   "KuruVenueAdapter": {
     "address": "0xADefe39B43673641e94cE99613c54266af2490e6",
