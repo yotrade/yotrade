@@ -89,7 +89,7 @@ export function ActivityScreen() {
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 pt-4">
+    <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <h1 className="text-xl font-bold leading-[26px] tracking-tight">Activity</h1>
       {body}
     </main>

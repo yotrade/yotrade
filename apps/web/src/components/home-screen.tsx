@@ -39,7 +39,7 @@ export function HomeScreen() {
   const roi = roiBps(value, capital);
 
   return (
-    <main className="flex flex-1 flex-col gap-6 pt-4">
+    <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <header>
         <button
           type="button"
