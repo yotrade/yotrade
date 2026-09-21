@@ -3,6 +3,7 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { OnboardingGate } from "@/components/onboarding-gate.tsx";
+import { TabBar } from "@/components/tab-bar.tsx";
 import { Providers } from "./providers.tsx";
 import "./globals.css";
 
@@ -41,7 +42,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-dvh font-sans antialiased">
         <Providers>
           <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-[env(safe-area-inset-bottom)]">
-            <OnboardingGate>{children}</OnboardingGate>
+            <OnboardingGate>
+              {/* Room for the fixed tab bar, so the last row is never hidden behind it. */}
+              <div className="flex flex-1 flex-col pb-24">{children}</div>
+              <TabBar />
+            </OnboardingGate>
           </div>
         </Providers>
       </body>
