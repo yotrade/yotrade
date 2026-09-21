@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "forge build",
+    "build": "forge build --deny warnings",
     "test": "forge test --no-match-path 'test/fork/*'",
     "test:fork": "forge test --match-path 'test/fork/*'",
     "test:invariant": "forge test --match-path 'test/invariant/*'",
