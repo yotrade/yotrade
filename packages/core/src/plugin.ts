@@ -43,6 +43,9 @@ export function createRuntime<const TPlugins extends readonly Plugin[]>(
     publicClient: createPublicClient({
       chain: options.chain,
       transport: options.transport ?? http(),
+      // Parallel reads collapse into one Multicall3 call. Monad's public RPC allows 15 requests per second,
+      // which a single portfolio read would otherwise exceed.
+      batch: { multicall: true },
     }),
   };
 
