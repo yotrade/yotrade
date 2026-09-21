@@ -17,7 +17,7 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 
 ## Requirements
 
-[Bun](https://bun.sh) 1.3+ and [Foundry](https://getfoundry.sh).
+[Bun](https://bun.sh) 1.3+ and [Foundry](https://getfoundry.sh) 1.8+.
 
 ## Getting started
 
@@ -36,7 +36,18 @@ bun install
 | `bun run lint` | Lint and check formatting |
 | `bun run format` | Format and apply safe fixes |
 
-Tasks are orchestrated by [Turborepo](https://turborepo.com); formatting and linting by [Biome](https://biomejs.dev). A pre-commit hook checks staged files.
+Tasks are orchestrated by [Turborepo](https://turborepo.com); formatting and linting by [Biome](https://biomejs.dev).
+
+## Quality gates
+
+| Gate | Runs |
+|---|---|
+| `pre-commit` | Biome on staged files, `forge fmt --check` when Solidity is staged |
+| `commit-msg` | [Conventional Commits](https://www.conventionalcommits.org) |
+| `pre-push` | `biome ci`, then lint, build and tests for every package |
+| CI | The above, plus gas snapshot, 100% contract coverage, fork tests and Slither |
+
+Foundry 1.8 or later is required: tests execute with Monad's gas model (`network = "monad"`).
 
 ## Network
 
