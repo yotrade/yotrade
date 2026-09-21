@@ -13,6 +13,7 @@
 cp .env.example .env     # HyperSync token
 bun run dev              # local indexer with a GraphQL endpoint
 bun run test             # simulated events, no network
+bun run test:live        # real events through HyperSync (needs ENVIO_API_TOKEN)
 ```
 
 `ResultsVoided` reverses what `ResultsPosted` wrote, so ranks and podium counters stay correct when results are reposted.
