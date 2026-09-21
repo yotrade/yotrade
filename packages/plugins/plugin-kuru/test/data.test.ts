@@ -117,3 +117,70 @@ describe("performance", () => {
     expect(urls[1]).toContain("cursor=abc");
   });
 });
+
+describe("market data", () => {
+  test("decodes columnar candles, scaling volume to USDC units", async () => {
+    const urls: string[] = [];
+    const client = createDataClient("https://kuru.test/api/v1", (url) => {
+      urls.push(url);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            data: {
+              t: [100, 400],
+              o: ["337499", "340000"],
+              h: ["340891", "340000"],
+              l: ["337499", "339000"],
+              c: ["340000", "339500"],
+              v: ["1330230000000000000000", "0"],
+            },
+          }),
+        ),
+      );
+    });
+    const candles = await client.candles("0x0B4dD2A7b09d5c5401149fFe51301Cc589017343", {
+      interval: "5m",
+      from: 50,
+      countback: 2,
+    });
+    expect(candles).toEqual([
+      {
+        time: 100,
+        open: 337_499n,
+        high: 340_891n,
+        low: 337_499n,
+        close: 340_000n,
+        volumeUsdc: 1_330_230_000n,
+      },
+      { time: 400, open: 340_000n, high: 340_000n, low: 339_000n, close: 339_500n, volumeUsdc: 0n },
+    ]);
+    expect(urls[0]).toBe(
+      "https://kuru.test/api/v1/markets/0x0b4dd2a7b09d5c5401149ffe51301cc589017343/candles?interval=5m&from=50&countback=2",
+    );
+  });
+
+  test("reads depth from the gateway and market details from the data API", async () => {
+    const urls: string[] = [];
+    const client = createDataClient(
+      "https://kuru.test/api/v1",
+      (url) => {
+        urls.push(url);
+        const body = url.includes("/depth")
+          ? { data: { bids: [{ price: "50754", total_base: "60000000000" }], asks: [] } }
+          : { data: { symbol: "XAUTUSDC", pricePrecision: "100", sizePrecision: "1000000" } };
+        return Promise.resolve(new Response(JSON.stringify(body)));
+      },
+      "https://gateway.test/api",
+    );
+    expect(await client.depth("MONUSDC", 5)).toEqual({
+      bids: [{ price: 50_754n, size: 60_000_000_000n }],
+      asks: [],
+    });
+    expect(await client.market("0x0B4dD2A7b09d5c5401149fFe51301Cc589017343")).toEqual({
+      symbol: "XAUTUSDC",
+      pricePrecision: 100n,
+      sizePrecision: 1_000_000n,
+    });
+    expect(urls[0]).toBe("https://gateway.test/api/depth?symbol=MONUSDC&levels=5&state=finalized");
+  });
+});

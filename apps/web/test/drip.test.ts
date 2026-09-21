@@ -35,7 +35,7 @@ describe("createDripper", () => {
   });
 
   test("never pays an account that can already trade", async () => {
-    const { drip, sent } = setup(parseEther("0.3"));
+    const { drip, sent } = setup(parseEther("0.1"));
     expect(await drip(ALICE, "ip")).toEqual({ status: "sufficient" });
     expect(sent).toHaveLength(0);
   });
