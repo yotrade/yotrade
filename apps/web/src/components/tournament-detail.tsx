@@ -6,8 +6,10 @@ import Link from "next/link";
 
 import { countdown, formatUsdc, shortAddress, tournamentName } from "@/lib/format.ts";
 import { indexer } from "@/lib/indexer-client.ts";
+import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
 import { JoinPanel } from "./join-panel.tsx";
+import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { Card } from "./ui/card.tsx";
 
@@ -15,6 +17,8 @@ const BPS = 10_000n;
 
 export function TournamentDetail({ id }: { id: string }) {
   const now = useNow();
+  const { identity } = useIdentity();
+  const you = identity?.tournamentWallet(BigInt(id)).account.address;
   const { data, isPending, isError } = useQuery({
     queryKey: ["tournament", id],
     queryFn: () => indexer.tournament(BigInt(id)),
@@ -80,27 +84,12 @@ export function TournamentDetail({ id }: { id: string }) {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-semibold">
-          Traders{" "}
+          Leaderboard{" "}
           <span className="tabular text-ink-muted">
             {data.participantCount}/{data.maxParticipants}
           </span>
         </h2>
-        {data.entries.length === 0 ? (
-          <p className="text-sm text-ink-muted">Nobody has joined yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {data.entries.map((entry) => (
-              <li key={entry.participant_id}>
-                <Card className="flex items-center justify-between py-3">
-                  <span className="font-mono text-sm">{shortAddress(entry.participant_id)}</span>
-                  <span className="tabular text-sm text-ink-muted">
-                    {formatUsdc(entry.capitalAtJoin)} USDC at join
-                  </span>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Leaderboard id={id} you={you} />
       </section>
     </main>
   );
