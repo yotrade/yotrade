@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { PasskeyCard } from "@/components/passkey-card.tsx";
 import { Card } from "@/components/ui/card.tsx";
 
 const STEPS = [
@@ -26,6 +27,8 @@ export default function HomePage() {
           Host a live trading tournament on Monad and find out.
         </p>
       </header>
+
+      <PasskeyCard />
 
       <ol className="flex flex-col gap-3">
         {STEPS.map((step, index) => (
