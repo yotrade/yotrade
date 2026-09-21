@@ -46,3 +46,27 @@ export function minAmountOut(quotedOut: bigint, slippageBps: number): bigint {
   }
   return (quotedOut * BigInt(10_000 - slippageBps)) / 10_000n;
 }
+
+/**
+ * How much worse a quote is than trading the whole size at the top of the book, in basis points.
+ * A buy is compared with the best ask, a sell with the best bid. Fees are part of the quote, so a small
+ * positive number is normal; a large one means the order walks the book or fills only in part.
+ */
+export function priceImpactBps(
+  isBuy: boolean,
+  amountIn: bigint,
+  quotedOut: bigint,
+  baseDecimals: number,
+  quoteDecimals: number,
+  book: Book,
+): number {
+  const base = 10n ** BigInt(baseDecimals);
+  const quote = 10n ** BigInt(quoteDecimals);
+  const atTop = isBuy
+    ? (amountIn * base * book.pricePrecision) / (book.ask * quote)
+    : (amountIn * book.bid * quote) / (book.pricePrecision * base);
+  if (atTop === 0n) {
+    return 0;
+  }
+  return Math.max(0, Number(((atTop - quotedOut) * 10_000n) / atTop));
+}

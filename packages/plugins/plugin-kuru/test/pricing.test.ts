@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { midPrice, minAmountOut, toBook, valueInQuote } from "../src/pricing.ts";
+import { midPrice, minAmountOut, priceImpactBps, toBook, valueInQuote } from "../src/pricing.ts";
 
 describe("toBook", () => {
   test("flags a two-sided book as liquid", () => {
@@ -50,5 +50,25 @@ describe("minAmountOut", () => {
     expect(() => minAmountOut(1n, -1)).toThrow(RangeError);
     expect(() => minAmountOut(1n, 10_000)).toThrow(RangeError);
     expect(() => minAmountOut(1n, 0.5)).toThrow(RangeError);
+  });
+});
+
+describe("priceImpactBps", () => {
+  // cbBTC/USDC on 2026-09-21: bid 76,523.44, ask 102,535.67, price precision 100.
+  const book = toBook(7_652_344n, 10_253_567n, 100n);
+
+  test("is about the fee when the order fits at the top of the book", () => {
+    // 2,500 USDC at the ask buys 0.02438176 cbBTC; the quote was 0.02436478.
+    expect(priceImpactBps(true, 2_500_000_000n, 2_436_478n, 8, 6, book)).toBe(6);
+  });
+
+  test("catches the sell that walked the bid side and filled only in part", () => {
+    // 0.02436478 cbBTC at the best bid is 1,864.47 USDC; the account received 1,181.33.
+    const impact = priceImpactBps(false, 2_436_478n, 1_181_333_713n, 8, 6, book);
+    expect(impact).toBeGreaterThan(3_000);
+  });
+
+  test("never reports a negative impact", () => {
+    expect(priceImpactBps(true, 1_000_000n, 10n ** 12n, 8, 6, book)).toBe(0);
   });
 });
