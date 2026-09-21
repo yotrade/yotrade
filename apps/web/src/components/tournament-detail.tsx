@@ -36,7 +36,11 @@ export function TournamentDetail({ id }: { id: string }) {
     );
   }
   if (!data) {
-    return <p className="py-10 text-sm text-ink-muted">Tournament #{id} does not exist.</p>;
+    return (
+      <p className="py-10 text-sm text-ink-muted">
+        Tournament #{id} was not found. If you just created it, it appears here within seconds.
+      </p>
+    );
   }
 
   const phase = phaseAt(data, now);
