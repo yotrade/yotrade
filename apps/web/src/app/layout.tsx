@@ -5,13 +5,26 @@ import type { ReactNode } from "react";
 import { Providers } from "./providers.tsx";
 import "./globals.css";
 
+const DESCRIPTION = "Who's the best trader in your community? Find out live on Monad.";
+const SHARE_IMAGE = { url: "/icon-512.png", width: 512, height: 512, alt: "YoTrade" };
+
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "YoTrade", template: "%s · YoTrade" },
-  description: "Who's the best trader in your community? Find out live on Monad.",
+  description: DESCRIPTION,
   applicationName: "YoTrade",
+  metadataBase: new URL("https://yotrade.xyz"),
+  openGraph: {
+    type: "website",
+    siteName: "YoTrade",
+    title: "YoTrade",
+    description: DESCRIPTION,
+    url: "/",
+    images: [SHARE_IMAGE],
+  },
+  twitter: { card: "summary", title: "YoTrade", description: DESCRIPTION, images: [SHARE_IMAGE] },
 };
 
 export const viewport: Viewport = {
