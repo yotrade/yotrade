@@ -1,0 +1,68 @@
+enum TournamentStatus {
+  OPEN
+  RESULTS_POSTED
+  CANCELLED
+}
+
+type Tournament {
+  id: ID!
+  organizer: String! @index
+  venue: String!
+  prizeToken: String!
+  capitalToken: String!
+  prizePool: BigInt!
+  startingCapital: BigInt!
+  startTime: BigInt! @index
+  endTime: BigInt! @index
+  maxParticipants: Int!
+  allowlisted: Boolean!
+  prizeSplitBps: [Int!]!
+  metadataURI: String!
+  status: TournamentStatus! @index
+  participantCount: Int!
+  "Addresses ranked best first, as posted. Empty until results are posted and after they are voided."
+  winners: [String!]!
+  "Zero until results are posted."
+  claimableAt: BigInt!
+  prizesClaimed: BigInt!
+  returnedToOrganizer: BigInt!
+  createdAt: BigInt!
+  createdTx: String!
+  entries: [Entry!]! @derivedFrom(field: "tournament")
+}
+
+type Entry {
+  "<tournamentId>-<participant>"
+  id: ID!
+  tournament: Tournament!
+  participant: Trader!
+  "The venue account the scorer reads trades and balances from."
+  tradingAccount: String! @index
+  "Free capital recorded at join: the ROI denominator."
+  capitalAtJoin: BigInt!
+  joinedAt: BigInt!
+  "One-based. Null until results are posted and after they are voided."
+  rank: Int
+  prize: BigInt!
+  claimed: Boolean!
+}
+
+type Trader {
+  "Participant address"
+  id: ID!
+  tournamentsJoined: Int!
+  podiums: Int!
+  wins: Int!
+  totalPrize: BigInt!
+  entries: [Entry!]! @derivedFrom(field: "participant")
+}
+
+type Stats {
+  "Always 'global'"
+  id: ID!
+  tournaments: Int!
+  entries: Int!
+  traders: Int!
+  prizesEscrowed: BigInt!
+  prizesClaimed: BigInt!
+}
