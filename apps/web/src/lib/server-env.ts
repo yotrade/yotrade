@@ -1,12 +1,16 @@
 import { z } from "zod";
 
+const privateKey = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{64}$/, "must be a 32-byte hex private key")
+  .optional();
+
 /** Server-only configuration. Never import this from a client component. */
 const serverSchema = z.object({
   /** Wallet that funds new passkey accounts with testnet MON. Without it the drip route answers 503. */
-  DRIP_PRIVATE_KEY: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{64}$/, "must be a 32-byte hex private key")
-    .optional(),
+  DRIP_PRIVATE_KEY: privateKey,
+  /** Holds SCORER_ROLE only. Posts results when a tournament ends. Without it finalizing answers 503. */
+  SCORER_PRIVATE_KEY: privateKey,
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
