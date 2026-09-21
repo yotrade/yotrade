@@ -91,5 +91,6 @@ body {
     --animate-float: none;
     --animate-glow: none;
     --animate-sheet: none;
+    --animate-pulse: none;
   }
 }
