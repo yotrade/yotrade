@@ -1,6 +1,7 @@
 import type { Address, Hash } from "viem";
 
 export const KURU_TESTNET_DATA_URL = "https://api.testnet.kuru.io/api/v1";
+export const KURU_TESTNET_GATEWAY_URL = "https://gateway.testnet.kuru.io/api";
 
 export interface DataBalance {
   readonly token: Address;
@@ -31,6 +32,17 @@ interface RawBalance {
   reserved: string;
 }
 
+interface RawCandles {
+  data: { t: number[]; o: string[]; h: string[]; l: string[]; c: string[]; v: string[] };
+}
+
+interface RawDepth {
+  data: {
+    bids: { price: string; total_base: string }[];
+    asks: { price: string; total_base: string }[];
+  };
+}
+
 interface RawTradesPage {
   data: {
     trades: { pnl: { realizedPnl: string } }[];
@@ -50,6 +62,38 @@ interface RawTrade {
   pnl: { realizedPnl: string; openSize: string; openCost: string };
   blockTimestamp: number;
   transactionHash: Hash;
+}
+
+export const CANDLE_INTERVALS = ["1s", "1m", "5m", "1h", "6h", "1d"] as const;
+export type CandleInterval = (typeof CANDLE_INTERVALS)[number];
+
+export interface MarketInfo {
+  /** Gateway symbol, for example `XAUTUSDC`. */
+  readonly symbol: string;
+  readonly pricePrecision: bigint;
+  readonly sizePrecision: bigint;
+}
+
+/** Prices in the market's price precision, volume in raw quote (USDC) units. Oldest first. */
+export interface Candle {
+  readonly time: number;
+  readonly open: bigint;
+  readonly high: bigint;
+  readonly low: bigint;
+  readonly close: bigint;
+  readonly volumeUsdc: bigint;
+}
+
+/** Price in price precision, size in size precision. */
+export interface DepthLevel {
+  readonly price: bigint;
+  readonly size: bigint;
+}
+
+export interface Depth {
+  /** Best first: highest bid, lowest ask. */
+  readonly bids: readonly DepthLevel[];
+  readonly asks: readonly DepthLevel[];
 }
 
 export interface DataPosition {
@@ -76,9 +120,13 @@ const MAX_PAGES = 20;
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 /** Kuru's public Data Source API. Finalized data, no key required. */
-export function createDataClient(baseUrl: string = KURU_TESTNET_DATA_URL, fetcher: Fetch = fetch) {
-  async function get<T>(path: string): Promise<T> {
-    const response = await fetcher(`${baseUrl}${path}`, {
+export function createDataClient(
+  baseUrl: string = KURU_TESTNET_DATA_URL,
+  fetcher: Fetch = fetch,
+  gatewayUrl: string = KURU_TESTNET_GATEWAY_URL,
+) {
+  async function get<T>(path: string, root: string = baseUrl): Promise<T> {
+    const response = await fetcher(`${root}${path}`, {
       headers: { accept: "application/json" },
     });
     if (!response.ok) {
@@ -96,6 +144,49 @@ export function createDataClient(baseUrl: string = KURU_TESTNET_DATA_URL, fetche
         available: BigInt(row.available),
         reserved: BigInt(row.reserved),
       }));
+    },
+
+    async market(address: Address): Promise<MarketInfo> {
+      const body = await get<{
+        data: { symbol: string; pricePrecision: string; sizePrecision: string };
+      }>(`/markets/${address.toLowerCase()}`);
+      return {
+        symbol: body.data.symbol,
+        pricePrecision: BigInt(body.data.pricePrecision),
+        sizePrecision: BigInt(body.data.sizePrecision),
+      };
+    },
+
+    /** Up to `countback` candles starting at `from` (Unix seconds). Empty intervals are simply absent. */
+    async candles(
+      address: Address,
+      query: { interval: CandleInterval; from: number; countback?: number },
+    ): Promise<Candle[]> {
+      const params = new URLSearchParams({
+        interval: query.interval,
+        from: query.from.toString(),
+        countback: (query.countback ?? 500).toString(),
+      });
+      const { data } = await get<RawCandles>(`/markets/${address.toLowerCase()}/candles?${params}`);
+      return data.t.map((time, index) => ({
+        time,
+        open: BigInt(data.o[index] ?? 0),
+        high: BigInt(data.h[index] ?? 0),
+        low: BigInt(data.l[index] ?? 0),
+        close: BigInt(data.c[index] ?? 0),
+        volumeUsdc: BigInt(data.v[index] ?? 0) / PNL_TO_USDC,
+      }));
+    },
+
+    /** Current book from the exchange gateway. `symbol` comes from `market()`. */
+    async depth(symbol: string, levels = 20): Promise<Depth> {
+      const params = new URLSearchParams({ symbol, levels: levels.toString(), state: "finalized" });
+      const { data } = await get<RawDepth>(`/depth?${params}`, gatewayUrl);
+      const level = (row: { price: string; total_base: string }): DepthLevel => ({
+        price: BigInt(row.price),
+        size: BigInt(row.total_base),
+      });
+      return { bids: data.bids.map(level), asks: data.asks.map(level) };
     },
 
     /**
