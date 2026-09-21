@@ -44,10 +44,12 @@
     "markets": {
       "BTC/USD": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
       "ETH/USD": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-      "SOL/USD": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-      "MON/USD": "0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1"
+      "SOL/USD": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d"
     },
-    "verified": "sourcify (MonadVision)"
+    "verified": "sourcify (MonadVision)",
+    "disabledMarkets": {
+      "MON/USD": "0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1 (enabled at deployment, disabled 2026-09-22: the Hermes plan in use does not serve this feed, so nobody could push its price)"
+    }
   },
   "PerpsVenueAdapter": {
     "address": "0x97167B3126E2dEE1FE8920C129bD118Eb91e9881",

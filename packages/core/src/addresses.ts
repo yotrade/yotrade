@@ -15,14 +15,16 @@ export const yotrade = {
   profileRegistry: "0x9d8B6852705dD7585B3907244d603547a4eA32d6",
 } as const satisfies Record<string, Address>;
 
-/** Pyth pull oracle and the feeds enabled as futures markets. All of them publish around the clock. */
+/**
+ * Pyth pull oracle and the feeds enabled as futures markets. All of them publish around the clock.
+ * MON/USD exists onchain but the Hermes plan in use does not serve it, so it is not a market.
+ */
 export const pyth = {
   address: "0x2880aB155794e7179c9eE2e38200202908C17B43",
   feeds: {
     "BTC/USD": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
     "ETH/USD": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
     "SOL/USD": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-    "MON/USD": "0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1",
   },
 } as const;
 
