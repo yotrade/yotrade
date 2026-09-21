@@ -72,6 +72,8 @@ export interface MarketInfo {
   readonly symbol: string;
   readonly pricePrecision: bigint;
   readonly sizePrecision: bigint;
+  /** Taker fee in basis points, for display. The fee itself is already inside every quote. */
+  readonly takerFeeBps: number;
 }
 
 /** Prices in the market's price precision, volume in raw quote (USDC) units. Oldest first. */
@@ -148,12 +150,19 @@ export function createDataClient(
 
     async market(address: Address): Promise<MarketInfo> {
       const body = await get<{
-        data: { symbol: string; pricePrecision: string; sizePrecision: string };
+        data: {
+          symbol: string;
+          pricePrecision: string;
+          sizePrecision: string;
+          takerFeePps: number;
+        };
       }>(`/markets/${address.toLowerCase()}`);
       return {
         symbol: body.data.symbol,
         pricePrecision: BigInt(body.data.pricePrecision),
         sizePrecision: BigInt(body.data.sizePrecision),
+        // Kuru's pps are parts per ten million: 7000 is 0.07 %, which is 7 bps.
+        takerFeeBps: body.data.takerFeePps / 1_000,
       };
     },
 
