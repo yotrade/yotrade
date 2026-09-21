@@ -13,6 +13,7 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 | Path | Description |
 |---|---|
 | [`apps/web`](apps/web) | Mobile-first web app (Next.js 16, React 19, Tailwind v4) |
+| [`apps/indexer`](apps/indexer) | Envio HyperIndex: tournaments, entries, results, trader stats |
 | [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 | `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
 | `packages/plugins/*` | Reusable integrations composed through the runtime, one package each |
@@ -22,7 +23,7 @@ TypeScript packages are consumed as source through explicit subpath exports: no 
 
 ## Requirements
 
-[Bun](https://bun.sh) 1.3+ and [Foundry](https://getfoundry.sh) 1.8+.
+[Bun](https://bun.sh) 1.3+, [Foundry](https://getfoundry.sh) 1.8+ and Node.js 22+ (for the indexer tooling).
 
 ## Getting started
 
