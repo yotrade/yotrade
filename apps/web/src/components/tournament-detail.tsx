@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { phaseAt } from "@yotrade/plugin-tournament/phase";
-import Link from "next/link";
 import { useState } from "react";
 
 import { formatUsdc, shortAddress, timeLeft, tournamentName } from "@/lib/format.ts";
@@ -14,8 +13,8 @@ import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
+import { BackButton } from "./ui/back-button.tsx";
 import { Card } from "./ui/card.tsx";
-import { Icon } from "./ui/icon.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
 
 const BPS = 10_000n;
@@ -56,13 +55,7 @@ export function TournamentDetail({ id }: { id: string }) {
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
       <header className="flex items-center gap-3">
-        <Link
-          href="/"
-          aria-label="All tournaments"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-well transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          <Icon name="chevron-left" size={20} />
-        </Link>
+        <BackButton />
         <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-[26px] tracking-tight">
           {tournamentName(data.id, data.metadataURI)}
         </h1>
