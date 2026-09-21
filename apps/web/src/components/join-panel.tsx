@@ -14,6 +14,7 @@ import type { AppRuntime } from "@/lib/runtime.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { PasskeyCard } from "./passkey-card.tsx";
+import { TradePanel } from "./trade-panel.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 
@@ -90,13 +91,21 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   }
   if (entry.data) {
     return (
-      <Card className="flex flex-col gap-1">
-        <p className="font-semibold text-up">You're in</p>
-        <p className="text-sm text-ink-muted">
-          Trading account <span className="font-mono">{shortAddress(address)}</span> ·{" "}
-          <span className="tabular">{formatUsdc(entry.data.capitalAtJoin)} USDC at join</span>
-        </p>
-      </Card>
+      <section className="flex flex-col gap-3">
+        <Card className="flex flex-col gap-1">
+          <p className="font-semibold text-up">You're in</p>
+          <p className="text-sm text-ink-muted">
+            Trading account <span className="font-mono">{shortAddress(address)}</span> ·{" "}
+            <span className="tabular">{formatUsdc(entry.data.capitalAtJoin)} USDC at join</span>
+          </p>
+        </Card>
+        {phase === "live" ? (
+          <TradePanel wallet={wallet} capitalAtJoin={entry.data.capitalAtJoin} />
+        ) : null}
+        {phase === "upcoming" ? (
+          <p className="text-sm text-ink-muted">Trading opens when the tournament starts.</p>
+        ) : null}
+      </section>
     );
   }
   if (phase !== "upcoming" && phase !== "live") {

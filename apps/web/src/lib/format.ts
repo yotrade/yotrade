@@ -61,3 +61,8 @@ export function countdown(
   }
   return phase === "live" ? `${timeUntil(schedule.endTime, nowSeconds)} left` : "";
 }
+
+/** Token amount for display: up to six decimals, no trailing noise. */
+export function formatToken(amount: bigint, decimals: number): string {
+  return Number(formatUnits(amount, decimals)).toLocaleString("en-US", { maximumFractionDigits: 6 });
+}
