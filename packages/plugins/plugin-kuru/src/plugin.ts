@@ -13,9 +13,14 @@ import {
 } from "viem";
 
 import { createDataClient, type Fetch, KURU_TESTNET_DATA_URL } from "./data.ts";
-import { EmptyBookError, NoKuruAccountError, TransactionRevertedError } from "./errors.ts";
+import {
+  EmptyBookError,
+  NoKuruAccountError,
+  PriceImpactError,
+  TransactionRevertedError,
+} from "./errors.ts";
 import { parsePricePrecision, parseSwapQuote } from "./parse.ts";
-import { type Book, minAmountOut, toBook, valueInQuote } from "./pricing.ts";
+import { type Book, minAmountOut, priceImpactBps, toBook, valueInQuote } from "./pricing.ts";
 
 const faucetAbi = parseAbi([
   "function claim()",
@@ -39,7 +44,17 @@ export interface SwapRequest {
   readonly slippageBps?: number;
   /** Seconds until the swap expires. Defaults to 60. */
   readonly ttlSeconds?: number;
+  /** Refuse when the quote is this much worse than the top of the book. Defaults to 300 (3%). */
+  readonly maxImpactBps?: number;
 }
+
+export interface SwapQuote {
+  readonly quotedOut: bigint;
+  /** See `priceImpactBps`. */
+  readonly impactBps: number;
+}
+
+export const DEFAULT_MAX_IMPACT_BPS = 300;
 
 export interface Holding {
   readonly free: bigint;
@@ -100,6 +115,40 @@ export function kuru(options: KuruOptions = {}) {
       return toBook(BigInt(bid), BigInt(ask), parsePricePrecision(params));
     }
 
+    async function quote(
+      request: Pick<SwapRequest, "market" | "side" | "amountIn">,
+      userId?: bigint,
+    ): Promise<SwapQuote> {
+      const market = markets[request.market];
+      const current = await book(request.market);
+      const isBuy = request.side === "buy";
+      // A buy only needs offers and a sell only needs bids: a one-sided book must not trap a holder.
+      if (!(isBuy ? current.hasAsk : current.hasBid)) {
+        throw new EmptyBookError(request.market);
+      }
+      const { amountOut } = parseSwapQuote(
+        await reader.spot.estimateSwap({
+          market: market.orderBook,
+          // Fees depend on the account; an anonymous preview uses the default tier.
+          userId: userId ?? NO_ACCOUNT,
+          isBuy,
+          amountIn: request.amountIn,
+        }),
+      );
+      if (amountOut === 0n) {
+        throw new EmptyBookError(request.market);
+      }
+      const impactBps = priceImpactBps(
+        isBuy,
+        request.amountIn,
+        amountOut,
+        tokens[market.base].decimals,
+        tokens[market.quote].decimals,
+        current,
+      );
+      return { quotedOut: amountOut, impactBps };
+    }
+
     return {
       data,
 
@@ -154,44 +203,38 @@ export function kuru(options: KuruOptions = {}) {
       market: {
         book,
 
-        /** Market order with slippage protection. Refuses an empty book instead of burning gas on a no-op. */
+        /** What a market order would get right now, and how far that is from the top of the book. */
+        quote,
+
+        /**
+         * Market order. Refuses an empty book, a quote too far from the top of the book, and any fill worse
+         * than the quote by more than the slippage tolerance.
+         */
         async swap(
           wallet: Wallet,
           request: SwapRequest,
         ): Promise<{ hash: Hash; quotedOut: bigint }> {
-          const orderBook = markets[request.market].orderBook;
-          if (!(await book(request.market)).hasLiquidity) {
-            throw new EmptyBookError(request.market);
-          }
           const userId = await accountId(wallet.account.address);
           if (userId === NO_ACCOUNT) {
             throw new NoKuruAccountError(wallet.account.address);
           }
-
-          const isBuy = request.side === "buy";
-          const quote = parseSwapQuote(
-            await reader.spot.estimateSwap({
-              market: orderBook,
-              userId,
-              isBuy,
-              amountIn: request.amountIn,
-            }),
-          );
-          if (quote.amountOut === 0n) {
-            throw new EmptyBookError(request.market);
+          const { quotedOut, impactBps } = await quote(request, userId);
+          const maxImpactBps = request.maxImpactBps ?? DEFAULT_MAX_IMPACT_BPS;
+          if (impactBps > maxImpactBps) {
+            throw new PriceImpactError(impactBps, maxImpactBps);
           }
 
           const hash = await confirm(
             writer(wallet).spot.swap({
-              market: orderBook,
+              market: markets[request.market].orderBook,
               userId,
-              isBuy,
+              isBuy: request.side === "buy",
               amountIn: request.amountIn,
-              minAmountOut: minAmountOut(quote.amountOut, request.slippageBps ?? 50),
+              minAmountOut: minAmountOut(quotedOut, request.slippageBps ?? 50),
               deadline: BigInt(Math.floor(Date.now() / 1000) + (request.ttlSeconds ?? 60)),
             }),
           );
-          return { hash, quotedOut: quote.amountOut };
+          return { hash, quotedOut };
         },
       },
 
