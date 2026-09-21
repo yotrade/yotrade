@@ -4,14 +4,14 @@ Onchain lifecycle of a YoTrade tournament: registration, prize escrow, results a
 
 ## TournamentManager
 
-UUPS-upgradeable (OpenZeppelin 5.7, ERC-7201 storage), role-based, pausable.
+UUPS-upgradeable (OpenZeppelin 5.7, ERC-7201 storage), modular, role-based with a two-step delayed admin transfer, pausable. Trust model and threat analysis: [`SECURITY.md`](SECURITY.md).
 
 | Actor | Can |
 |---|---|
-| Organizer | Create a tournament and escrow the prize pool. Cancel before it starts, reclaim if it is never scored, sweep what no winner is owed |
+| Organizer | Create a tournament on an approved venue and escrow the prize pool. Cancel before it starts, reclaim if it is never scored, sweep what no winner is owed |
 | Participant | Join with a Kuru trading account they own, holding exactly the starting capital. Claim a prize |
 | Scorer | Post ranked winners once the tournament has ended |
-| Admin | Void results during the dispute window, cancel, pause, upgrade |
+| Admin | Approve venues, void results during the dispute window, cancel, pause, rescue surplus tokens, upgrade |
 
 Scores are computed offchain from Kuru's public trade and balance data, so anyone can reproduce them. They become claimable only after the dispute window.
 
@@ -19,10 +19,11 @@ Scores are computed offchain from Kuru's public trade and balance data, so anyon
 
 | Network | Contract | Address |
 |---|---|---|
-| Monad testnet (10143) | TournamentManager (proxy) | [`0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D`](https://testnet.monadvision.com/address/0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D) |
-| Monad testnet (10143) | Implementation | [`0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c`](https://testnet.monadvision.com/address/0xcF9D89E68E1D99830759d4E0A3296aA5C6eddD8c) |
+| Monad testnet (10143) | TournamentManager (proxy) | [`0xe60aFf1991d9D93e6093da5c813A63B746159D10`](https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10) |
+| Monad testnet (10143) | Implementation | [`0xdbC26eF2765912BF0B77e4A4cE0395e91089C698`](https://testnet.monadvision.com/address/0xdbC26eF2765912BF0B77e4A4cE0395e91089C698) |
+| Monad testnet (10143) | KuruVenueAdapter | [`0xADefe39B43673641e94cE99613c54266af2490e6`](https://testnet.monadvision.com/address/0xADefe39B43673641e94cE99613c54266af2490e6) |
 
-Both are verified on MonadVision. Machine-readable record: [`deployments/monad-testnet.json`](deployments/monad-testnet.json).
+All three are verified on MonadVision. Machine-readable record: [`deployments/monad-testnet.json`](deployments/monad-testnet.json).
 
 ## Usage
 
@@ -72,7 +73,8 @@ src/
   modules/EscrowModule.sol       create, cancel, reclaim, sweep
   modules/RegistrationModule.sol join, allowlist, trading-account checks
   modules/ResultsModule.sol      postResults, voidResults, claim
-  interfaces/                    ITournamentManager, IAccountCore
+  venues/KuruVenueAdapter.sol    proves a participant owns a Kuru trading account
+  interfaces/                    ITournamentManager, IVenueAdapter, IAccountCore
 test/                            unit, guard, regression, invariant and fork suites
 script/                          deployment and upgrade
 lib/                             forge-std, OpenZeppelin (git submodules)
