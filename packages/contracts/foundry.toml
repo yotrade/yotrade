@@ -38,6 +38,12 @@ quote_style = "double"
 number_underscore = "thousands"
 sort_imports = true
 
+[lint]
+# block-timestamp: schedules are this contract's purpose, and a few seconds of validator drift are harmless.
+# reentrancy-events: in Foundry 1.8.3 it also fires on events that follow no external call at all
+# (e.g. ResultsVoided). Events are emitted before token transfers by convention; Slither covers the rest.
+exclude_lints = ["block-timestamp", "reentrancy-events"]
+
 [rpc_endpoints]
 monad_testnet = "${MONAD_TESTNET_RPC_URL}"
 

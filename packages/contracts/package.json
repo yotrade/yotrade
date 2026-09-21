@@ -10,7 +10,7 @@
     "coverage": "forge coverage --no-match-path 'test/fork/*' --no-match-coverage '(test|script)' --report summary",
     "snapshot": "forge snapshot --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'",
     "snapshot:check": "forge snapshot --check --tolerance 5 --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'",
-    "lint": "forge fmt --check",
+    "lint": "forge fmt --check && forge lint src --deny warnings",
     "format": "forge fmt"
   }
 }
