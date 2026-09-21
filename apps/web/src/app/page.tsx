@@ -19,7 +19,10 @@ export default function HomePage() {
     <main className="flex flex-1 flex-col gap-8 py-10">
       <header className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <Image src="/icon-512.png" alt="" width={48} height={48} priority />
+          {/* The mark is yellow: it needs a dark tile to stay readable on a light canvas. */}
+          <span className="grid size-12 place-items-center rounded-2xl bg-ink">
+            <Image src="/icon-512.png" alt="" width={34} height={34} priority />
+          </span>
           <p className="text-sm font-medium uppercase tracking-widest text-accent">YoTrade</p>
         </div>
         <h1 className="text-4xl font-bold leading-tight">

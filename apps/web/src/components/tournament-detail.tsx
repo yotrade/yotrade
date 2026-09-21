@@ -13,6 +13,7 @@ import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
+import { Amount } from "./ui/amount.tsx";
 import { Card } from "./ui/card.tsx";
 
 const BPS = 10_000n;
@@ -70,19 +71,23 @@ export function TournamentDetail({ id }: { id: string }) {
       <Card className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-ink-muted">Prize pool</p>
-          <p className="tabular text-xl font-bold">{formatUsdc(data.prizePool)} USDC</p>
+          <Amount value={data.prizePool} size="md" />
         </div>
         <div>
           <p className="text-sm text-ink-muted">Starting capital</p>
-          <p className="tabular text-xl font-bold">{formatUsdc(data.startingCapital)} USDC</p>
+          <Amount value={data.startingCapital} size="md" />
         </div>
         <ol className="col-span-2 flex flex-wrap gap-2">
-          {data.prizeSplitBps.map((bps, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: ranks are positional and never reorder
-            <li key={index} className="tabular rounded-lg border border-border px-2.5 py-1 text-sm">
-              #{index + 1} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
-            </li>
-          ))}
+          {data.prizeSplitBps
+            .map((bps, index) => ({ rank: index + 1, bps }))
+            .map(({ rank, bps }) => (
+              <li
+                key={rank}
+                className="tabular rounded-full bg-surface px-3 py-1 text-sm font-medium"
+              >
+                #{rank} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
+              </li>
+            ))}
         </ol>
       </Card>
 
