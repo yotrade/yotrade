@@ -24,6 +24,7 @@ More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |---|---|
 | `TournamentManager` (UUPS proxy) | [`0xe60aFf1991d9D93e6093da5c813A63B746159D10`](https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10) |
 | `KuruVenueAdapter` | [`0xADefe39B43673641e94cE99613c54266af2490e6`](https://testnet.monadvision.com/address/0xADefe39B43673641e94cE99613c54266af2490e6) |
+| `ProfileRegistry` (immutable, ownerless) | [`0x9d8B6852705dD7585B3907244d603547a4eA32d6`](https://testnet.monadvision.com/address/0x9d8B6852705dD7585B3907244d603547a4eA32d6) |
 
 Verified on MonadVision (Sourcify). History and configuration: [`packages/contracts/deployments`](packages/contracts/deployments).
 
