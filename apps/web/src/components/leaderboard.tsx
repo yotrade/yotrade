@@ -7,6 +7,7 @@ import { formatUsdc, shortAddress } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
 import { Podium } from "./podium.tsx";
 import { Avatar } from "./ui/avatar.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 function formatRoi(ppm: number): string {
   return `${ppm >= 0 ? "+" : ""}${(ppm / 10_000).toFixed(2)}%`;
@@ -31,7 +32,17 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
   });
 
   if (isPending) {
-    return <p className="text-sm text-ink-muted">Scoring traders…</p>;
+    return (
+      <Loading label="Scoring traders" className="flex flex-col gap-4">
+        <div className="flex items-end justify-center gap-3 px-2">
+          <Skeleton className="h-40 flex-1 rounded-t-3xl" />
+          <Skeleton className="h-56 flex-1 rounded-t-3xl" />
+          <Skeleton className="h-36 flex-1 rounded-t-3xl" />
+        </div>
+        <Skeleton className="h-[60px] rounded-full" />
+        <Skeleton className="h-[60px] rounded-full" />
+      </Loading>
+    );
   }
   if (isError) {
     return (

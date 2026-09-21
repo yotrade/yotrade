@@ -19,6 +19,7 @@ import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 const STEP_LABELS: Record<JoinStep, string> = {
   gas: "Getting gas",
@@ -131,7 +132,11 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   }
   // Nothing to offer until we know: the join card must not flash for someone who is already in.
   if (entry.isPending) {
-    return <Card className="h-[72px] animate-pulse" aria-busy />;
+    return (
+      <Loading label="Loading your entry">
+        <Skeleton className="h-[72px] rounded-2xl" />
+      </Loading>
+    );
   }
   if (entry.data) {
     return (

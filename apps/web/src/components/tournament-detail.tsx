@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { phaseAt } from "@yotrade/plugin-tournament/phase";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { formatUsdc, shortAddress, timeLeft, tournamentName } from "@/lib/format.ts";
 import { indexer } from "@/lib/indexer-client.ts";
@@ -15,11 +15,31 @@ import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Card } from "./ui/card.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
 
 const BPS = 10_000n;
 const TABS = ["Overview", "Leaderboard"] as const;
 type Tab = (typeof TABS)[number];
+
+/** Every state keeps the header: a page without a way back is a dead end. */
+function Shell({ title, children }: { title: string | null; children: ReactNode }) {
+  return (
+    <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
+      <header className="flex items-center gap-3">
+        <BackButton />
+        {title === null ? (
+          <Skeleton className="h-6 w-40" />
+        ) : (
+          <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-[26px] tracking-tight">
+            {title}
+          </h1>
+        )}
+      </header>
+      {children}
+    </main>
+  );
+}
 
 export function TournamentDetail({ id }: { id: string }) {
   const now = useNow();
@@ -33,20 +53,33 @@ export function TournamentDetail({ id }: { id: string }) {
   });
 
   if (isPending) {
-    return <p className="py-10 text-sm text-ink-muted">Loading tournament…</p>;
+    return (
+      <Shell title={null}>
+        <Loading label="Loading tournament" className="flex flex-col gap-6">
+          <Skeleton className="h-[236px] rounded-[28px]" />
+          <Skeleton className="h-10 rounded-full" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </Loading>
+      </Shell>
+    );
   }
   if (isError) {
     return (
-      <p role="alert" className="py-10 text-sm text-down">
-        This tournament could not be loaded. Retrying…
-      </p>
+      <Shell title={`Tournament #${id}`}>
+        <p role="alert" className="text-sm font-medium text-down">
+          This tournament could not be loaded. Retrying…
+        </p>
+      </Shell>
     );
   }
   if (!data) {
     return (
-      <p className="py-10 text-sm text-ink-muted">
-        Tournament #{id} was not found. If you just created it, it appears here within seconds.
-      </p>
+      <Shell title={`Tournament #${id}`}>
+        <p className="text-sm font-medium text-ink-muted">
+          This tournament was not found. If you just created it, it appears here within seconds.
+        </p>
+      </Shell>
     );
   }
 
