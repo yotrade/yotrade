@@ -63,7 +63,7 @@ interface HeadlineProps {
   readonly loading: boolean;
 }
 
-function Headline({ summary, range, loading }: HeadlineProps) {
+export function Headline({ summary, range, loading }: HeadlineProps) {
   if (loading) {
     return (
       <Loading label="Loading price" className="flex flex-col gap-1.5">
@@ -106,7 +106,13 @@ function MarketView({ view, type, data }: { view: View; type: ChartType; data: M
   return <PriceChart bars={data.bars} from={data.from} to={data.to} type={type} />;
 }
 
-function RangeTabs({ value, onChange }: { value: RangeName; onChange(next: RangeName): void }) {
+export function RangeTabs({
+  value,
+  onChange,
+}: {
+  value: RangeName;
+  onChange(next: RangeName): void;
+}) {
   return (
     <div role="tablist" aria-label="Range" className="flex justify-between">
       {RANGE_NAMES.map((name) => (
@@ -149,7 +155,7 @@ function Stats({ data }: { data: MarketData }) {
   );
 }
 
-const ACTION =
+export const ACTION =
   "min-h-12 flex-1 rounded-full font-mono text-[15px] font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]";
 
 function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void }) {
