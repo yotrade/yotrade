@@ -38,10 +38,13 @@ const tournamentSchema = z.object({
   winners: z.array(address),
 });
 
+const ownEntrySchema = entrySchema.extend({ tournament_id: bigint });
+
 const detailSchema = tournamentSchema.extend({ entries: z.array(entrySchema) });
 
 export type IndexedTournament = z.infer<typeof tournamentSchema>;
 export type IndexedEntry = z.infer<typeof entrySchema>;
+export type IndexedOwnEntry = z.infer<typeof ownEntrySchema>;
 export type IndexedTournamentDetail = z.infer<typeof detailSchema>;
 
 const TOURNAMENT_FIELDS = `id organizer prizePool startingCapital startTime endTime claimableAt maxParticipants
@@ -80,6 +83,21 @@ export function createIndexer(url: string, fetcher: Fetch = fetch) {
         z.object({ tournaments: z.array(tournamentSchema) }),
       );
       return data.tournaments;
+    },
+
+    /** Entries registered by any of `participants`. Addresses are stored lowercase by the indexer. */
+    async entriesOf(participants: readonly Address[]): Promise<IndexedOwnEntry[]> {
+      if (participants.length === 0) {
+        return [];
+      }
+      const data = await query(
+        `query ($ids: [String!]!) { entries: Entry(where: { participant_id: { _in: $ids } }) {
+          tournament_id participant_id tradingAccount capitalAtJoin joinedAt rank prize claimed
+        } }`,
+        { ids: participants.map((address) => address.toLowerCase()) },
+        z.object({ entries: z.array(ownEntrySchema) }),
+      );
+      return data.entries;
     },
 
     async tournament(id: bigint): Promise<IndexedTournamentDetail | null> {
