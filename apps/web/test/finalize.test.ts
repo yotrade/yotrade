@@ -47,6 +47,30 @@ describe("createFinalizer", () => {
     expect(posted).toEqual([[7n, ["0xa", "0xb"]]]);
   });
 
+  test("settles the venue before naming winners, and posts nothing when settling fails", async () => {
+    const order: string[] = [];
+    const deps = {
+      leaderboard: () => Promise.resolve(board("open", 900n)),
+      postResults: () => {
+        order.push("post");
+        return Promise.resolve(HASH);
+      },
+      now: () => 1_000_000,
+    };
+    await createFinalizer({ ...deps, settle: () => Promise.resolve(void order.push("settle")) })(
+      7n,
+    );
+    expect(order).toEqual(["settle", "post"]);
+
+    order.length = 0;
+    const failing = createFinalizer({
+      ...deps,
+      settle: () => Promise.reject(new Error("no price")),
+    });
+    await expect(failing(7n)).rejects.toThrow("no price");
+    expect(order).toEqual([]);
+  });
+
   test("refuses before the end, after results exist, and for unknown tournaments", async () => {
     expect((await setup(board("open", 2_000n)).finalize(1n)).status).toBe("not-ended");
     expect((await setup(board("resultsPosted", 900n)).finalize(1n)).status).toBe("already-final");

@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { formatUsdc } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
+import type { Venue } from "@/lib/venue.ts";
 import { Podium } from "./podium.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
@@ -19,7 +20,21 @@ function formatPnl(raw: string): string {
   return `${pnl < 0n ? "−" : "+"}${formatUsdc(pnl < 0n ? -pnl : pnl)}`;
 }
 
-export function Leaderboard({ id, you }: { id: string; you: Address | undefined }) {
+interface Props {
+  readonly id: string;
+  readonly you: Address | undefined;
+  readonly venue: Venue;
+}
+
+/** Spot counts fills. Futures only knows whether an account ever traded. */
+function activity(row: LeaderboardRow, venue: Venue): string {
+  if (venue === "spot") {
+    return `${formatPnl(row.pnl)} USDC · ${row.fills} fills`;
+  }
+  return `${formatPnl(row.pnl)} USD · ${row.fills > 0 ? "trading" : "has not traded"}`;
+}
+
+export function Leaderboard({ id, you, venue }: Props) {
   const { data, isPending, isError } = useQuery({
     queryKey: ["leaderboard", id],
     queryFn: async (): Promise<LeaderboardRow[]> => {
@@ -99,7 +114,7 @@ export function Leaderboard({ id, you }: { id: string; you: Address | undefined 
                 {nameOf(row)}
               </p>
               <p className="tabular truncate text-[13px] font-medium text-ink-muted">
-                {formatPnl(row.pnl)} USDC · {row.fills} fills
+                {activity(row, venue)}
               </p>
             </div>
             <span

@@ -3,6 +3,8 @@ import { parseUnits } from "viem";
 import { tokens, yotrade } from "@yotrade/core/addresses";
 import type { TournamentConfig } from "@yotrade/plugin-tournament/plugin";
 
+import type { Venue } from "./venue.ts";
+
 export const SPLITS = {
   "Winner takes all": [10_000],
   "Top 3": [5_000, 3_000, 2_000],
@@ -18,9 +20,11 @@ const STARTING_CAPITAL = parseUnits("1000", tokens.usdc.decimals);
 /** One Kuru faucet claim: what a fresh organizer account can escrow without outside funds. */
 const MAX_POOL = parseUnits("10000", tokens.usdc.decimals);
 const MAX_METADATA_BYTES = 512;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 
 export interface CreateForm {
+  readonly venue: Venue;
   readonly name: string;
   readonly prizePool: string;
   readonly startDelay: keyof typeof START_DELAYS;
@@ -56,14 +60,21 @@ export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
   }
 
   const startTime = nowSeconds + BigInt(START_DELAYS[form.startDelay]);
+  // Futures capital is virtual and the same for everyone, so there is no token and nothing to require.
+  const capital =
+    form.venue === "futures"
+      ? { capitalToken: ZERO_ADDRESS, venue: yotrade.perpsVenueAdapter, startingCapital: 0n }
+      : {
+          capitalToken: tokens.usdc.address,
+          venue: yotrade.kuruVenueAdapter,
+          startingCapital: STARTING_CAPITAL,
+        };
   return {
     ok: true,
     config: {
       prizeToken: tokens.usdc.address,
-      capitalToken: tokens.usdc.address,
-      venue: yotrade.kuruVenueAdapter,
+      ...capital,
       prizePool,
-      startingCapital: STARTING_CAPITAL,
       startTime,
       endTime: startTime + BigInt(DURATIONS[form.duration]),
       maxParticipants,

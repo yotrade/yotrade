@@ -15,6 +15,9 @@ const serverSchema = z.object({
   KIMI_API_KEY: z.string().min(1).optional(),
   KIMI_BASE_URL: z.url().default("https://api.moonshot.ai/v1"),
   KIMI_MODEL: z.string().min(1).default("kimi-k3"),
+  /** Pyth Hermes key for futures price updates. Without it the price proxy answers 503. */
+  PYTH_API_KEY: z.string().min(1).optional(),
+  PYTH_HERMES_URL: z.url().default("https://pyth.dourolabs.app/hermes"),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;

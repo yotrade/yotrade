@@ -16,7 +16,6 @@ contract DeployPerps is Script {
     bytes32 internal constant BTC_USD = 0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43;
     bytes32 internal constant ETH_USD = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace;
     bytes32 internal constant SOL_USD = 0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d;
-    bytes32 internal constant MON_USD = 0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1;
 
     function run() external returns (address proxy, address implementation, address adapter) {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -35,7 +34,7 @@ contract DeployPerps is Script {
 
         // Only the admin can enable markets and approve venues. Someone else deploying leaves both to the admin.
         if (vm.addr(deployerKey) == admin) {
-            bytes32[4] memory markets = [BTC_USD, ETH_USD, SOL_USD, MON_USD];
+            bytes32[3] memory markets = [BTC_USD, ETH_USD, SOL_USD];
             for (uint256 i; i < markets.length; ++i) {
                 PerpsEngine(proxy).setMarket(markets[i], true);
             }

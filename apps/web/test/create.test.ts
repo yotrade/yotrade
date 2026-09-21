@@ -4,6 +4,7 @@ import { buildConfig, type CreateForm } from "../src/lib/create.ts";
 import { tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
+  venue: "spot",
   name: "  Jogja Cup 🏆 ",
   prizePool: "250.5",
   startDelay: "In 10 minutes",
@@ -13,6 +14,18 @@ const FORM: CreateForm = {
 };
 
 describe("buildConfig", () => {
+  test("a futures tournament names the perps venue and asks for no capital", () => {
+    const result = buildConfig({ ...FORM, venue: "futures" }, 1_000n);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.venue).toBe("0x97167B3126E2dEE1FE8920C129bD118Eb91e9881");
+      expect(result.config.capitalToken).toBe("0x0000000000000000000000000000000000000000");
+      expect(result.config.startingCapital).toBe(0n);
+      // The prize is real either way.
+      expect(result.config.prizePool).toBe(250_500_000n);
+    }
+  });
+
   test("builds the contract config and a name the app can read back", () => {
     const result = buildConfig(FORM, 1_000n);
     if (!result.ok) {

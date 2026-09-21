@@ -1,17 +1,24 @@
 import { type Bar, CANDLES, type RangeName } from "@/lib/chart.ts";
 import type { MarketSlug } from "@/lib/markets.ts";
+import type { PerpsSlug } from "@/lib/perps-markets.ts";
 
 /**
  * Global reference prices from free public market data. Kuru's testnet books set the price you trade at;
  * these series show what the asset does in the real world, and are always labelled as a reference.
  */
+export type ReferenceSlug = MarketSlug | PerpsSlug;
+
 const SOURCES = {
   cbbtc: { venue: "binance", symbol: "BTCUSDT", label: "Binance · BTC/USDT" },
   // Binance lists PAX Gold, not Tether Gold. Both track an ounce of gold.
   xaut0: { venue: "binance", symbol: "PAXGUSDT", label: "Binance · PAXG/USDT (gold)" },
   mon: { venue: "gate", symbol: "MON_USDT", label: "Gate · MON/USDT" },
+  // Futures fill at Pyth prices, which track these markets within a few basis points.
+  btc: { venue: "binance", symbol: "BTCUSDT", label: "Binance · BTC/USDT" },
+  eth: { venue: "binance", symbol: "ETHUSDT", label: "Binance · ETH/USDT" },
+  sol: { venue: "binance", symbol: "SOLUSDT", label: "Binance · SOL/USDT" },
 } as const satisfies Record<
-  MarketSlug,
+  ReferenceSlug,
   { venue: "binance" | "gate"; symbol: string; label: string }
 >;
 
@@ -85,7 +92,7 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
   // Concurrent visitors asking for the same series share one upstream request.
   const inFlight = new Map<string, Promise<Reference>>();
 
-  async function load(market: MarketSlug, range: RangeName): Promise<Reference> {
+  async function load(market: ReferenceSlug, range: RangeName): Promise<Reference> {
     const source = SOURCES[market];
     const [interval, seconds] = PLAN[range][source.venue];
     const url =
@@ -105,7 +112,7 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     return { label: source.label, from: to - seconds * CANDLES, to, bars };
   }
 
-  return function reference(market: MarketSlug, range: RangeName): Promise<Reference> {
+  return function reference(market: ReferenceSlug, range: RangeName): Promise<Reference> {
     const key = `${market}:${range}`;
     const hit = cache.get(key);
     const ttl = range === "1s" || range === "1m" ? FAST_CACHE_MS : CACHE_MS;

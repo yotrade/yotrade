@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { MarketList } from "@/components/market-list.tsx";
+import { TradeMarkets } from "@/components/trade-markets.tsx";
 
 export const metadata: Metadata = { title: "Markets" };
 
@@ -10,5 +10,5 @@ export default async function MarketsPage({ params }: { params: Promise<{ id: st
   if (!/^[1-9]\d{0,18}$/.test(id)) {
     notFound();
   }
-  return <MarketList id={id} />;
+  return <TradeMarkets id={id} />;
 }
