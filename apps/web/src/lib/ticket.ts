@@ -31,3 +31,23 @@ export function roiBps(value: bigint, capital: bigint): number | null {
 export function formatBps(bps: number): string {
   return `${bps >= 0 ? "+" : ""}${(bps / 100).toFixed(2)}%`;
 }
+
+/** Decimals a person would type for this token: cents for a dollar token, six at most for the rest. */
+const inputDecimals = (decimals: number, isDollar: boolean) => (isDollar ? 2 : Math.min(decimals, 6));
+
+/**
+ * `percent` of `available` as text for the amount field, rounded **down** so that MAX can never exceed the
+ * balance, and without trailing zeros.
+ */
+export function shortcutAmount(
+  available: bigint,
+  percent: bigint,
+  decimals: number,
+  isDollar: boolean,
+): string {
+  const step = 10n ** BigInt(decimals - inputDecimals(decimals, isDollar));
+  const amount = (((available * percent) / 100n) / step) * step;
+  const whole = amount / 10n ** BigInt(decimals);
+  const fraction = (amount % 10n ** BigInt(decimals)).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction === "" ? whole.toString() : `${whole}.${fraction}`;
+}
