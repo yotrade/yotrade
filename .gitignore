@@ -1,0 +1,9 @@
+# local research and planning notes (not part of the product)
+knowledge/
+IDEA-*.md
+
+# env and OS
+.env
+.env.*
+!.env.example
+.DS_Store
