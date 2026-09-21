@@ -1,0 +1,27 @@
+{
+  "name": "@yotrade/plugin-kuru",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./plugin": "./src/plugin.ts",
+    "./pricing": "./src/pricing.ts",
+    "./data": "./src/data.ts",
+    "./errors": "./src/errors.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:live": "KURU_LIVE=1 bun test test/live.test.ts"
+  },
+  "dependencies": {
+    "@toxicflow-labs/ts-sdk": "^0.1.1",
+    "@yotrade/core": "workspace:*",
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@yotrade/tsconfig": "workspace:*",
+    "typescript": "^7.0.2"
+  }
+}

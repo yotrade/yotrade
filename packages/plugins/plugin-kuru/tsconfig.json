@@ -1,0 +1,7 @@
+{
+  "extends": "@yotrade/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["src", "test"]
+}
