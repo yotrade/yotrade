@@ -15,7 +15,7 @@ abstract contract ResultsModule is TournamentBase {
 
     /// @inheritdoc ITournamentManager
     /// @param winners Participants ranked best first. May be shorter than the prize split.
-    function postResults(uint256 id, address[] calldata winners) external onlyRole(SCORER_ROLE) {
+    function postResults(uint256 id, address[] calldata winners) external whenNotPaused onlyRole(SCORER_ROLE) {
         Tournament storage t = _open(id);
         if (block.timestamp < t.config.endTime) revert TournamentNotEnded();
         if (winners.length > t.config.prizeSplitBps.length) revert TooManyWinners();
@@ -71,6 +71,9 @@ abstract contract ResultsModule is TournamentBase {
         t.unpaid -= amount;
 
         emit PrizeClaimed(id, msg.sender, rankPlusOne, amount);
-        if (amount != 0) IERC20(t.config.prizeToken).safeTransfer(msg.sender, amount);
+        if (amount != 0) {
+            _layout().escrowed[t.config.prizeToken] -= amount;
+            IERC20(t.config.prizeToken).safeTransfer(msg.sender, amount);
+        }
     }
 }

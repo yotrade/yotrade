@@ -2,8 +2,8 @@
 pragma solidity 0.8.37;
 
 import {TournamentBase} from "../TournamentBase.sol";
-import {IAccountCore} from "../interfaces/IAccountCore.sol";
 import {ITournamentManager} from "../interfaces/ITournamentManager.sol";
+import {IVenueAdapter} from "../interfaces/IVenueAdapter.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title RegistrationModule
@@ -25,7 +25,7 @@ abstract contract RegistrationModule is TournamentBase {
             if (!MerkleProof.verifyCalldata(allowlistProof, config.allowlistRoot, leaf)) revert NotAllowlisted();
         }
 
-        uint256 capital = _checkTradingAccount(_layout().accountCore, tradingAccount, config);
+        uint256 capital = _checkTradingAccount(tradingAccount, config);
 
         t.tradingAccountOf[msg.sender] = tradingAccount;
         t.tradingAccountUsed[tradingAccount] = true;
@@ -35,21 +35,16 @@ abstract contract RegistrationModule is TournamentBase {
         emit Joined(id, msg.sender, tradingAccount, capital);
     }
 
-    /// @dev Venue-side checks for `join`. Returns the account's free balance of the capital token, or zero when
-    /// no venue is configured or the tournament has no capital requirement.
-    function _checkTradingAccount(IAccountCore core, address tradingAccount, Config storage config)
+    /// @dev The venue adapter proves ownership and reports the free balance; the capital rule is enforced here.
+    function _checkTradingAccount(address tradingAccount, Config storage config)
         private
         view
         returns (uint256 capital)
     {
-        if (address(core) == address(0)) return 0;
-        if (core.userRegistry(tradingAccount) == 0) revert AccountNotRegistered();
-        if (core.getAccountOwner(tradingAccount) != msg.sender) revert NotAccountOwner();
-        if (config.startingCapital == 0) return 0;
+        capital = IVenueAdapter(config.venue).checkAccount(msg.sender, tradingAccount, config.capitalToken);
 
-        // Not an equality check: `depositForAccount` is permissionless, so anyone could push one unit into the
-        // account and block the join. The recorded balance is the ROI denominator instead.
-        capital = core.getBalance(tradingAccount, config.capitalToken);
+        // Not an equality check: venues may allow deposits into any account, so anyone could push one unit into
+        // it and block the join. The recorded balance is the ROI denominator instead.
         if (capital < config.startingCapital) revert InsufficientStartingCapital(config.startingCapital, capital);
     }
 }
