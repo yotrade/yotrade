@@ -5,9 +5,10 @@ import { tokens } from "@yotrade/core/addresses";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 import { useState } from "react";
-import { erc20Abi, parseEther } from "viem";
+import { erc20Abi } from "viem";
 
 import { formatUsdc, shortAddress } from "@/lib/format.ts";
+import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
@@ -17,9 +18,6 @@ import { PasskeyCard } from "./passkey-card.tsx";
 import { TradePanel } from "./trade-panel.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
-
-/** Enough for the join transactions. The drip route tops accounts up well above this. */
-const MIN_GAS = parseEther("0.1");
 
 const STEP_LABELS: Record<JoinStep, string> = {
   gas: "Getting gas",
@@ -34,23 +32,7 @@ function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint): JoinDeps
 
   return {
     hasJoined: async () => (await tournament.entry(id, address)) !== null,
-    async fundGas() {
-      if ((await publicClient.getBalance({ address })) >= MIN_GAS) {
-        return;
-      }
-      const response = await fetch("/api/drip", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address }),
-      });
-      if ((await publicClient.getBalance({ address })) < MIN_GAS) {
-        throw new JoinError(
-          response.status === 429
-            ? "The gas faucet is rate limited. Try again in a few minutes."
-            : "The gas faucet is unavailable right now. Try again shortly.",
-        );
-      }
-    },
+    fundGas: () => fundGas(publicClient, address),
     walletUsdc: () =>
       publicClient.readContract({
         address: tokens.usdc.address,
@@ -129,7 +111,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
       await queryClient.invalidateQueries({ queryKey: ["tournament"] });
     } catch (cause) {
       setError(
-        cause instanceof JoinError
+        cause instanceof JoinError || cause instanceof GasError
           ? cause.message
           : "Joining stopped before it finished. Tap again to continue where it left off.",
       );
