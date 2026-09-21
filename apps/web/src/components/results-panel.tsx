@@ -1,0 +1,136 @@
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+import type { Phase } from "@yotrade/plugin-tournament/phase";
+import { useState } from "react";
+
+import { formatUsdc, shortAddress, timeUntil } from "@/lib/format.ts";
+import { fundGas } from "@/lib/fund-gas.ts";
+import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
+import { useIdentity } from "@/lib/use-identity.tsx";
+import { useRuntime } from "@/lib/use-runtime.ts";
+import { Button } from "./ui/button.tsx";
+import { Card } from "./ui/card.tsx";
+
+interface Props {
+  readonly tournament: IndexedTournamentDetail;
+  readonly phase: Phase;
+  readonly now: bigint;
+}
+
+/** Everything that happens after the last trade: finalize, review window, standings, claim. */
+export function ResultsPanel({ tournament, phase, now }: Props) {
+  const { publicClient, tournament: manager } = useRuntime();
+  const { identity } = useIdentity();
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+
+  if (phase !== "scoring" && phase !== "dispute" && phase !== "claimable") {
+    return null;
+  }
+
+  async function run(action: () => Promise<void>, failure: string) {
+    setPending(true);
+    setError(undefined);
+    try {
+      await action();
+      await queryClient.invalidateQueries({ queryKey: ["tournament"] });
+    } catch (cause) {
+      console.error(failure, cause);
+      setError(failure);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (phase === "scoring") {
+    const finalize = async () => {
+      const response = await fetch(`/api/tournaments/${tournament.id}/finalize`, {
+        method: "POST",
+      });
+      // 409 means someone else finalized first, which is the outcome we wanted.
+      if (!response.ok && response.status !== 409) {
+        throw new Error(`Finalize answered ${response.status}`);
+      }
+    };
+    return (
+      <Card className="flex flex-col gap-3">
+        <p className="font-semibold">Time's up</p>
+        <p className="text-sm text-ink-muted">
+          Anyone can finalize. Winners are computed from public trading data, not chosen by whoever
+          taps.
+        </p>
+        {error ? (
+          <p role="alert" className="text-sm text-down">
+            {error}
+          </p>
+        ) : null}
+        <Button
+          pending={pending}
+          onClick={() => run(finalize, "Results could not be posted. Try again shortly.")}
+        >
+          Finalize results
+        </Button>
+      </Card>
+    );
+  }
+
+  const wallet = identity?.tournamentWallet(tournament.id);
+  const standings = tournament.entries
+    .filter((entry) => entry.rank !== null)
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+  const mine = standings.find((entry) => entry.participant_id === wallet?.account.address);
+  const claim = async () => {
+    if (wallet) {
+      await fundGas(publicClient, wallet.account.address);
+      await manager.claim(wallet, tournament.id);
+    }
+  };
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <p className="font-semibold">
+        {phase === "dispute"
+          ? `Results in review · prizes unlock in ${timeUntil(tournament.claimableAt, now)}`
+          : "Final results"}
+      </p>
+      {standings.length === 0 ? (
+        <p className="text-sm text-ink-muted">
+          Nobody traded, so the prize pool returns to the organizer.
+        </p>
+      ) : (
+        <ol className="flex flex-col gap-1.5">
+          {standings.map((entry) => (
+            <li
+              key={entry.participant_id}
+              className="tabular flex items-center justify-between text-sm"
+            >
+              <span>
+                #{entry.rank}{" "}
+                <span className="font-mono">{shortAddress(entry.participant_id)}</span>
+                {entry === mine ? <span className="ml-2 text-accent">You</span> : null}
+              </span>
+              <span className={entry.claimed ? "text-ink-muted" : "font-semibold text-up"}>
+                {formatUsdc(entry.prize)} USDC{entry.claimed ? " · claimed" : ""}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {error ? (
+        <p role="alert" className="text-sm text-down">
+          {error}
+        </p>
+      ) : null}
+      {phase === "claimable" && mine && !mine.claimed && mine.prize > 0n ? (
+        <Button
+          pending={pending}
+          onClick={() => run(claim, "The prize was not claimed. Try again.")}
+        >
+          Claim {formatUsdc(mine.prize)} USDC
+        </Button>
+      ) : null}
+    </Card>
+  );
+}

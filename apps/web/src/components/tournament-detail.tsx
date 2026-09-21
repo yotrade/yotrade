@@ -11,6 +11,7 @@ import { useNow } from "@/lib/use-now.ts";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
+import { ResultsPanel } from "./results-panel.tsx";
 import { Card } from "./ui/card.tsx";
 
 const BPS = 10_000n;
@@ -83,6 +84,8 @@ export function TournamentDetail({ id }: { id: string }) {
           ))}
         </ol>
       </Card>
+
+      <ResultsPanel tournament={data} phase={phase} now={now} />
 
       <JoinPanel tournament={data} phase={phase} />
 
