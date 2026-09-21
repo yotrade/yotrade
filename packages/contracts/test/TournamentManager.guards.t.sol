@@ -122,6 +122,17 @@ contract TournamentManagerGuardsTest is Test {
         manager.join(id, alice, new bytes32[](0));
     }
 
+    function test_Join_WithoutCapitalRequirementStillChecksOwnership() public {
+        vm.prank(organizer);
+        uint256 id = manager.createTournament(_config());
+        address account = makeAddr("alice-trading");
+        core.register(account, alice);
+
+        vm.prank(alice);
+        manager.join(id, account, new bytes32[](0));
+        assertEq(manager.capitalAtJoin(id, alice), 0);
+    }
+
     function test_Join_RevertsOnUnknownTournament() public {
         vm.expectRevert(abi.encodeWithSelector(ITournamentManager.WrongStatus.selector, ITournamentManager.Status.None));
         vm.prank(alice);
