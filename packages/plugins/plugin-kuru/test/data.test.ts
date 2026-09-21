@@ -83,3 +83,37 @@ describe("SDK boundary parsers", () => {
     expect(() => parseSwapQuote({ amountOut: "1" })).toThrow(TypeError);
   });
 });
+
+describe("performance", () => {
+  test("sums realized PnL across pages inside the window and scales it to USDC units", async () => {
+    const urls: string[] = [];
+    const pages = [
+      {
+        data: {
+          trades: [{ pnl: { realizedPnl: "-35545101000000000000" } }],
+          positions: [{ marketAddress: "0x5bde", openSize: "97955", openCost: "99999951" }],
+        },
+        pagination: { nextCursor: "abc" },
+      },
+      {
+        data: {
+          trades: [{ pnl: { realizedPnl: "10000000000000000000" } }, { pnl: { realizedPnl: "0" } }],
+          positions: [{ marketAddress: "0x5bde", openSize: "97955", openCost: "99999951" }],
+        },
+        pagination: { nextCursor: null },
+      },
+    ];
+    const client = createDataClient("https://kuru.test/api/v1", (url) => {
+      urls.push(url);
+      return Promise.resolve(new Response(JSON.stringify(pages[urls.length - 1])));
+    });
+
+    expect(await client.performance(85n, { from: 100n, to: 200n })).toEqual({
+      realizedUsdc: -25_545_101n,
+      fills: 3,
+      positions: [{ market: "0x5bde", openSize: 97_955n, openCost: 99_999_951n }],
+    });
+    expect(urls[0]).toBe("https://kuru.test/api/v1/users/85/trades?limit=500&from=100&to=200");
+    expect(urls[1]).toContain("cursor=abc");
+  });
+});
