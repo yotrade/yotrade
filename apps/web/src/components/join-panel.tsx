@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { tokens } from "@yotrade/core/addresses";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
+import Link from "next/link";
 import { useState } from "react";
 import { erc20Abi } from "viem";
 
@@ -12,9 +13,9 @@ import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
+import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
-import { TradePanel } from "./trade-panel.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
@@ -48,6 +49,67 @@ function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint): JoinDeps
   };
 }
 
+/** Joined: what my account is worth, and the one thing to do next. */
+function MyStatus({
+  id,
+  wallet,
+  capitalAtJoin,
+  phase,
+}: {
+  id: bigint;
+  wallet: MeraWallet;
+  capitalAtJoin: bigint;
+  phase: Phase;
+}) {
+  const { kuru } = useRuntime();
+  const address = wallet.account.address;
+  const portfolio = useQuery({
+    queryKey: ["portfolio", address],
+    queryFn: () => kuru.portfolio(address),
+    refetchInterval: 3_000,
+    enabled: phase === "upcoming" || phase === "live",
+  });
+  const value = portfolio.data?.totalUsdc ?? capitalAtJoin;
+  const roi = roiBps(value, capitalAtJoin);
+
+  return (
+    <Card className="flex flex-col gap-4 py-4">
+      <div className="flex items-center gap-3">
+        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
+          <Icon name="check" size={20} />
+          <Icon name="sparkle" size={16} className="absolute -right-1.5 -top-1.5 animate-float" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <p className="font-semibold leading-[21px]">You&apos;re in</p>
+          <p className="truncate font-mono text-[13px] text-ink-muted">{shortAddress(address)}</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <p className="tabular font-semibold leading-[21px]">${formatUsdc(value)}</p>
+          {roi === null ? null : (
+            <p className={`tabular text-sm font-medium ${roi >= 0 ? "text-up" : "text-down"}`}>
+              {formatBps(roi)}
+            </p>
+          )}
+        </div>
+      </div>
+      {phase === "live" ? (
+        <Link
+          href={`/t/${id}/trade`}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-accent bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+        >
+          <Icon name="swap" size={18} className="brightness-0 invert" />
+          Trade
+        </Link>
+      ) : null}
+      {phase === "upcoming" ? (
+        <p className="text-sm font-medium text-ink-muted">
+          Trading opens when the tournament starts.
+        </p>
+      ) : null}
+    </Card>
+  );
+}
+
 export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament; phase: Phase }) {
   const runtime = useRuntime();
   const { identity } = useIdentity();
@@ -69,27 +131,12 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   }
   if (entry.data) {
     return (
-      <section className="flex flex-col gap-3">
-        <Card className="flex items-center gap-3">
-          <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
-            <Icon name="check" size={20} />
-            <Icon name="sparkle" size={16} className="absolute -right-1.5 -top-1.5" />
-          </span>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="font-semibold leading-tight">You're in</p>
-            <p className="truncate text-sm font-medium text-ink-muted">
-              Account <span className="font-mono">{shortAddress(address)}</span> ·{" "}
-              <span className="tabular">{formatUsdc(entry.data.capitalAtJoin)} USDC at join</span>
-            </p>
-          </div>
-        </Card>
-        {phase === "live" ? (
-          <TradePanel wallet={wallet} capitalAtJoin={entry.data.capitalAtJoin} />
-        ) : null}
-        {phase === "upcoming" ? (
-          <p className="text-sm text-ink-muted">Trading opens when the tournament starts.</p>
-        ) : null}
-      </section>
+      <MyStatus
+        id={tournament.id}
+        wallet={wallet}
+        capitalAtJoin={entry.data.capitalAtJoin}
+        phase={phase}
+      />
     );
   }
   if (phase !== "upcoming" && phase !== "live") {
