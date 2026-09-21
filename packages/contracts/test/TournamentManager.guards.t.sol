@@ -42,8 +42,8 @@ contract TournamentManagerGuardsTest is Test {
             venue: address(venue),
             prizePool: 0,
             startingCapital: 0,
-            startTime: uint64(block.timestamp + 1 hours),
-            endTime: uint64(block.timestamp + 2 hours),
+            startTime: uint64(vm.getBlockTimestamp() + 1 hours),
+            endTime: uint64(vm.getBlockTimestamp() + 2 hours),
             maxParticipants: 10,
             allowlistRoot: bytes32(0),
             prizeSplitBps: split,
@@ -146,7 +146,7 @@ contract TournamentManagerGuardsTest is Test {
     function test_PostResults_RevertsOnTooManyWinners() public {
         vm.prank(organizer);
         uint256 id = manager.createTournament(_config());
-        vm.warp(block.timestamp + 2 hours);
+        vm.warp(vm.getBlockTimestamp() + 2 hours);
 
         vm.expectRevert(ITournamentManager.TooManyWinners.selector);
         vm.prank(scorer);
@@ -168,12 +168,12 @@ contract TournamentManagerGuardsTest is Test {
         vm.prank(alice);
         manager.join(id, alice, new bytes32[](0));
 
-        vm.warp(block.timestamp + 2 hours);
+        vm.warp(vm.getBlockTimestamp() + 2 hours);
         address[] memory winners = new address[](1);
         winners[0] = alice;
         vm.prank(scorer);
         manager.postResults(id, winners);
-        vm.warp(block.timestamp + 1 hours);
+        vm.warp(vm.getBlockTimestamp() + 1 hours);
 
         vm.prank(alice);
         assertEq(manager.claim(id), 0);
@@ -228,7 +228,7 @@ contract TournamentManagerGuardsTest is Test {
     function test_PostResults_RevertsWhenPaused() public {
         vm.prank(organizer);
         uint256 id = manager.createTournament(_config());
-        vm.warp(block.timestamp + 2 hours);
+        vm.warp(vm.getBlockTimestamp() + 2 hours);
         vm.prank(admin);
         manager.pause();
 
@@ -284,7 +284,7 @@ contract TournamentManagerGuardsTest is Test {
         vm.prank(next);
         manager.acceptDefaultAdminTransfer();
 
-        vm.warp(block.timestamp + 1 days + 1);
+        vm.warp(vm.getBlockTimestamp() + 1 days + 1);
         vm.prank(next);
         manager.acceptDefaultAdminTransfer();
         assertEq(manager.defaultAdmin(), next);
