@@ -23,6 +23,8 @@ jobs:
         with:
           bun-version-file: package.json
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.3
       - run: bun install --frozen-lockfile
       - run: bunx biome ci .
       - run: bunx turbo run lint build test
@@ -37,6 +39,8 @@ jobs:
         with:
           submodules: recursive
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.3
       - name: Gas snapshot
         run: forge snapshot --check --tolerance 5 --no-match-path 'test/fork/*' --no-match-test 'testFuzz|invariant'
         env:
@@ -58,6 +62,8 @@ jobs:
         with:
           submodules: recursive
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.3
       - run: forge test --match-path 'test/fork/*' -vv
         env:
           MONAD_TESTNET_RPC_URL: https://testnet-rpc.monad.xyz
@@ -68,8 +74,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.3
+      # Compile here so Slither analyses exactly what the pinned Foundry produces.
+      - run: forge build --build-info --skip '*/test/**' '*/script/**' --force
+        working-directory: packages/contracts
+        env:
+          FOUNDRY_PROFILE: default
       - uses: crytic/slither-action@v0.4.2
         with:
           target: packages/contracts
+          ignore-compile: true
           fail-on: medium
           slither-args: --filter-paths "lib|test|script"
