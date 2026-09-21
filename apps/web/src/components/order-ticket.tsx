@@ -30,16 +30,7 @@ const SHORTCUTS = [25n, 50n, 100n] as const;
 export type Side = "Buy" | "Sell";
 
 function bookLine(book: Book | undefined): string {
-  if (!book) {
-    return "…";
-  }
-  if (book.hasLiquidity) {
-    return `Mid ${midPrice(book).toLocaleString("en-US")} USDC`;
-  }
-  if (book.hasBid) {
-    return "Bids only: you can sell, not buy";
-  }
-  return book.hasAsk ? "Offers only: you can buy, not sell" : "No liquidity";
+  return book?.hasLiquidity ? `Mid ${midPrice(book).toLocaleString("en-US")} USDC` : "—";
 }
 
 function failureCopy(cause: unknown): string {
