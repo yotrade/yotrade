@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { OnboardingGate } from "@/components/onboarding-gate.tsx";
 import { TabBar } from "@/components/tab-bar.tsx";
+import { NavigationTracker } from "@/components/ui/back-button.tsx";
 import { Providers } from "./providers.tsx";
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {/* Room for the fixed tab bar, so the last row is never hidden behind it. */}
               <div className="flex flex-1 flex-col pb-24">{children}</div>
               <TabBar />
+              <NavigationTracker />
             </OnboardingGate>
           </div>
         </Providers>
