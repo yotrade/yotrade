@@ -28,6 +28,16 @@ bun run dev
 | `SCORER_PRIVATE_KEY` (holds `SCORER_ROLE` only) | Results cannot be posted: finalize answers 503 |
 | `KIMI_API_KEY` | The commentary card stays hidden |
 
+## Deployment (Vercel)
+
+1. Import the repository, set **Root Directory** to `apps/web`. Bun is detected from `bun.lock`.
+2. Set the variables from `.env.example`. `NEXT_PUBLIC_RP_ID` is the production hostname, for example `yotrade.xyz`.
+3. Fund the drip wallet with a small MON float and grant `SCORER_ROLE` to the scorer address.
+
+Decide the domain before the first real user. Passkeys are scoped to the relying-party id and accounts are derived from the passkey: a different domain means new, empty accounts for everyone.
+
+Rate limits, caches and send queues are in memory, which is correct for one instance. Move them to a shared store before scaling out.
+
 ## Structure
 
 ```
