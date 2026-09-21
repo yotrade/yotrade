@@ -20,7 +20,7 @@ export function Field({ label, hint, error, className = "", ...rest }: FieldProp
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`tabular min-h-12 rounded-xl border bg-surface px-4 text-base text-ink placeholder:text-ink-muted/60 focus-visible:outline-2 focus-visible:outline-accent ${error ? "border-down" : "border-border"} ${className}`}
+        className={`tabular min-h-12 rounded-2xl border bg-surface px-4 text-base text-ink placeholder:text-ink-muted/60 focus-visible:outline-2 focus-visible:outline-accent ${error ? "border-down" : "border-transparent"} ${className}`}
         {...rest}
       />
       {describedBy ? (

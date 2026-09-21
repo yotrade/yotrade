@@ -26,7 +26,7 @@ export function Select<T extends string>({
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
-        className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
+        className="min-h-12 rounded-2xl border border-transparent bg-surface px-4 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
         {...rest}
       >
         {options.map((option) => (
