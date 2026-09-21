@@ -1,0 +1,212 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type MarketSymbol, markets, tokens } from "@yotrade/core/addresses";
+import { EmptyBookError } from "@yotrade/plugin-kuru/errors";
+import { midPrice } from "@yotrade/plugin-kuru/pricing";
+import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
+import { type FormEvent, useState } from "react";
+import { formatUnits } from "viem";
+
+import { formatToken, formatUsdc } from "@/lib/format.ts";
+import { formatBps, parseTicket, roiBps } from "@/lib/ticket.ts";
+import { useRuntime } from "@/lib/use-runtime.ts";
+import { Button } from "./ui/button.tsx";
+import { Card } from "./ui/card.tsx";
+import { Field } from "./ui/field.tsx";
+
+const MARKET_SYMBOLS = Object.keys(markets) as MarketSymbol[];
+const SHORTCUTS = [25n, 50n, 100n] as const;
+const LABELS: Record<string, string> = {
+  usdc: "USDC",
+  cbBtc: "cbBTC",
+  mon: "MON",
+  xaut0: "XAUt0",
+  weth: "WETH",
+};
+
+type Side = "Buy" | "Sell";
+
+function Toggle<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: readonly T[];
+  value: T;
+  onChange(next: T): void;
+  label: string;
+}) {
+  return (
+    <fieldset className="flex gap-1 rounded-xl border border-border p-1">
+      <legend className="sr-only">{label}</legend>
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={option === value}
+          onClick={() => onChange(option)}
+          className={`min-h-10 flex-1 rounded-lg px-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${option === value ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"}`}
+        >
+          {option}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
+export function TradePanel({
+  wallet,
+  capitalAtJoin,
+}: {
+  wallet: MeraWallet;
+  capitalAtJoin: bigint;
+}) {
+  const { kuru } = useRuntime();
+  const queryClient = useQueryClient();
+  const address = wallet.account.address;
+  const [market, setMarket] = useState<MarketSymbol>("cbBTC/USDC");
+  const [side, setSide] = useState<Side>("Buy");
+  const [input, setInput] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  const [done, setDone] = useState<string>();
+
+  const portfolio = useQuery({
+    queryKey: ["portfolio", address],
+    queryFn: () => kuru.portfolio(address),
+    refetchInterval: 3_000,
+  });
+  const book = useQuery({
+    queryKey: ["book", market],
+    queryFn: () => kuru.market.book(market),
+    refetchInterval: 3_000,
+  });
+
+  const base = markets[market].base;
+  const isBuy = side === "Buy";
+  const tokenIn = isBuy ? "usdc" : base;
+  const decimals = tokens[tokenIn].decimals;
+  const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
+  const roi = portfolio.data ? roiBps(portfolio.data.totalUsdc, capitalAtJoin) : null;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setDone(undefined);
+    const ticket = parseTicket(input, decimals, available);
+    if (!ticket.ok) {
+      setError(ticket.reason);
+      return;
+    }
+    setError(undefined);
+    setPending(true);
+    try {
+      await kuru.market.swap(wallet, {
+        market,
+        side: isBuy ? "buy" : "sell",
+        amountIn: ticket.amount,
+      });
+      setDone(isBuy ? `Bought ${LABELS[base]} for ${input} USDC` : `Sold ${input} ${LABELS[base]}`);
+      setInput("");
+      await queryClient.invalidateQueries({ queryKey: ["portfolio", address] });
+    } catch (cause) {
+      console.error("swap failed", cause);
+      setError(
+        cause instanceof EmptyBookError
+          ? "This market has no liquidity right now."
+          : "The order did not go through. Nothing was traded.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Card className="flex flex-col gap-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-sm text-ink-muted">Account value</p>
+            <p className="tabular text-2xl font-bold">
+              {portfolio.data ? `${formatUsdc(portfolio.data.totalUsdc)} USDC` : "…"}
+            </p>
+          </div>
+          {roi === null ? null : (
+            <p className={`tabular text-lg font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
+              {formatBps(roi)}
+            </p>
+          )}
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {Object.entries(portfolio.data?.holdings ?? {})
+            .filter(([, holding]) => holding.free + holding.reserved > 0n)
+            .map(([symbol, holding]) => (
+              <li
+                key={symbol}
+                className="tabular rounded-lg border border-border px-2.5 py-1 text-sm"
+              >
+                {formatToken(
+                  holding.free + holding.reserved,
+                  tokens[symbol as keyof typeof tokens].decimals,
+                )}{" "}
+                {LABELS[symbol]}
+              </li>
+            ))}
+        </ul>
+      </Card>
+
+      <Card>
+        <form className="flex flex-col gap-3" onSubmit={submit}>
+          <Toggle<MarketSymbol>
+            label="Market"
+            options={MARKET_SYMBOLS}
+            value={market}
+            onChange={setMarket}
+          />
+          <Toggle<Side>
+            label="Side"
+            options={["Buy", "Sell"] as const}
+            value={side}
+            onChange={setSide}
+          />
+          <p className="tabular text-sm text-ink-muted">
+            {book.data?.hasLiquidity
+              ? `Mid ${midPrice(book.data).toLocaleString("en-US")} USDC`
+              : "No liquidity"}
+          </p>
+          <Field
+            label={`Amount in ${LABELS[tokenIn]}`}
+            inputMode="decimal"
+            placeholder="0.00"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            hint={`Available ${formatToken(available, decimals)} ${LABELS[tokenIn]}`}
+            {...(error ? { error } : {})}
+          />
+          <div className="flex gap-2">
+            {SHORTCUTS.map((percent) => (
+              <Button
+                key={percent.toString()}
+                variant="secondary"
+                className="min-h-10"
+                disabled={available === 0n}
+                onClick={() => setInput(formatUnits((available * percent) / 100n, decimals))}
+              >
+                {percent.toString()}%
+              </Button>
+            ))}
+          </div>
+          <Button type="submit" pending={pending} disabled={!book.data?.hasLiquidity}>
+            {side} {LABELS[base]}
+          </Button>
+          {done ? (
+            <p role="status" className="text-sm text-up">
+              {done}
+            </p>
+          ) : null}
+        </form>
+      </Card>
+    </section>
+  );
+}
