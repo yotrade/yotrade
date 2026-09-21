@@ -12,6 +12,7 @@ import { formatUsdc, shortAddress } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
+import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
@@ -165,6 +166,11 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
     setError(undefined);
     try {
       await runJoin(joinDeps(runtime, wallet, tournament.id), tournament.startingCapital, setStep);
+      const profile = loadProfile();
+      if (!isEmpty(profile)) {
+        // Cosmetic: a trader who joined must never see "joining failed" because a name did not save.
+        await publishProfile(runtime.publicClient, wallet, profile).catch(() => undefined);
+      }
       await queryClient.invalidateQueries({ queryKey: ["entry"] });
       await queryClient.invalidateQueries({ queryKey: ["tournament"] });
     } catch (cause) {

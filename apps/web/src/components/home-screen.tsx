@@ -6,6 +6,7 @@ import { useState } from "react";
 import { shortAddress } from "@/lib/format.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { AccountSheet } from "./account-sheet.tsx";
@@ -29,6 +30,7 @@ export function HomeScreen() {
   const { identity } = useIdentity();
   const { tournaments, mine } = useMyTournaments();
   const [account, setAccount] = useState(false);
+  const [profile] = useLocalProfile();
 
   if (!identity) {
     return null;
@@ -50,9 +52,11 @@ export function HomeScreen() {
           onClick={() => setAccount(true)}
           className="flex items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4 text-left transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
-          <Avatar address={address} size={36} />
+          <Avatar address={address} size={36} avatar={profile.avatar} />
           <span className="flex flex-col">
-            <span className="text-[11px] font-semibold leading-4 text-ink-muted">Main account</span>
+            <span className="max-w-40 truncate text-[11px] font-semibold leading-4 text-ink-muted">
+              {profile.name || "Main account"}
+            </span>
             <span className="font-mono text-[13px] font-semibold leading-4">
               {shortAddress(address)}
             </span>
