@@ -40,8 +40,9 @@ contract PerpsEngine is
     uint256 public constant MAX_LEVERAGE = 20;
     /// @notice An account is liquidatable once equity is under this share of its total notional.
     uint256 public constant MAINTENANCE_BPS = 250;
-    /// @notice Fills use a price at most this old, which bounds how far back a trader can pick a price.
-    uint256 public constant MAX_PRICE_AGE = 10;
+    /// @notice Fills use a price at most this old, which bounds how far back a trader can pick a price. Wide
+    /// enough for Hermes plans that refresh every ten seconds; any newer price someone pushed wins regardless.
+    uint256 public constant MAX_PRICE_AGE = 30;
     /// @notice Fills are refused while Pyth's confidence interval is wider than this share of the price.
     uint256 public constant MAX_CONF_BPS = 200;
     /// @notice Settlement accepts the first price published within this many seconds after the end.

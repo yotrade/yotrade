@@ -280,7 +280,7 @@ contract PerpsEngineTest is PerpsFixture {
         engine.trade{value: 1}(id, BTC, 1e18, wide);
 
         // An update older than the limit leaves the stored price stale.
-        bytes[] memory old = _one(_encode(ETH, 3000e8, 0, time - 11, time - 12));
+        bytes[] memory old = _one(_encode(ETH, 3000e8, 0, time - 31, time - 32));
         vm.expectRevert(MockPyth.StalePrice.selector);
         vm.prank(alice);
         engine.trade{value: 1}(id, ETH, 1e18, old);
@@ -319,7 +319,7 @@ contract PerpsEngineTest is PerpsFixture {
         engine.trade{value: 2}(id, ETH, 1e17, updates);
 
         // Without a fresh price for the open BTC position the account cannot be valued.
-        vm.warp(vm.getBlockTimestamp() + 11);
+        vm.warp(vm.getBlockTimestamp() + 31);
         vm.expectRevert(MockPyth.StalePrice.selector);
         _trade(alice, ETH, 1e17, 3000);
     }

@@ -13,6 +13,7 @@
     "lint": "forge fmt --check && forge lint src --deny warnings",
     "format": "forge fmt",
     "deploy": "forge clean && forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast",
+    "deploy:perps": "forge clean && forge script script/DeployPerps.s.sol --rpc-url monad_testnet --broadcast",
     "upgrade": "forge clean && forge script script/Upgrade.s.sol --rpc-url monad_testnet --broadcast"
   }
 }
