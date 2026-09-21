@@ -9,10 +9,11 @@ import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { type FormEvent, useState } from "react";
 import { formatUnits } from "viem";
 
-import { formatToken, formatUsdc } from "@/lib/format.ts";
+import { formatToken } from "@/lib/format.ts";
 import { formatBps, parseTicket, roiBps } from "@/lib/ticket.ts";
 import { useDebounced } from "@/lib/use-debounced.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { Amount } from "./ui/amount.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Field } from "./ui/field.tsx";
@@ -66,7 +67,7 @@ function Toggle<T extends string>({
   label: string;
 }) {
   return (
-    <fieldset className="flex gap-1 rounded-xl border border-border p-1">
+    <fieldset className="flex gap-1 rounded-2xl bg-surface p-1">
       <legend className="sr-only">{label}</legend>
       {options.map((option) => (
         <button
@@ -74,7 +75,7 @@ function Toggle<T extends string>({
           type="button"
           aria-pressed={option === value}
           onClick={() => onChange(option)}
-          className={`min-h-10 flex-1 rounded-lg px-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${option === value ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"}`}
+          className={`min-h-10 flex-1 rounded-lg px-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${option === value ? "bg-surface-raised text-ink ring-2 ring-accent" : "text-ink-muted hover:text-ink"}`}
         >
           {option}
         </button>
@@ -101,9 +102,11 @@ function PortfolioCard({
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-sm text-ink-muted">Account value</p>
-          <p className="tabular text-2xl font-bold">
-            {portfolio ? `${formatUsdc(portfolio.totalUsdc)} USDC` : "…"}
-          </p>
+          {portfolio ? (
+            <Amount value={portfolio.totalUsdc} size="xl" />
+          ) : (
+            <p className="text-5xl font-bold text-ink-muted">…</p>
+          )}
         </div>
         {roi === null ? null : (
           <p className={`tabular text-lg font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
@@ -117,7 +120,7 @@ function PortfolioCard({
           .map(([symbol, holding]) => (
             <li
               key={symbol}
-              className="tabular rounded-lg border border-border px-2.5 py-1 text-sm"
+              className="tabular rounded-full bg-surface px-3 py-1 text-sm font-medium"
             >
               {formatToken(holding.free + holding.reserved, tokens[symbol as TokenSymbol].decimals)}{" "}
               {LABELS[symbol]}
