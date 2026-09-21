@@ -7,6 +7,8 @@ export const yotrade = {
   tournamentManager: "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
   /** Approved venue adapter for Kuru Spot V2. Goes into `Config.venue` when creating a tournament. */
   kuruVenueAdapter: "0xADefe39B43673641e94cE99613c54266af2490e6",
+  /** Ownerless, immutable. Names and avatars of tournament accounts. */
+  profileRegistry: "0x9d8B6852705dD7585B3907244d603547a4eA32d6",
 } as const satisfies Record<string, Address>;
 
 export const kuru = {
