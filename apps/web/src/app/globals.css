@@ -1,18 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light wallet palette: soft grey canvas, white cards, one blue accent. Text colours meet WCAG AA on both. */
-  --color-surface: #f4f4f6;
-  --color-surface-raised: #ffffff;
-  --color-border: #e7e7ec;
-  --color-ink: #0d0d12;
-  --color-ink-muted: #6b6b76;
-  --color-accent: #2467f2;
+  /*
+   * Structure from the Ghost wallet kit (white screens, zinc neutrals, borderless cards, input wells).
+   * Colour from Monad's brand kit: purple #6e54ff, light purple #ddd7fe, ink #0e091c.
+   */
+  --color-surface: #ffffff;
+  --color-surface-raised: #fafafa;
+  --color-well: #18181b0a;
+  --color-border: #e4e4e7;
+  --color-ink: #0e091c;
+  --color-ink-muted: #71717a;
+  --color-accent: #6e54ff;
+  --color-accent-strong: #5a41e8;
+  --color-accent-soft: #ddd7fe;
   --color-accent-ink: #ffffff;
   --color-up: #15803d;
   --color-down: #dc2626;
+  --color-spark: #facc15;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
+  --shadow-button: 0 1px 1px #18181b0d;
+  --shadow-row: 0 1px 0.5px #18181b0a;
+
+  /* Motion: one easing everywhere, short enough to never be waited on. */
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-enter: enter 0.4s var(--ease-out-soft) both;
+  --animate-pop: pop 0.6s var(--ease-out-soft) both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-glow: glow 2.4s ease-in-out infinite;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+  }
+  @keyframes float {
+    50% {
+      transform: translateY(-4px) rotate(8deg);
+    }
+  }
+  @keyframes glow {
+    50% {
+      opacity: 0.6;
+      transform: scale(1.12);
+    }
+  }
 }
 
 html {
@@ -28,4 +68,14 @@ body {
 /* Numbers that change every block must not make the layout jump. */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* People who ask for less motion get none: every animation token resolves to nothing. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-enter: none;
+    --animate-pop: none;
+    --animate-float: none;
+    --animate-glow: none;
+  }
 }
