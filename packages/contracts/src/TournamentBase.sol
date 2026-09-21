@@ -4,16 +4,19 @@ pragma solidity 0.8.37;
 import {TournamentStorage} from "./TournamentStorage.sol";
 import {ITournamentManager} from "./interfaces/ITournamentManager.sol";
 import {PrizeSplit} from "./libraries/PrizeSplit.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {
+    AccessControlDefaultAdminRulesUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @title TournamentBase
 /// @notice What every module builds on: roles, pause, reentrancy guard, shared storage and the status guards.
+/// @dev One default admin with a two-step, delayed transfer (`AccessControlDefaultAdminRules`).
 abstract contract TournamentBase is
     ITournamentManager,
     TournamentStorage,
-    AccessControlUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardTransient
 {

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.37;
 
-import {IAccountCore} from "./interfaces/IAccountCore.sol";
 import {ITournamentManager} from "./interfaces/ITournamentManager.sol";
 import {EscrowModule} from "./modules/EscrowModule.sol";
 import {RegistrationModule} from "./modules/RegistrationModule.sol";
@@ -20,24 +19,22 @@ contract TournamentManager is EscrowModule, RegistrationModule, ResultsModule, U
         _disableInitializers();
     }
 
-    /// @param admin Receives the admin, pauser and upgrader roles.
+    /// @param admin The single default admin. Also receives the pauser and upgrader roles.
     /// @param scorer Receives the scorer role.
-    /// @param accountCore_ Kuru `AccountCore` proxy. Zero disables onchain trading-account checks.
     /// @param disputeWindow_ Seconds between results being posted and prizes becoming claimable.
-    function initialize(address admin, address scorer, address accountCore_, uint64 disputeWindow_)
+    /// @param adminTransferDelay Seconds a new default admin must wait before accepting the role.
+    function initialize(address admin, address scorer, uint64 disputeWindow_, uint48 adminTransferDelay)
         external
         initializer
     {
         if (admin == address(0) || scorer == address(0)) revert ZeroAddress();
-        __AccessControl_init();
+        __AccessControlDefaultAdminRules_init(adminTransferDelay, admin);
         __Pausable_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
         _grantRole(SCORER_ROLE, scorer);
 
-        _setAccountCore(accountCore_);
         _setDisputeWindow(disputeWindow_);
     }
 
@@ -45,8 +42,11 @@ contract TournamentManager is EscrowModule, RegistrationModule, ResultsModule, U
     // Administration
     // ---------------------------------------------------------------------------------------------------------
 
-    function setAccountCore(address accountCore_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setAccountCore(accountCore_);
+    /// @notice Approves or revokes a venue adapter. Revoking does not affect tournaments already created.
+    function setVenueApproval(address venue, bool approved) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (venue == address(0)) revert ZeroAddress();
+        _layout().approvedVenues[venue] = approved;
+        emit VenueApprovalUpdated(venue, approved);
     }
 
     function setDisputeWindow(uint64 disputeWindow_) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -65,8 +65,14 @@ contract TournamentManager is EscrowModule, RegistrationModule, ResultsModule, U
     // Views
     // ---------------------------------------------------------------------------------------------------------
 
-    function accountCore() external view returns (address) {
-        return address(_layout().accountCore);
+    /// @inheritdoc ITournamentManager
+    function isVenueApproved(address venue) external view returns (bool) {
+        return _layout().approvedVenues[venue];
+    }
+
+    /// @inheritdoc ITournamentManager
+    function escrowed(address token) external view returns (uint256) {
+        return _layout().escrowed[token];
     }
 
     function disputeWindow() external view returns (uint64) {
@@ -123,11 +129,6 @@ contract TournamentManager is EscrowModule, RegistrationModule, ResultsModule, U
     // ---------------------------------------------------------------------------------------------------------
 
     function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
-
-    function _setAccountCore(address accountCore_) private {
-        _layout().accountCore = IAccountCore(accountCore_);
-        emit AccountCoreUpdated(accountCore_);
-    }
 
     function _setDisputeWindow(uint64 disputeWindow_) private {
         if (disputeWindow_ > MAX_DISPUTE_WINDOW) revert InvalidSchedule();
