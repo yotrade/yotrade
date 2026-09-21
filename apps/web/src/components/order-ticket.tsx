@@ -11,6 +11,12 @@ import { formatUnits } from "viem";
 
 import { formatToken } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
+import {
+  NETWORK_FEE_MON,
+  type OrderDetails,
+  orderDetails,
+  SLIPPAGE_BPS,
+} from "@/lib/order-details.ts";
 import { parseTicket } from "@/lib/ticket.ts";
 import { TOKEN_LABELS } from "@/lib/tokens.ts";
 import { useDebounced } from "@/lib/use-debounced.ts";
@@ -50,26 +56,61 @@ function failureCopy(cause: unknown): string {
   return "The order did not go through. Nothing was traded.";
 }
 
-function InfoCard({
-  book,
-  quote,
-}: {
-  book: Book | undefined;
-  quote: SwapQuote | null | undefined;
-}) {
+interface InfoProps {
+  readonly book: Book | undefined;
+  readonly quote: SwapQuote | null | undefined;
+  readonly details: OrderDetails | null;
+  readonly base: TokenSymbol;
+  readonly tokenOut: TokenSymbol;
+  readonly takerFeeBps: number | undefined;
+}
+
+const price = (value: number) =>
+  value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
+
+/** Everything a venue tells you before you confirm. Rows read "—" until there is an amount to quote. */
+function InfoCard({ book, quote, details, base, tokenOut, takerFeeBps }: InfoProps) {
   const tooMuch = (quote?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
+  const rows: { label: string; value: string; alert?: boolean }[] = [
+    { label: "Order type", value: "Market" },
+    { label: "Market", value: bookLine(book) },
+    {
+      label: "Rate",
+      value: details ? `1 ${TOKEN_LABELS[base]} = ${price(details.rate)} USDC` : "—",
+    },
+    {
+      label: "Price impact",
+      value: quote ? `${(quote.impactBps / 100).toFixed(2)}%` : "—",
+      alert: tooMuch,
+    },
+    { label: "Slippage tolerance", value: `${(SLIPPAGE_BPS / 100).toFixed(2)}%` },
+    {
+      label: "Minimum received",
+      value: details
+        ? `${formatToken(details.minimumReceived, tokens[tokenOut].decimals)} ${TOKEN_LABELS[tokenOut]}`
+        : "—",
+    },
+    {
+      label: "Trading fee",
+      value: takerFeeBps === undefined ? "—" : `${(takerFeeBps / 100).toFixed(2)}% · included`,
+    },
+    { label: "Network fee", value: `≈ ${NETWORK_FEE_MON} MON` },
+  ];
   return (
     <Card className="flex flex-col gap-2" aria-live="polite">
-      <div className="flex items-center justify-between text-sm font-medium">
-        <span className="text-ink-muted">Market</span>
-        <span className="tabular">{bookLine(book)}</span>
-      </div>
-      <div className="flex items-center justify-between text-sm font-medium">
-        <span className="text-ink-muted">Price impact</span>
-        <span className={`tabular ${tooMuch ? "font-bold text-down" : ""}`}>
-          {quote ? `${(quote.impactBps / 100).toFixed(2)}%` : "—"}
-        </span>
-      </div>
+      <dl className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between gap-3 text-sm font-medium"
+          >
+            <dt className="text-ink-muted">{row.label}</dt>
+            <dd className={`tabular text-right ${row.alert ? "font-bold text-down" : ""}`}>
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
       {tooMuch ? (
         <p className="text-[13px] leading-5 text-down">
           Too high for this size: try a smaller amount.
@@ -128,6 +169,12 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
     refetchInterval: 3_000,
   });
 
+  const info = useQuery({
+    queryKey: ["market-info", markets[market].orderBook],
+    queryFn: () => kuru.data.market(markets[market].orderBook),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
   const base = markets[market].base;
   const isBuy = side === "Buy";
   const tokenIn: TokenSymbol = isBuy ? "usdc" : base;
@@ -166,6 +213,7 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
         market,
         side: isBuy ? "buy" : "sell",
         amountIn: ticket.amount,
+        slippageBps: SLIPPAGE_BPS,
       });
       const message = isBuy
         ? `Bought ${TOKEN_LABELS[base]} for ${input} USDC`
@@ -239,7 +287,24 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
         </p>
       ) : null}
 
-      <InfoCard book={book.data} quote={settled.ok ? quote.data : null} />
+      <InfoCard
+        book={book.data}
+        quote={settled.ok ? quote.data : null}
+        details={
+          settled.ok && quote.data
+            ? orderDetails(
+                isBuy,
+                settled.amount,
+                quote.data.quotedOut,
+                decimals,
+                tokens[tokenOut].decimals,
+              )
+            : null
+        }
+        base={base}
+        tokenOut={tokenOut}
+        takerFeeBps={info.data?.takerFeeBps}
+      />
 
       <Button type="submit" pending={pending} disabled={!canFill || tooMuchImpact}>
         {side} {TOKEN_LABELS[base]}
