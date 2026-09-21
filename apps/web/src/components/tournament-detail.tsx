@@ -7,6 +7,7 @@ import Link from "next/link";
 import { countdown, formatUsdc, shortAddress, tournamentName } from "@/lib/format.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { useNow } from "@/lib/use-now.ts";
+import { JoinPanel } from "./join-panel.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { Card } from "./ui/card.tsx";
 
@@ -74,6 +75,8 @@ export function TournamentDetail({ id }: { id: string }) {
           ))}
         </ol>
       </Card>
+
+      <JoinPanel tournament={data} phase={phase} />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-semibold">
