@@ -51,7 +51,12 @@ export interface Holding {
 const NO_ACCOUNT = 0n;
 
 /** USDC is its own unit of account; anything without a liquid market is worth zero for scoring. */
-function usdcValue(symbol: string, amount: bigint, decimals: number, book: Book | undefined): bigint {
+function usdcValue(
+  symbol: string,
+  amount: bigint,
+  decimals: number,
+  book: Book | undefined,
+): bigint {
   if (symbol === "usdc") {
     return amount;
   }
