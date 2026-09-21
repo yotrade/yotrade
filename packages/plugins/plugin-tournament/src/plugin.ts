@@ -19,6 +19,8 @@ export type Wallet = WalletClient<Transport, Chain, Account>;
 export interface TournamentConfig {
   readonly prizeToken: Address;
   readonly capitalToken: Address;
+  /** Admin-approved venue adapter, for example `yotrade.kuruVenueAdapter`. */
+  readonly venue: Address;
   readonly prizePool: bigint;
   readonly startingCapital: bigint;
   readonly startTime: bigint;
