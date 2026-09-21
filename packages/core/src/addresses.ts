@@ -4,7 +4,9 @@ import type { Address } from "viem";
 export const MONAD_TESTNET_CHAIN_ID = 10_143;
 
 export const yotrade = {
-  tournamentManager: "0x5545a535D0782f8EdcE4Fb3373F65EcA10954F0D",
+  tournamentManager: "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
+  /** Approved venue adapter for Kuru Spot V2. Goes into `Config.venue` when creating a tournament. */
+  kuruVenueAdapter: "0xADefe39B43673641e94cE99613c54266af2490e6",
 } as const satisfies Record<string, Address>;
 
 export const kuru = {
