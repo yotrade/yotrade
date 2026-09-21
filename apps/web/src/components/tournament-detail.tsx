@@ -8,6 +8,7 @@ import { countdown, formatUsdc, shortAddress, tournamentName } from "@/lib/forma
 import { indexer } from "@/lib/indexer-client.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
+import { Commentary } from "./commentary.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
@@ -88,6 +89,8 @@ export function TournamentDetail({ id }: { id: string }) {
       <ResultsPanel tournament={data} phase={phase} now={now} />
 
       <JoinPanel tournament={data} phase={phase} />
+
+      <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-semibold">
