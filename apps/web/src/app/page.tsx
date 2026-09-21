@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { PasskeyCard } from "@/components/passkey-card.tsx";
+import { TournamentList } from "@/components/tournament-list.tsx";
 import { Card } from "@/components/ui/card.tsx";
 
 const STEPS = [
@@ -29,6 +30,11 @@ export default function HomePage() {
       </header>
 
       <PasskeyCard />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold">Tournaments</h2>
+        <TournamentList />
+      </section>
 
       <ol className="flex flex-col gap-3">
         {STEPS.map((step, index) => (
