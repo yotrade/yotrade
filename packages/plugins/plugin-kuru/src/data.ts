@@ -31,6 +31,14 @@ interface RawBalance {
   reserved: string;
 }
 
+interface RawTradesPage {
+  data: {
+    trades: { pnl: { realizedPnl: string } }[];
+    positions: { marketAddress: Address; openSize: string; openCost: string }[];
+  };
+  pagination?: { nextCursor: string | null };
+}
+
 interface RawTrade {
   tradeId: string;
   marketAddress: Address;
@@ -43,6 +51,27 @@ interface RawTrade {
   blockTimestamp: number;
   transactionHash: Hash;
 }
+
+export interface DataPosition {
+  readonly market: Address;
+  /** Base-token units still held. */
+  readonly openSize: bigint;
+  /** What that inventory cost, in raw quote (USDC) units. */
+  readonly openCost: bigint;
+}
+
+export interface Performance {
+  /** Realized PnL of fills inside the window, net of fees, in raw USDC units. */
+  readonly realizedUsdc: bigint;
+  readonly fills: number;
+  readonly positions: readonly DataPosition[];
+}
+
+/** Kuru reports PnL in quote units scaled by 1e18; USDC has six decimals. */
+const PNL_TO_USDC = 10n ** 12n;
+const PAGE_SIZE = 500;
+/** ponytail: 20 pages = 10,000 fills per trader per tournament. Raise it if a tournament ever gets there. */
+const MAX_PAGES = 20;
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -67,6 +96,41 @@ export function createDataClient(baseUrl: string = KURU_TESTNET_DATA_URL, fetche
         available: BigInt(row.available),
         reserved: BigInt(row.reserved),
       }));
+    },
+
+    /**
+     * Realized PnL of every fill between `from` and `to` (Unix seconds, inclusive) and the open positions.
+     * Deposits and transfers are not fills, so they cannot move this number.
+     */
+    async performance(userId: bigint, window: { from: bigint; to: bigint }): Promise<Performance> {
+      let realized = 0n;
+      let fills = 0;
+      let positions: DataPosition[] = [];
+      let cursor: string | null = null;
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const query = new URLSearchParams({
+          limit: PAGE_SIZE.toString(),
+          from: window.from.toString(),
+          to: window.to.toString(),
+          ...(cursor ? { cursor } : {}),
+        });
+        const body: RawTradesPage = await get(`/users/${userId}/trades?${query}`);
+        for (const trade of body.data.trades) {
+          realized += BigInt(trade.pnl.realizedPnl);
+        }
+        fills += body.data.trades.length;
+        positions = body.data.positions.map((row) => ({
+          market: row.marketAddress,
+          openSize: BigInt(row.openSize),
+          openCost: BigInt(row.openCost),
+        }));
+        cursor = body.pagination?.nextCursor ?? null;
+        if (!cursor) {
+          break;
+        }
+      }
+      return { realizedUsdc: realized / PNL_TO_USDC, fills, positions };
     },
 
     /** Most recent fills first. */
