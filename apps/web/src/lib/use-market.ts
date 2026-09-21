@@ -75,6 +75,9 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     /** A buy needs offers and a sell needs bids. Unknown until the book has loaded. */
     canBuy: top.data?.hasAsk ?? true,
     canSell: top.data?.hasBid ?? true,
+    /** Nothing here may be read as "empty" before it has loaded. */
+    chartLoading: info.isPending || candles.isPending,
+    bookLoading: info.isPending || depth.isPending,
     bars,
     from: candles.data?.from ?? 0,
     to: candles.data?.to ?? 1,
