@@ -5,6 +5,8 @@ import { createRuntime } from "@yotrade/core/plugin";
 import { alchemyTransport } from "@yotrade/plugin-alchemy/transport";
 import { kuru } from "@yotrade/plugin-kuru/plugin";
 import { mera, type PrfSource } from "@yotrade/plugin-mera/plugin";
+import { type HermesOptions, hermes } from "@yotrade/plugin-perps/hermes";
+import { perps } from "@yotrade/plugin-perps/plugin";
 import { tournament } from "@yotrade/plugin-tournament/plugin";
 
 import type { PublicEnv } from "./env.ts";
@@ -22,8 +24,11 @@ function e2eSource(seed: string | undefined): PrfSource | undefined {
   return { register: result, signIn: result };
 }
 
+/** Browsers reach Hermes through our proxy, which holds the key. Servers pass the real endpoint instead. */
+const BROWSER_HERMES: HermesOptions = { baseUrl: "/api/pyth" };
+
 /** Every integration the app talks to, wired once. Alchemy is used when a key is configured. */
-export function createAppRuntime(env: PublicEnv) {
+export function createAppRuntime(env: PublicEnv, hermesOptions: HermesOptions = BROWSER_HERMES) {
   const transport = env.NEXT_PUBLIC_ALCHEMY_API_KEY
     ? alchemyTransport(env.NEXT_PUBLIC_ALCHEMY_API_KEY, monadTestnet.id)
     : http(env.NEXT_PUBLIC_RPC_URL);
@@ -36,6 +41,7 @@ export function createAppRuntime(env: PublicEnv) {
     plugins: [
       kuru(),
       tournament(),
+      perps({ hermes: hermes(hermesOptions) }),
       mera({ rp: { id: env.NEXT_PUBLIC_RP_ID, name: "YoTrade" }, ...(source ? { source } : {}) }),
     ],
   });

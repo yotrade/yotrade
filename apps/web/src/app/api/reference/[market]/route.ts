@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { RANGES, type RangeName } from "@/lib/chart.ts";
 import { isMarketSlug } from "@/lib/markets.ts";
+import { isPerpsSlug } from "@/lib/perps-markets.ts";
 import { createReference } from "@/server/reference.ts";
 
 let reference: ReturnType<typeof createReference> | undefined;
@@ -9,7 +10,7 @@ let reference: ReturnType<typeof createReference> | undefined;
 export async function GET(request: Request, { params }: { params: Promise<{ market: string }> }) {
   const { market } = await params;
   const range = new URL(request.url).searchParams.get("range") ?? "15m";
-  if (!(isMarketSlug(market) && Object.hasOwn(RANGES, range))) {
+  if (!((isMarketSlug(market) || isPerpsSlug(market)) && Object.hasOwn(RANGES, range))) {
     return NextResponse.json({ error: "Unknown market or range" }, { status: 404 });
   }
   reference ??= createReference();

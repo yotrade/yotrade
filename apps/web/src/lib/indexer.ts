@@ -24,6 +24,8 @@ const entrySchema = z.object({
 const tournamentSchema = z.object({
   id: bigint,
   organizer: address,
+  /** The venue adapter: it decides whether this is a spot or a futures tournament. */
+  venue: address,
   prizePool: bigint,
   startingCapital: bigint,
   startTime: bigint,
@@ -47,7 +49,7 @@ export type IndexedEntry = z.infer<typeof entrySchema>;
 export type IndexedOwnEntry = z.infer<typeof ownEntrySchema>;
 export type IndexedTournamentDetail = z.infer<typeof detailSchema>;
 
-const TOURNAMENT_FIELDS = `id organizer prizePool startingCapital startTime endTime claimableAt maxParticipants
+const TOURNAMENT_FIELDS = `id organizer venue prizePool startingCapital startTime endTime claimableAt maxParticipants
   participantCount allowlisted prizeSplitBps metadataURI status winners`;
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;

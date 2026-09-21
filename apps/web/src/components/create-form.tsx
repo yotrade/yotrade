@@ -18,11 +18,15 @@ import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
 import { Field } from "./ui/field.tsx";
+import { Segmented } from "./ui/segmented.tsx";
 import { Select } from "./ui/select.tsx";
+
+const VENUES = ["Spot", "Futures"] as const;
 
 const keys = <T extends object>(value: T) => Object.keys(value) as (keyof T & string)[];
 
 const INITIAL: Form = {
+  venue: "spot",
   name: "",
   prizePool: "100",
   startDelay: "In 10 minutes",
@@ -103,6 +107,20 @@ export function CreateForm() {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit}>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-sm font-semibold tracking-tight">Market</p>
+        <Segmented<(typeof VENUES)[number]>
+          label="Market"
+          options={VENUES}
+          value={form.venue === "futures" ? "Futures" : "Spot"}
+          onChange={(next) => set("venue", next === "Futures" ? "futures" : "spot")}
+        />
+        <p className="text-[13px] font-medium leading-5 text-ink-muted">
+          {form.venue === "futures"
+            ? "Long or short BTC, ETH and SOL with up to 20x, at Pyth prices. Everyone starts with a virtual $10,000."
+            : "Buy and sell real tokens on Kuru's order books with test funds."}
+        </p>
+      </div>
       <Field
         label="Name"
         placeholder="Jogja Trading Cup"

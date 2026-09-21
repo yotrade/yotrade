@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { Bar, RangeName } from "./chart.ts";
 import type { MarketSlug } from "./markets.ts";
+import type { PerpsSlug } from "./perps-markets.ts";
 
 export interface ReferenceSeries {
   readonly label: string;
@@ -13,7 +14,7 @@ export interface ReferenceSeries {
 }
 
 /** Real-world price history for the asset behind a market, from `/api/reference`. A reference, not a quote. */
-export function useReference(slug: MarketSlug, range: RangeName, enabled = true) {
+export function useReference(slug: MarketSlug | PerpsSlug, range: RangeName, enabled = true) {
   return useQuery({
     queryKey: ["reference", slug, range],
     enabled,

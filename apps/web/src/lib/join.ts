@@ -1,3 +1,5 @@
+import type { Venue } from "./venue.ts";
+
 export const JOIN_STEPS = ["gas", "faucet", "deposit", "join"] as const;
 export type JoinStep = (typeof JOIN_STEPS)[number];
 
@@ -26,12 +28,20 @@ export async function runJoin(
   deps: JoinDeps,
   startingCapital: bigint,
   onStep: (step: JoinStep) => void,
+  venue: Venue = "spot",
 ): Promise<void> {
   if (await deps.hasJoined()) {
     return;
   }
   onStep("gas");
   await deps.fundGas();
+
+  // Futures capital is virtual: there is nothing to claim or deposit, only a registration.
+  if (venue === "futures") {
+    onStep("join");
+    await deps.join();
+    return;
+  }
 
   // Even a tournament without a capital requirement needs a registered Kuru account, which a deposit creates.
   const required = startingCapital > 0n ? startingCapital : 1n;

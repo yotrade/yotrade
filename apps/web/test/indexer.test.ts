@@ -6,6 +6,7 @@ import { createIndexer } from "../src/lib/indexer.ts";
 const GENESIS = {
   id: "1",
   organizer: "0x3b4f0135465d444a5bd06ab90fc59b73916c85f5",
+  venue: "0xadefe39b43673641e94ce99613c54266af2490e6",
   prizePool: "100000000",
   startingCapital: "500000000",
   startTime: "1789987406",
