@@ -49,6 +49,11 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     enabled: info.data !== undefined && needsDepth,
     refetchInterval: 3_000,
   });
+  const top = useQuery({
+    queryKey: ["book", market],
+    queryFn: () => kuru.market.book(market),
+    refetchInterval: 3_000,
+  });
   const portfolio = useQuery({
     queryKey: ["portfolio", address],
     queryFn: () => (address ? kuru.portfolio(address) : null),
@@ -67,6 +72,9 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     base,
     joined: Boolean(wallet && entry.data),
     entryPending: entry.isPending,
+    /** A buy needs offers and a sell needs bids. Unknown until the book has loaded. */
+    canBuy: top.data?.hasAsk ?? true,
+    canSell: top.data?.hasBid ?? true,
     bars,
     from: candles.data?.from ?? 0,
     to: candles.data?.to ?? 1,

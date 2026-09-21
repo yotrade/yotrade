@@ -7,9 +7,8 @@ import { DEFAULT_MAX_IMPACT_BPS, type SwapQuote } from "@yotrade/plugin-kuru/plu
 import { type Book, midPrice } from "@yotrade/plugin-kuru/pricing";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { type FormEvent, useState } from "react";
-import { formatUnits } from "viem";
 
-import { formatToken } from "@/lib/format.ts";
+import { formatToken, formatUsdc } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import {
   NETWORK_FEE_MON,
@@ -17,7 +16,7 @@ import {
   orderDetails,
   SLIPPAGE_BPS,
 } from "@/lib/order-details.ts";
-import { parseTicket } from "@/lib/ticket.ts";
+import { parseTicket, shortcutAmount } from "@/lib/ticket.ts";
 import { TOKEN_LABELS } from "@/lib/tokens.ts";
 import { useDebounced } from "@/lib/use-debounced.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
@@ -140,6 +139,40 @@ function ReceiveRow({ token, amount }: { token: TokenSymbol; amount: bigint | un
 const CHIP =
   "rounded-lg bg-accent-soft px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent disabled:opacity-40";
 
+/** Long amounts step the digits down instead of clipping them. */
+const amountClass = (text: string) => (text.length > 9 ? "text-base" : "text-xl");
+
+interface UnavailableProps {
+  readonly book: Book | undefined;
+  readonly isBuy: boolean;
+  readonly base: TokenSymbol;
+  onSwitch(): void;
+}
+
+/** A one-sided book: say which side is missing and offer the one that works, instead of a dead button. */
+function SideUnavailable({ book, isBuy, base, onSwitch }: UnavailableProps) {
+  if (!book || (isBuy ? book.hasAsk : book.hasBid)) {
+    return null;
+  }
+  const otherSideWorks = isBuy ? book.hasBid : book.hasAsk;
+  return (
+    <div role="status" className="flex flex-col gap-2 rounded-2xl bg-down/10 p-4">
+      <p className="text-sm font-semibold text-down">
+        Nobody is {isBuy ? "selling" : "buying"} {TOKEN_LABELS[base]} on Kuru right now.
+      </p>
+      {otherSideWorks ? (
+        <button
+          type="button"
+          onClick={onSwitch}
+          className="w-fit rounded-full bg-surface px-3 py-1.5 font-mono text-xs font-bold shadow-row focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          {isBuy ? "Sell" : "Buy"} instead
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 interface Props {
   readonly wallet: MeraWallet;
   readonly market: MarketSymbol;
@@ -231,14 +264,21 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
 
   return (
     <form className="flex flex-col gap-3" onSubmit={submit}>
+      <SideUnavailable
+        book={book.data}
+        isBuy={isBuy}
+        base={base}
+        onSwitch={() => onSideChange(isBuy ? "Sell" : "Buy")}
+      />
       {/* Kit exchange field: a grey well holding two white rows, with the flip button on the seam. */}
       <div className="relative flex flex-col gap-1 rounded-[18px] bg-well p-1">
         <div className="flex min-h-[72px] items-center gap-2 rounded-2xl bg-surface px-4 shadow-row">
           <TokenIcon token={tokenIn} />
-          <div className="flex flex-col">
+          <div className="flex shrink-0 flex-col">
             <span className="font-semibold leading-tight">{TOKEN_LABELS[tokenIn]}</span>
-            <span className="tabular text-[11px] font-semibold text-ink-muted">
-              Balance: {formatToken(available, decimals)}
+            <span className="tabular whitespace-nowrap text-[11px] font-semibold text-ink-muted">
+              Balance:{" "}
+              {tokenIn === "usdc" ? formatUsdc(available) : formatToken(available, decimals)}
             </span>
           </div>
           <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
@@ -249,7 +289,9 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
                   type="button"
                   className={CHIP}
                   disabled={available === 0n}
-                  onClick={() => setInput(formatUnits((available * percent) / 100n, decimals))}
+                  onClick={() =>
+                    setInput(shortcutAmount(available, percent, decimals, tokenIn === "usdc"))
+                  }
                 >
                   {percent === 100n ? "MAX" : `${percent}%`}
                 </button>
@@ -262,7 +304,7 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
               placeholder="0"
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              className="tabular w-full bg-transparent text-right text-xl font-bold text-ink placeholder:text-border focus:outline-none"
+              className={`tabular w-full min-w-0 bg-transparent text-right font-bold text-ink placeholder:text-border focus:outline-none ${amountClass(input)}`}
             />
           </div>
         </div>
