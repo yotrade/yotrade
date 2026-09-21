@@ -1,0 +1,133 @@
+import {
+  createPasskeyWithPrfOutput,
+  createSecp256k1SigningSession,
+  getPasskeyPrfOutput,
+} from "@category-labs/mera";
+import { toViemAccount } from "@category-labs/mera/viem";
+import { definePlugin } from "@yotrade/core/plugin";
+import {
+  type Account,
+  type Chain,
+  createWalletClient,
+  custom,
+  type Transport,
+  type WalletClient,
+} from "viem";
+
+import { deriveKey, deriveSecp256k1Key, PRF_SALT } from "./derive.ts";
+import { createVault, type Vault } from "./vault.ts";
+
+export interface PrfResult {
+  readonly credentialId: string;
+  readonly prfOutput: Uint8Array;
+}
+
+/** Where the 32 bytes of entropy come from. Replaced in tests; WebAuthn in production. */
+export interface PrfSource {
+  register(user: { name: string; displayName: string }): Promise<PrfResult>;
+  signIn(): Promise<PrfResult>;
+}
+
+export interface MeraOptions {
+  /** Relying party: the host the passkey is scoped to, and the name the authenticator shows. */
+  readonly rp: { readonly id: string; readonly name: string };
+  readonly source?: PrfSource;
+}
+
+export type MeraWallet = WalletClient<Transport, Chain, Account>;
+
+export interface Identity {
+  readonly credentialId: string;
+  /** The participant's main account. Signs without prompting for the lifetime of the identity. */
+  readonly wallet: MeraWallet;
+  /** Isolated trading account for one tournament. The same id always yields the same account. */
+  tournamentWallet(tournamentId: bigint): MeraWallet;
+  /** Encrypts private data for untrusted storage. Only this passkey can open it again. */
+  vault(): Promise<Vault>;
+  /** Ends every signing session and wipes the entropy. The identity is unusable afterwards. */
+  end(): void;
+}
+
+function webAuthnSource(rp: MeraOptions["rp"]): PrfSource {
+  return {
+    register: (user) => createPasskeyWithPrfOutput({ rp, user, prfSalt: PRF_SALT }),
+    signIn: () => getPasskeyPrfOutput({ rpId: rp.id, prfSalt: PRF_SALT }),
+  };
+}
+
+export function mera(options: MeraOptions) {
+  return definePlugin("mera", ({ chain, publicClient }) => {
+    const source = options.source ?? webAuthnSource(options.rp);
+
+    function toIdentity({ credentialId, prfOutput }: PrfResult): Identity {
+      const entropy = prfOutput.slice();
+      prfOutput.fill(0);
+      const sessions: { end(): void }[] = [];
+      let ended = false;
+
+      const assertLive = () => {
+        if (ended) {
+          throw new Error("This identity has been ended; sign in again");
+        }
+      };
+
+      const open = (privateKey: Uint8Array): MeraWallet => {
+        const session = createSecp256k1SigningSession({ privateKey });
+        privateKey.fill(0);
+        sessions.push(session);
+        // Reuses the runtime's transport, so reads and writes share one RPC configuration.
+        return createWalletClient({
+          account: toViemAccount(session),
+          chain,
+          transport: custom(publicClient),
+        });
+      };
+
+      const tournamentWallets = new Map<bigint, MeraWallet>();
+
+      return {
+        credentialId,
+        wallet: open(deriveSecp256k1Key(entropy, { kind: "account" })),
+
+        tournamentWallet(tournamentId) {
+          assertLive();
+          const existing = tournamentWallets.get(tournamentId);
+          if (existing) {
+            return existing;
+          }
+          const wallet = open(
+            deriveSecp256k1Key(entropy, { kind: "tournament", chainId: chain.id, tournamentId }),
+          );
+          tournamentWallets.set(tournamentId, wallet);
+          return wallet;
+        },
+
+        vault() {
+          assertLive();
+          return createVault(deriveKey(entropy, { kind: "vault" }));
+        },
+
+        end() {
+          ended = true;
+          for (const session of sessions) {
+            session.end();
+          }
+          entropy.fill(0);
+          tournamentWallets.clear();
+        },
+      };
+    }
+
+    return {
+      /** Creates a new passkey. One user-verification prompt on authenticators that evaluate PRF at creation. */
+      async register(user: { name: string; displayName: string }): Promise<Identity> {
+        return toIdentity(await source.register(user));
+      },
+
+      /** Signs in with a discoverable passkey. Nothing is read from storage. */
+      async signIn(): Promise<Identity> {
+        return toIdentity(await source.signIn());
+      },
+    };
+  });
+}
