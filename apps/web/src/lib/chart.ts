@@ -19,7 +19,8 @@ export const RANGES = {
 } as const;
 export type RangeName = keyof typeof RANGES;
 
-export const CHART_TYPES = ["Line", "Candles", "Area"] as const;
+/** Candles first: it is what a trader expects to open on. */
+export const CHART_TYPES = ["Candles", "Line", "Area"] as const;
 export type ChartType = (typeof CHART_TYPES)[number];
 
 const USDC = 1_000_000;
