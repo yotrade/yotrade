@@ -5,7 +5,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import { publicEnv } from "@/lib/env.ts";
 import { createAppRuntime } from "@/lib/runtime.ts";
 import { parseServerEnv } from "@/lib/server-env.ts";
+import { venueOf } from "@/lib/venue.ts";
 import { createFinalizer, type FinalizeResult } from "@/server/finalize.ts";
+import { serverHermes } from "@/server/hermes-options.ts";
 import { getLeaderboard } from "@/server/leaderboard.ts";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ function createFinalize() {
   if (!key) {
     return null;
   }
-  const runtime = createAppRuntime(publicEnv);
+  const runtime = createAppRuntime(publicEnv, serverHermes() ?? undefined);
   const wallet = createWalletClient({
     account: privateKeyToAccount(key as Hex),
     chain: runtime.chain,
@@ -34,6 +36,19 @@ function createFinalize() {
     leaderboard: getLeaderboard,
     // Simulated before it is sent, so a tournament that was finalized a moment ago costs no gas.
     postResults: (id, winners) => runtime.tournament.postResults(wallet, id, winners),
+    async settle({ tournament }) {
+      if (venueOf(tournament.venue) !== "futures") {
+        return;
+      }
+      // One at a time: Monad wants each receipt before the next transaction from the same account.
+      for (const entry of tournament.entries) {
+        await runtime.perps.settle(wallet, {
+          tournamentId: tournament.id,
+          trader: entry.tradingAccount,
+          endTime: tournament.endTime,
+        });
+      }
+    },
   });
 }
 
