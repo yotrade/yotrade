@@ -9,6 +9,7 @@ import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { Podium } from "./podium.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 
@@ -100,23 +101,31 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
           Nobody traded, so the prize pool returns to the organizer.
         </p>
       ) : (
-        <ol className="flex flex-col gap-1.5">
-          {standings.map((entry) => (
-            <li
-              key={entry.participant_id}
-              className="tabular flex items-center justify-between text-sm"
-            >
-              <span>
-                #{entry.rank}{" "}
-                <span className="font-mono">{shortAddress(entry.participant_id)}</span>
-                {entry === mine ? <span className="ml-2 text-accent">You</span> : null}
-              </span>
-              <span className={entry.claimed ? "text-ink-muted" : "font-semibold text-up"}>
-                {formatUsdc(entry.prize)} USDC{entry.claimed ? " · claimed" : ""}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <>
+          <Podium
+            entries={standings.slice(0, 3).map((entry) => ({
+              address: entry.participant_id,
+              score: `$${formatUsdc(entry.prize)}${entry.claimed ? " ✓" : ""}`,
+              you: entry === mine,
+            }))}
+          />
+          <ol className="flex flex-col gap-1.5">
+            {standings.map((entry) => (
+              <li
+                key={entry.participant_id}
+                className={`tabular flex items-center justify-between text-sm ${entry.rank && entry.rank <= 3 ? "sr-only" : ""}`}
+              >
+                <span>
+                  #{entry.rank}{" "}
+                  <span className="font-mono">{shortAddress(entry.participant_id)}</span>
+                </span>
+                <span className={entry.claimed ? "text-ink-muted" : "font-semibold text-up"}>
+                  {formatUsdc(entry.prize)} USDC{entry.claimed ? " · claimed" : ""}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
       {error ? (
         <p role="alert" className="text-sm text-down">
