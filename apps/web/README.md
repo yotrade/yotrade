@@ -55,3 +55,9 @@ src/
 - Workspace packages are consumed as TypeScript source through `transpilePackages`
 - Security headers are set in `next.config.ts`; passkey permissions are limited to this origin
 - Money paths (`join`, `create`, `ticket`, `scoring`, `finalize`, `drip`) are pure or dependency-injected and unit tested; flows are verified against Monad testnet from a real browser
+
+## Design
+
+Structure and components follow the [Ghost Crypto Wallet UI Kit](https://www.figma.com/community/file/1569575393267749711) (light mode) by Samson Oluwajunse: onboarding flow, pill buttons, borderless cards, input wells, list rows, chips. Colour and type follow [Monad's brand kit](https://monad.xyz/brand-and-media-kit): `#6E54FF`, `#DDD7FE`, `#0E091C`, Inter and Roboto Mono.
+
+Icons and the onboarding illustration in `public/icons` and `public/illustrations` come from that kit (icons by [Streamline](https://www.streamlinehq.com)), recoloured to the Monad palette. Motion is CSS only and switches off under `prefers-reduced-motion`.
