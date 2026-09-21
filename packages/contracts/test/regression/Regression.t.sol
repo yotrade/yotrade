@@ -5,7 +5,7 @@ import {TournamentManager} from "../../src/TournamentManager.sol";
 import {ITournamentManager} from "../../src/interfaces/ITournamentManager.sol";
 import {MockAccountCore, MockERC20} from "../mocks/Mocks.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 
 /// @notice One test per defect that was found and fixed. Names carry the issue number.
 contract RegressionTest is Test {
@@ -94,5 +94,41 @@ contract RegressionTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ITournamentManager.DisputeWindowActive.selector, end + 1 hours));
         vm.prank(alice);
         manager.claim(id);
+    }
+
+    /// @dev #11: lifecycle events were emitted after the token transfer, so a prize token with callbacks could
+    /// interleave its own logs between our state change and our event.
+    function test_Regression_11_EventsPrecedeTokenTransfers() public {
+        vm.prank(organizer);
+        uint256 id = manager.createTournament(_config());
+        address account = makeAddr("alice-trading");
+        core.register(account, alice);
+        core.setBalance(account, address(usdc), CAPITAL);
+        vm.prank(alice);
+        manager.join(id, account, new bytes32[](0));
+
+        vm.warp(end);
+        address[] memory winners = new address[](1);
+        winners[0] = alice;
+        vm.prank(scorer);
+        manager.postResults(id, winners);
+        vm.warp(end + 1 hours);
+
+        vm.recordLogs();
+        vm.prank(alice);
+        manager.claim(id);
+        _assertManagerLogsFirst(ITournamentManager.PrizeClaimed.selector);
+
+        vm.recordLogs();
+        manager.sweep(id);
+        _assertManagerLogsFirst(ITournamentManager.RemainderSwept.selector);
+    }
+
+    function _assertManagerLogsFirst(bytes32 expectedTopic) internal {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 2, "one lifecycle event and one ERC-20 Transfer");
+        assertEq(logs[0].emitter, address(manager));
+        assertEq(logs[0].topics[0], expectedTopic);
+        assertEq(logs[1].emitter, address(usdc));
     }
 }
