@@ -10,6 +10,7 @@ export type IconName =
   | "cog"
   | "credit-card"
   | "crown"
+  | "crown-gold"
   | "external-link"
   | "face-scan"
   | "gift"
