@@ -167,7 +167,14 @@ describe("market data", () => {
         urls.push(url);
         const body = url.includes("/depth")
           ? { data: { bids: [{ price: "50754", total_base: "60000000000" }], asks: [] } }
-          : { data: { symbol: "XAUTUSDC", pricePrecision: "100", sizePrecision: "1000000" } };
+          : {
+              data: {
+                symbol: "XAUTUSDC",
+                pricePrecision: "100",
+                sizePrecision: "1000000",
+                takerFeePps: 7000,
+              },
+            };
         return Promise.resolve(new Response(JSON.stringify(body)));
       },
       "https://gateway.test/api",
@@ -180,6 +187,7 @@ describe("market data", () => {
       symbol: "XAUTUSDC",
       pricePrecision: 100n,
       sizePrecision: 1_000_000n,
+      takerFeeBps: 7,
     });
     expect(urls[0]).toBe("https://gateway.test/api/depth?symbol=MONUSDC&levels=5&state=finalized");
   });
