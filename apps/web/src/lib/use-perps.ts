@@ -1,9 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Risk, risk, type Valued } from "@yotrade/plugin-perps/math";
 import type { Address, Hex } from "viem";
 
+import { type RangeName, summarize } from "./chart.ts";
+import { fundGas } from "./fund-gas.ts";
+import { usdNumber } from "./perps-format.ts";
+import { feedOf, type PerpsSlug } from "./perps-markets.ts";
+import { useIdentity } from "./use-identity.tsx";
+import { useReference } from "./use-reference.ts";
 import { useRuntime } from "./use-runtime.ts";
 
 export interface PerpsPosition extends Valued {
@@ -46,4 +52,50 @@ export function usePerps(id: string, trader: Address | undefined, watch: readonl
       return { balance: account.balance, positions, prices, risk: risk(account.balance, positions) };
     },
   });
+}
+
+/** Everything one futures market screen shows, and the one action it owns besides the ticket. */
+export function usePerpsMarket(id: string, slug: PerpsSlug, range: RangeName) {
+  const { publicClient, perps, tournament } = useRuntime();
+  const { identity } = useIdentity();
+  const queryClient = useQueryClient();
+  const wallet = identity?.tournamentWallet(BigInt(id));
+  const trader = wallet?.account.address;
+  const feed = feedOf(slug);
+
+  const entry = useQuery({
+    queryKey: ["entry", id, trader],
+    queryFn: () => (trader ? tournament.entry(BigInt(id), trader) : null),
+    enabled: trader !== undefined,
+  });
+  const account = usePerps(id, trader, [feed]);
+  const reference = useReference(slug, range);
+
+  const price = account.data?.prices[feed.toLowerCase() as Hex];
+  const position = account.data?.positions.find((p) => p.market.toLowerCase() === feed.toLowerCase());
+  const summary = summarize(reference.data?.bars ?? []);
+  let state: "loading" | "joined" | "out" = entry.data ? "joined" : "out";
+  if (entry.isPending) {
+    state = "loading";
+  }
+
+  return {
+    wallet,
+    state,
+    account,
+    reference,
+    price,
+    position,
+    // The chart is a reference series; the headline is the price an order fills at.
+    headline: summary && price ? { ...summary, close: usdNumber(price) } : summary,
+    /** Market-closes the position. Throws when nothing filled. */
+    async close(): Promise<void> {
+      if (!(wallet && position)) {
+        return;
+      }
+      await fundGas(publicClient, wallet.account.address);
+      await perps.trade(wallet, { tournamentId: BigInt(id), market: feed, sizeDelta: -position.size });
+      await queryClient.invalidateQueries({ queryKey: ["perps", id] });
+    },
+  };
 }
