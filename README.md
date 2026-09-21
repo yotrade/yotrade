@@ -14,6 +14,11 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 |---|---|
 | `apps/` | Deployable applications |
 | [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
+| `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
+| `packages/plugins/*` | Reusable integrations composed through the runtime, one package each |
+| `packages/tsconfig` | Shared strict TypeScript configuration |
+
+TypeScript packages are consumed as source through explicit subpath exports: no barrel files, no build step.
 
 ## Requirements
 
@@ -34,6 +39,7 @@ bun install
 | `bun run build` | Build every package |
 | `bun run test` | Run all tests |
 | `bun run lint` | Lint and check formatting |
+| `bun run typecheck` | Type-check every TypeScript package |
 | `bun run format` | Format and apply safe fixes |
 
 Tasks are orchestrated by [Turborepo](https://turborepo.com); formatting and linting by [Biome](https://biomejs.dev).
