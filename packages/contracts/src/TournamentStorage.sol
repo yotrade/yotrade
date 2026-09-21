@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.37;
 
-import {IAccountCore} from "./interfaces/IAccountCore.sol";
 import {ITournamentManager} from "./interfaces/ITournamentManager.sol";
 
 /// @title TournamentStorage
@@ -24,10 +23,12 @@ abstract contract TournamentStorage {
 
     /// @custom:storage-location erc7201:yotrade.storage.TournamentManager
     struct Layout {
-        IAccountCore accountCore;
         uint64 disputeWindow;
         uint256 count;
         mapping(uint256 id => Tournament) tournaments;
+        mapping(address venue => bool approved) approvedVenues;
+        /// Prize tokens owed by the contract, per token: the sum of `unpaid` over that token's tournaments.
+        mapping(address token => uint256 amount) escrowed;
     }
 
     // keccak256(abi.encode(uint256(keccak256("yotrade.storage.TournamentManager")) - 1)) & ~bytes32(uint256(0xff))
