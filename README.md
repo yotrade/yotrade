@@ -1,22 +1,41 @@
 # YoTrade
 
-Community trading tournaments, live on Monad.
+Who's the best trader in your community? Find out live on Monad.
 
-Any community can host a perps trading tournament: members join from a link with a passkey, trade real markets, and follow a leaderboard that moves with every block.
+YoTrade lets any community host a trading tournament. A host escrows a prize pool in a contract and shares a link. Members join with a passkey, get a fresh trading account with standardized test capital, and trade real [Kuru](https://kuru.io) order books. A leaderboard anyone can recompute follows every fill, [Kimi](https://platform.kimi.ai) comments on it in the community's language, and the contract pays the winners.
 
-Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackathons/metropolis), Track 01: Onchain Finance & Trading.
+Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackathons/metropolis), Track 01: Onchain Finance & Trading. Testnet only.
 
-> Status: early development, testnet only.
+## How it works
+
+| Step | What happens | Measured on testnet |
+|---|---|---|
+| Host | Gas, test funds, approve, `createTournament` escrows the pool | 11 s from tap to listed |
+| Join | Passkey → derived account → gas, faucet, Kuru deposit, `join` | 11 s, five transactions |
+| Trade | Market orders with empty-side, price-impact and slippage guards | 2 to 4 s per order |
+| Score | Kuru's public fills + `capitalAtJoin`; deposits cannot move a score | 1.1 s cold, 5 ms cached |
+| Settle | Anyone finalizes, winners are computed, review window, claim | 3 s to post, 8 s to claim |
+
+More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Deployment (Monad testnet, chain 10143)
+
+| Contract | Address |
+|---|---|
+| `TournamentManager` (UUPS proxy) | [`0xe60aFf1991d9D93e6093da5c813A63B746159D10`](https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10) |
+| `KuruVenueAdapter` | [`0xADefe39B43673641e94cE99613c54266af2490e6`](https://testnet.monadvision.com/address/0xADefe39B43673641e94cE99613c54266af2490e6) |
+
+Verified on MonadVision (Sourcify). History and configuration: [`packages/contracts/deployments`](packages/contracts/deployments).
 
 ## Structure
 
 | Path | Description |
 |---|---|
-| [`apps/web`](apps/web) | Mobile-first web app (Next.js 16, React 19, Tailwind v4) |
+| [`apps/web`](apps/web) | Mobile-first web app and server routes (Next.js 16, React 19, Tailwind v4) |
 | [`apps/indexer`](apps/indexer) | Envio HyperIndex: tournaments, entries, results, trader stats |
 | [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 | `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
-| `packages/plugins/*` | Reusable integrations composed through the runtime, one package each |
+| `packages/plugins/*` | Reusable integrations, one package each: `plugin-mera`, `plugin-kuru`, `plugin-tournament`, `plugin-alchemy` |
 | `packages/tsconfig` | Shared strict TypeScript configuration |
 
 TypeScript packages are consumed as source through explicit subpath exports: no barrel files, no build step.
