@@ -12,7 +12,7 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 
 | Path | Description |
 |---|---|
-| `apps/` | Deployable applications |
+| [`apps/web`](apps/web) | Mobile-first web app (Next.js 16, React 19, Tailwind v4) |
 | [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 | `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
 | `packages/plugins/*` | Reusable integrations composed through the runtime, one package each |
