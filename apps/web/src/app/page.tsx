@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { PasskeyCard } from "@/components/passkey-card.tsx";
 import { TournamentList } from "@/components/tournament-list.tsx";
@@ -32,7 +33,12 @@ export default function HomePage() {
       <PasskeyCard />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">Tournaments</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Tournaments</h2>
+          <Link href="/new" className="text-sm font-semibold text-accent hover:brightness-110">
+            Host one →
+          </Link>
+        </div>
         <TournamentList />
       </section>
 
