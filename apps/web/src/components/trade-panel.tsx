@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MarketSymbol, markets, type TokenSymbol, tokens } from "@yotrade/core/addresses";
 import { EmptyBookError, PriceImpactError } from "@yotrade/plugin-kuru/errors";
 import { DEFAULT_MAX_IMPACT_BPS, type SwapQuote } from "@yotrade/plugin-kuru/plugin";
-import { midPrice } from "@yotrade/plugin-kuru/pricing";
+import { type Book, midPrice } from "@yotrade/plugin-kuru/pricing";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { type FormEvent, useState } from "react";
 import { formatUnits } from "viem";
@@ -30,6 +30,19 @@ const LABELS: Record<string, string> = {
 };
 
 type Side = "Buy" | "Sell";
+
+function bookLine(book: Book | undefined): string {
+  if (!book) {
+    return "…";
+  }
+  if (book.hasLiquidity) {
+    return `Mid ${midPrice(book).toLocaleString("en-US")} USDC`;
+  }
+  if (book.hasBid) {
+    return "Bids only: you can sell, not buy";
+  }
+  return book.hasAsk ? "Offers only: you can buy, not sell" : "No liquidity";
+}
 
 function failureCopy(cause: unknown): string {
   if (cause instanceof EmptyBookError) {
@@ -172,6 +185,7 @@ export function TradePanel({
     refetchInterval: 3_000,
     retry: false,
   });
+  const canFill = isBuy ? book.data?.hasAsk : book.data?.hasBid;
   const tooMuchImpact = (quote.data?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
 
   async function submit(event: FormEvent) {
@@ -219,11 +233,7 @@ export function TradePanel({
             value={side}
             onChange={setSide}
           />
-          <p className="tabular text-sm text-ink-muted">
-            {book.data?.hasLiquidity
-              ? `Mid ${midPrice(book.data).toLocaleString("en-US")} USDC`
-              : "No liquidity"}
-          </p>
+          <p className="tabular text-sm text-ink-muted">{bookLine(book.data)}</p>
           <Field
             label={`Amount in ${LABELS[tokenIn]}`}
             inputMode="decimal"
@@ -249,11 +259,7 @@ export function TradePanel({
           {quote.data && settled.ok ? (
             <QuoteLine quote={quote.data} tokenOut={isBuy ? base : "usdc"} />
           ) : null}
-          <Button
-            type="submit"
-            pending={pending}
-            disabled={!book.data?.hasLiquidity || tooMuchImpact}
-          >
+          <Button type="submit" pending={pending} disabled={!canFill || tooMuchImpact}>
             {side} {LABELS[base]}
           </Button>
           {done ? (
