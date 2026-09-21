@@ -36,6 +36,24 @@
     "upgradeable": false,
     "verified": "sourcify (MonadVision)"
   },
+  "PerpsEngine": {
+    "proxy": "0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336",
+    "implementation": "0x9Ce9Ec2bc196DBE5c6EE8E25288Ad0a68c714226",
+    "deployBlock": 64494582,
+    "pyth": "0x2880aB155794e7179c9eE2e38200202908C17B43",
+    "markets": {
+      "BTC/USD": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+      "ETH/USD": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+      "SOL/USD": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+      "MON/USD": "0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1"
+    },
+    "verified": "sourcify (MonadVision)"
+  },
+  "PerpsVenueAdapter": {
+    "address": "0x97167B3126E2dEE1FE8920C129bD118Eb91e9881",
+    "startingCapital": "10000000000",
+    "verified": "sourcify (MonadVision)"
+  },
   "config": {
     "disputeWindowSeconds": 120,
     "adminTransferDelaySeconds": 0,
@@ -44,7 +62,10 @@
       "0x3B4f0135465d444a5bD06Ab90fC59B73916C85F5",
       "0x76146c5eae1559A7a4a66D2CDC57318Cb9F9ea14"
     ],
-    "approvedVenues": ["0xADefe39B43673641e94cE99613c54266af2490e6"]
+    "approvedVenues": [
+      "0xADefe39B43673641e94cE99613c54266af2490e6",
+      "0x97167B3126E2dEE1FE8920C129bD118Eb91e9881"
+    ]
   },
   "retired": [
     {
