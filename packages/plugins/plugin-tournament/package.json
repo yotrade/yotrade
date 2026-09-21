@@ -1,0 +1,27 @@
+{
+  "name": "@yotrade/plugin-tournament",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./plugin": "./src/plugin.ts",
+    "./abi": "./src/generated/abi.ts",
+    "./phase": "./src/phase.ts"
+  },
+  "scripts": {
+    "generate": "bun run scripts/generate-abi.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:live": "TOURNAMENT_LIVE=1 bun test test/live.test.ts"
+  },
+  "dependencies": {
+    "@yotrade/core": "workspace:*",
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@yotrade/tsconfig": "workspace:*",
+    "typescript": "^7.0.2",
+    "@yotrade/contracts": "workspace:*"
+  }
+}
