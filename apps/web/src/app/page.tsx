@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { Card } from "@/components/ui/card.tsx";
 
 const STEPS = [
@@ -13,7 +15,10 @@ export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col gap-8 py-10">
       <header className="flex flex-col gap-3">
-        <p className="text-sm font-medium uppercase tracking-widest text-accent">YoTrade</p>
+        <div className="flex items-center gap-3">
+          <Image src="/icon-512.png" alt="" width={48} height={48} priority />
+          <p className="text-sm font-medium uppercase tracking-widest text-accent">YoTrade</p>
+        </div>
         <h1 className="text-4xl font-bold leading-tight">
           Who&apos;s the best trader in your community?
         </h1>
