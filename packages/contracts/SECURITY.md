@@ -54,7 +54,7 @@ Scores are computed offchain from the venue's public data and are reproducible b
 
 - [ ] Default admin and upgrader are multisigs; scorer is a separate hot key; nobody holds all roles
 - [ ] Admin transfer delay and dispute window set for the value at stake
-- [ ] Implementation and proxy verified on the explorer
+- [ ] Deployed from a clean build (`bun run deploy` / `bun run upgrade`); implementation and proxy verified on the explorer
 - [ ] Only reviewed venue adapters approved
 - [ ] Monitoring on `ResultsPosted`, `ResultsVoided`, `Upgraded`, role and venue events
 
