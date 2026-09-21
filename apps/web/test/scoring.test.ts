@@ -1,0 +1,53 @@
+import { describe, expect, test } from "bun:test";
+
+import { pnlOf, rank, roiPpm, type Scored, winnersOf } from "../src/server/scoring.ts";
+
+const MARKET = "0x5bdea6f9f9aba34f4ecb9b865646a792b835ef7f";
+const row = (participant: string, ppm: number, joinedAt: bigint, fills = 1): Scored => ({
+  participant: participant as Scored["participant"],
+  tradingAccount: participant as Scored["participant"],
+  joinedAt,
+  capitalAtJoin: 10_000_000_000n,
+  pnl: 0n,
+  roiPpm: ppm,
+  fills,
+});
+
+describe("scoring", () => {
+  test("PnL is realized plus open inventory at the mark minus its cost", () => {
+    const performance = {
+      realizedUsdc: -35_545_101n,
+      fills: 4,
+      positions: [{ market: MARKET, openSize: 97_955n, openCost: 99_999_951n }],
+    } as const;
+    // 0.00097955 cbBTC marked at 87.70 USDC
+    expect(pnlOf(performance, () => 87_700_000n)).toBe(-35_545_101n + 87_700_000n - 99_999_951n);
+  });
+
+  test("a deposit cannot move the score: only fills and marks are inputs", () => {
+    const idle = { realizedUsdc: 0n, fills: 0, positions: [] } as const;
+    expect(pnlOf(idle, () => 0n)).toBe(0n);
+    expect(roiPpm(0n, 10_000_000_000n)).toBe(0);
+  });
+
+  test("ROI is measured in parts per million of the capital at join", () => {
+    expect(roiPpm(-35_545_101n, 10_000_000_000n)).toBe(-3554);
+    expect(roiPpm(250_000_000n, 10_000_000_000n)).toBe(25_000);
+    expect(roiPpm(1n, 0n)).toBe(0);
+  });
+
+  test("ranks by return, then by who joined first", () => {
+    const ranked = rank([row("0xc", 100, 3n), row("0xa", 500, 2n), row("0xb", 100, 1n)]);
+    expect(ranked.map((r) => r.participant)).toEqual(["0xa", "0xb", "0xc"]);
+  });
+
+  test("only traders with fills can take a prize rank", () => {
+    const ranked = rank([
+      row("0xidle", 0, 1n, 0),
+      row("0xloser", -900, 2n),
+      row("0xwinner", 40, 3n),
+    ]);
+    expect(winnersOf(ranked, 3)).toEqual(["0xwinner", "0xloser"]);
+    expect(winnersOf(ranked, 1)).toEqual(["0xwinner"]);
+  });
+});
