@@ -226,6 +226,7 @@ contract TournamentManagerTest is Test {
         address account = _join(id, alice);
 
         assertEq(manager.tradingAccountOf(id, alice), account);
+        assertEq(manager.capitalAtJoin(id, alice), CAPITAL);
         (,, uint32 count,,) = manager.getState(id);
         assertEq(count, 1);
     }
@@ -245,11 +246,13 @@ contract TournamentManagerTest is Test {
         manager.join(id, bobsAccount, new bytes32[](0));
     }
 
-    function test_Join_RevertsOnWrongStartingCapital() public {
+    function test_Join_RevertsBelowStartingCapital() public {
         uint256 id = _create();
         address account = _tradingAccount(alice);
-        core.setBalance(account, address(usdc), CAPITAL + 1);
-        vm.expectRevert(abi.encodeWithSelector(ITournamentManager.WrongStartingCapital.selector, CAPITAL, CAPITAL + 1));
+        core.setBalance(account, address(usdc), CAPITAL - 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITournamentManager.InsufficientStartingCapital.selector, CAPITAL, CAPITAL - 1)
+        );
         vm.prank(alice);
         manager.join(id, account, new bytes32[](0));
     }

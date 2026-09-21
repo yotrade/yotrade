@@ -5,6 +5,8 @@ script = "script"
 out = "out"
 libs = ["lib"]
 solc = "0.8.37"
+# Foundry >= 1.8: execute with Monad's gas model, opcode pricing, precompiles and size limits.
+network = "monad"
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 200
@@ -15,8 +17,17 @@ fs_permissions = [{ access = "read", path = "./" }]
 [profile.default.fuzz]
 runs = 512
 
+[profile.default.invariant]
+runs = 64
+depth = 128
+fail_on_revert = false
+
 [profile.ci.fuzz]
 runs = 2048
+
+[profile.ci.invariant]
+runs = 256
+depth = 256
 
 [fmt]
 line_length = 120

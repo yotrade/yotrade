@@ -41,6 +41,11 @@ contract MockAccountCore is IAccountCore {
     function setBalance(address account, address token, uint256 balance) external {
         getBalance[account][token] = balance;
     }
+
+    /// @dev Permissionless, like the real AccountCore.
+    function depositForAccount(address account, address token, uint256 amount) external {
+        getBalance[account][token] += amount;
+    }
 }
 
 /// @dev Upgrade target that adds one function and keeps the storage layout.

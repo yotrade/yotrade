@@ -35,6 +35,8 @@ contract TournamentManager is
     uint64 public constant MAX_DISPUTE_WINDOW = 7 days;
     /// @notice Time after `endTime` without results before the organizer can take the pool back.
     uint64 public constant RESULTS_GRACE = 7 days;
+    /// @notice Longest allowed tournament. Also rejects timestamps passed in milliseconds.
+    uint64 public constant MAX_DURATION = 365 days;
 
     struct Tournament {
         address organizer;
@@ -48,6 +50,7 @@ contract TournamentManager is
         mapping(address tradingAccount => bool used) tradingAccountUsed;
         mapping(address winner => uint256 rankPlusOne) rankOf;
         mapping(address winner => bool claimed) claimed;
+        mapping(address participant => uint256 capital) capitalAtJoin;
     }
 
     /// @custom:storage-location erc7201:yotrade.storage.TournamentManager
@@ -94,6 +97,7 @@ contract TournamentManager is
     /// @inheritdoc ITournamentManager
     function createTournament(Config calldata config) external whenNotPaused nonReentrant returns (uint256 id) {
         if (config.startTime <= block.timestamp || config.endTime <= config.startTime) revert InvalidSchedule();
+        if (config.endTime - config.startTime > MAX_DURATION) revert InvalidSchedule();
         if (config.maxParticipants == 0) revert InvalidCap();
         if (config.startingCapital != 0 && config.capitalToken == address(0)) revert ZeroAddress();
         if (config.prizePool != 0 && config.prizeToken == address(0)) revert InvalidPrizeToken();
@@ -145,7 +149,7 @@ contract TournamentManager is
     /// @dev Returns whatever is not owed to an unclaimed winner: unfilled ranks and rounding dust.
     function sweep(uint256 id) external nonReentrant returns (uint256 amount) {
         Tournament storage t = _claimable(id);
-        uint256 owed;
+        uint256 owed = 0;
         uint256 length = t.winners.length;
         for (uint256 i; i < length; ++i) {
             if (!t.claimed[t.winners[i]]) owed += _prize(t, i);
@@ -178,21 +182,14 @@ contract TournamentManager is
             if (!MerkleProof.verifyCalldata(allowlistProof, config.allowlistRoot, leaf)) revert NotAllowlisted();
         }
 
-        IAccountCore core = $.accountCore;
-        if (address(core) != address(0)) {
-            if (core.userRegistry(tradingAccount) == 0) revert AccountNotRegistered();
-            if (core.getAccountOwner(tradingAccount) != msg.sender) revert NotAccountOwner();
-            if (config.startingCapital != 0) {
-                uint256 balance = core.getBalance(tradingAccount, config.capitalToken);
-                if (balance != config.startingCapital) revert WrongStartingCapital(config.startingCapital, balance);
-            }
-        }
+        uint256 capital = _checkTradingAccount($.accountCore, tradingAccount, config);
 
         t.tradingAccountOf[msg.sender] = tradingAccount;
         t.tradingAccountUsed[tradingAccount] = true;
+        t.capitalAtJoin[msg.sender] = capital;
         ++t.participantCount;
 
-        emit Joined(id, msg.sender, tradingAccount);
+        emit Joined(id, msg.sender, tradingAccount, capital);
     }
 
     /// @inheritdoc ITournamentManager
@@ -314,6 +311,11 @@ contract TournamentManager is
     }
 
     /// @inheritdoc ITournamentManager
+    function capitalAtJoin(uint256 id, address participant) external view returns (uint256) {
+        return _layout().tournaments[id].capitalAtJoin[participant];
+    }
+
+    /// @inheritdoc ITournamentManager
     function prizeOf(uint256 id, address account) external view returns (uint256 amount, bool claimed) {
         Tournament storage t = _layout().tournaments[id];
         uint256 rankPlusOne = t.rankOf[account];
@@ -345,6 +347,24 @@ contract TournamentManager is
         if (block.timestamp < t.claimableAt) revert DisputeWindowActive(t.claimableAt);
     }
 
+    /// @dev Venue-side checks for `join`. Returns the account's free balance of the capital token, or zero when
+    /// no venue is configured or the tournament has no capital requirement.
+    function _checkTradingAccount(IAccountCore core, address tradingAccount, Config storage config)
+        private
+        view
+        returns (uint256 capital)
+    {
+        if (address(core) == address(0)) return 0;
+        if (core.userRegistry(tradingAccount) == 0) revert AccountNotRegistered();
+        if (core.getAccountOwner(tradingAccount) != msg.sender) revert NotAccountOwner();
+        if (config.startingCapital == 0) return 0;
+
+        // Not an equality check: `depositForAccount` is permissionless, so anyone could push one unit into the
+        // account and block the join. The recorded balance is the ROI denominator instead.
+        capital = core.getBalance(tradingAccount, config.capitalToken);
+        if (capital < config.startingCapital) revert InsufficientStartingCapital(config.startingCapital, capital);
+    }
+
     function _prize(Tournament storage t, uint256 rank) private view returns (uint256) {
         return (t.config.prizePool * t.config.prizeSplitBps[rank]) / BPS;
     }
@@ -360,7 +380,7 @@ contract TournamentManager is
     function _validateSplit(uint16[] calldata split) private pure {
         uint256 length = split.length;
         if (length == 0 || length > MAX_WINNERS) revert InvalidSplit();
-        uint256 total;
+        uint256 total = 0;
         for (uint256 i; i < length; ++i) {
             if (split[i] == 0) revert InvalidSplit();
             total += split[i];
