@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: yotrade-indexer
+description: Tournaments, entries, results and trader stats for YoTrade
+disable_default_cross_chain: true
+address_format: lowercase
+contracts:
+  - name: TournamentManager
+    events:
+      - event: TournamentCreated(uint256 indexed id, address indexed organizer, (address,address,address,uint256,uint256,uint64,uint64,uint32,bytes32,uint16[],string) config)
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: Joined(uint256 indexed id, address indexed participant, address indexed tradingAccount, uint256 capitalAtJoin)
+      - event: ResultsPosted(uint256 indexed id, address[] winners, uint64 claimableAt)
+      - event: ResultsVoided(uint256 indexed id)
+      - event: PrizeClaimed(uint256 indexed id, address indexed winner, uint256 rank, uint256 amount)
+      - event: TournamentCancelled(uint256 indexed id, uint256 refunded)
+      - event: RemainderSwept(uint256 indexed id, uint256 amount)
+chains:
+  - id: 10143 # Monad testnet
+    start_block: 64421055 # TournamentManager proxy deployment
+    contracts:
+      - name: TournamentManager
+        address: "0xe60aFf1991d9D93e6093da5c813A63B746159D10"
