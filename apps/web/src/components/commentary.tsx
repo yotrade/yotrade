@@ -10,8 +10,6 @@ import { Card } from "./ui/card.tsx";
 const CODES = Object.keys(LANGUAGES) as LanguageCode[];
 const STORAGE_KEY = "yotrade.language";
 
-class NotConfiguredError extends Error {}
-
 function initialLanguage(): LanguageCode {
   // Preference only, nothing sensitive. Storage can be unavailable in private windows.
   try {
@@ -29,21 +27,18 @@ export function Commentary({ id, name }: { id: string; name: string }) {
 
   const { data, error } = useQuery({
     queryKey: ["commentary", id, language],
-    queryFn: async (): Promise<string> => {
+    // `null` means the server has no Kimi key: there is nothing to show.
+    queryFn: async (): Promise<string | null> => {
       const response = await fetch(`/api/commentary/${id}?lang=${language}`);
-      if (response.status === 503) {
-        throw new NotConfiguredError();
-      }
       if (!response.ok) {
         throw new Error(`Commentary answered ${response.status}`);
       }
-      return ((await response.json()) as { text: string }).text;
+      return ((await response.json()) as { text: string | null }).text;
     },
     refetchInterval: 30_000,
-    retry: (count, cause) => !(cause instanceof NotConfiguredError) && count < 2,
   });
 
-  if (error instanceof NotConfiguredError) {
+  if (data === null) {
     return null;
   }
 

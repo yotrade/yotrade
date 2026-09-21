@@ -33,7 +33,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
   commentator ??= createCommentary();
   if (!commentator) {
-    return NextResponse.json({ error: "Commentary is not configured" }, { status: 503 });
+    // Not an error for the visitor: the card simply stays hidden, and the browser console stays clean.
+    return NextResponse.json({ text: null });
   }
   try {
     const board = await getLeaderboard(BigInt(id));
