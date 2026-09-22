@@ -1,13 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { Address } from "viem";
 
 import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
 
 import type { IndexedOwnEntry, IndexedTournament } from "./indexer.ts";
 import { indexer } from "./indexer-client.ts";
 import { useIdentity } from "./use-identity.tsx";
+import { toUsdc } from "./perps-markets.ts";
 import { useRuntime } from "./use-runtime.ts";
+import { venueOf } from "./venue.ts";
 
 export interface MyTournament {
   readonly tournament: IndexedTournament;
@@ -24,8 +27,17 @@ export interface MyTournament {
  */
 export function useMyTournaments() {
   const { identity } = useIdentity();
-  const { kuru } = useRuntime();
+  const { kuru, perps } = useRuntime();
   const main = identity?.wallet.account.address;
+
+  /** What an open account is worth now, in USDC units. Futures cash is what it holds, unmarked. */
+  async function valueOf(tournament: IndexedTournament, account: Address): Promise<bigint> {
+    if (venueOf(tournament.venue) === "futures") {
+      const { balance } = await perps.account(tournament.id, account);
+      return toUsdc(balance < 0n ? 0n : balance);
+    }
+    return (await kuru.portfolio(account)).totalUsdc;
+  }
 
   const tournaments = useQuery({
     queryKey: ["tournaments"],
@@ -57,7 +69,7 @@ export function useMyTournaments() {
           }
           const phase = phaseAt(tournament, now);
           const open = phase === "upcoming" || phase === "live";
-          const value = open ? (await kuru.portfolio(entry.tradingAccount)).totalUsdc : null;
+          const value = open ? await valueOf(tournament, entry.tradingAccount) : null;
           return { tournament, entry, phase, value };
         }),
       );
