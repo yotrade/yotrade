@@ -1,8 +1,8 @@
 import { BASE_URL, check, finish, open } from "./lib.mjs";
 
 /**
- * The organizer creates a free tournament, finds it under "You host" on Home, is offered cancel and nothing
- * else, backs out once, then confirms and watches the badge flip. Two transactions.
+ * The organizer creates a free tournament, finds it under "You host" on Home, renames it, is offered cancel
+ * and nothing else, backs out once, then confirms and watches the badge flip. Three transactions.
  */
 const failures = [];
 const { browser, page, logs, shot } = await open("/new");
@@ -24,6 +24,12 @@ check(
 );
 await shot("host-home");
 await page.goto(`${BASE_URL}${path}`);
+await page.getByRole("link", { name: "Edit name and logo" }).click({ timeout: 60_000 });
+await page.getByLabel("Name", { exact: true }).fill("Host Cup Renamed");
+await page.getByRole("button", { name: "Save changes" }).click();
+await page.waitForURL(new RegExp(`${path}$`), { timeout: 120_000 });
+await page.getByRole("heading", { name: "Host Cup Renamed" }).waitFor({ timeout: 60_000 });
+await shot("host-renamed");
 const offer = page.getByRole("button", { name: "Cancel tournament" });
 await offer.waitFor({ timeout: 60_000 });
 await offer.click();
