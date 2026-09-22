@@ -17,7 +17,7 @@ import { tabSession } from "./session-store.ts";
  * production bundle this returns `undefined` no matter what the environment says.
  */
 function e2eSource(seed: string | undefined): PrfSource | undefined {
-  if (process.env.NODE_ENV === "production" || !seed) {
+  if (process.env.NODE_ENV === "production" || !seed || !e2eRequested()) {
     return undefined;
   }
   // A fresh copy each time: the identity wipes the entropy it is given.
@@ -27,6 +27,17 @@ function e2eSource(seed: string | undefined): PrfSource | undefined {
 
 /** Browsers reach Hermes through our proxy, which holds the key. Servers pass the real endpoint instead. */
 const BROWSER_HERMES: HermesOptions = { baseUrl: "/api/pyth" };
+
+/** The seed is opt-in per browser: a script sets this flag, a person testing by hand gets the real passkey. */
+export const E2E_FLAG = "yotrade.e2e";
+
+function e2eRequested(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(E2E_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /** Every integration the app talks to, wired once. Alchemy is used when a key is configured. */
 export function createAppRuntime(env: PublicEnv, hermesOptions: HermesOptions = BROWSER_HERMES) {
