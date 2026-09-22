@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Address } from "viem";
 
 import { formatUsdc } from "@/lib/format.ts";
@@ -37,6 +38,14 @@ function activity(row: LeaderboardRow, venue: Venue): string {
 export function Leaderboard({ id, you, venue }: Props) {
   const { data, isPending, isError } = useLeaderboard(id);
   const profileOf = useProfiles((data ?? []).map((row) => row.participant));
+  const mine = useRef<HTMLLIElement>(null);
+  const myRank = data?.find((row) => row.participant === you)?.rank;
+  // Deep in a long table, my row is the one I came to see: bring it into view once.
+  useEffect(() => {
+    if (myRank !== undefined && myRank > 3) {
+      mine.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [myRank]);
   const nameOf = (row: LeaderboardRow) =>
     traderName(row.participant, profileOf(row.participant), row.participant === you);
 
@@ -90,7 +99,9 @@ export function Leaderboard({ id, you, venue }: Props) {
         {rest.map((row, index) => (
           <li
             key={row.participant}
-            className="flex animate-enter items-center gap-3 rounded-full bg-surface-raised py-2 pl-2 pr-3"
+            ref={row.participant === you ? mine : undefined}
+            aria-current={row.participant === you ? "true" : undefined}
+            className={`flex animate-enter items-center gap-3 rounded-full py-2 pl-2 pr-3 ${row.participant === you ? "bg-accent-soft ring-2 ring-accent" : "bg-surface-raised"}`}
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
           >
             <Avatar
