@@ -119,8 +119,8 @@ export function HomeScreen() {
         <Loading label="Loading your tournaments" className="flex flex-col gap-3">
           <Skeleton className="h-4 w-32" />
           <div className="flex gap-2">
-            <Skeleton className="h-[172px] w-[160px] rounded-3xl" />
-            <Skeleton className="h-[172px] w-[160px] rounded-3xl" />
+            <Skeleton className="h-[164px] w-[160px] rounded-3xl" />
+            <Skeleton className="h-[164px] w-[160px] rounded-3xl" />
           </div>
         </Loading>
       ) : null}
