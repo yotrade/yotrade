@@ -185,6 +185,15 @@ export function tournament(options: TournamentOptions = {}) {
           wallet.writeContract({ ...contract, functionName: "setInvite", args: [id, signer] }),
         ),
 
+      setMetadata: (wallet: Wallet, id: bigint, metadataURI: string) =>
+        confirm(
+          wallet.writeContract({
+            ...contract,
+            functionName: "setMetadata",
+            args: [id, metadataURI],
+          }),
+        ),
+
       inviteSignerOf: (id: bigint) =>
         publicClient.readContract({ ...contract, functionName: "inviteSignerOf", args: [id] }),
 

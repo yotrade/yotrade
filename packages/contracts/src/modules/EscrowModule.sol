@@ -56,6 +56,16 @@ abstract contract EscrowModule is TournamentBase {
     }
 
     /// @inheritdoc ITournamentManager
+    function setMetadata(uint256 id, string calldata metadataURI) external {
+        Tournament storage t = _open(id);
+        if (msg.sender != t.organizer) revert NotOrganizer();
+        if (block.timestamp >= t.config.endTime) revert TournamentEnded();
+        if (bytes(metadataURI).length > MAX_METADATA_LENGTH) revert MetadataTooLong();
+        t.config.metadataURI = metadataURI;
+        emit MetadataUpdated(id, metadataURI);
+    }
+
+    /// @inheritdoc ITournamentManager
     /// @dev The organizer may cancel until trading starts. The admin may cancel any open tournament, for example
     /// when the venue is down.
     function cancel(uint256 id) external nonReentrant {

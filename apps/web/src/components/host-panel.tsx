@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
+import Link from "next/link";
 import { useState } from "react";
 
 import { formatUsdc } from "@/lib/format.ts";
@@ -41,7 +42,7 @@ interface Props {
   readonly now: bigint;
 }
 
-/** The organizer's one available move, offered only when the contract would accept it. */
+/** The organizer's card: edit while it runs, plus the one money move the contract would accept right now. */
 export function HostPanel({ tournament, phase, now }: Props) {
   const { publicClient, tournament: manager } = useRuntime();
   const { identity } = useIdentity();
@@ -68,10 +69,12 @@ export function HostPanel({ tournament, phase, now }: Props) {
     unpaid: state.data.unpaid,
     entries: tournament.entries,
   });
-  if (!next) {
+  // The contract takes new metadata while the tournament is open and not over: the same window as an invite.
+  const editable = phase === "upcoming" || phase === "live";
+  if (!(next || editable)) {
     return null;
   }
-  const copy = COPY[next.action];
+  const copy = next ? COPY[next.action] : null;
 
   async function run() {
     if (!(identity && next)) {
@@ -98,37 +101,49 @@ export function HostPanel({ tournament, phase, now }: Props) {
     <Card className="flex flex-col gap-3 py-4">
       <p className="flex items-center gap-2 text-sm font-semibold tracking-tight">
         <Icon name="wallet" size={20} />
-        {copy.title}
+        {copy?.title ?? "You host this tournament"}
       </p>
-      <p className="text-sm font-medium leading-5 text-ink-muted">
-        {copy.body}
-        {next.amount > 0n ? (
-          <>
-            {" "}
-            Back to you:{" "}
-            <span className="tabular font-semibold text-ink">${formatUsdc(next.amount)}</span>.
-          </>
-        ) : null}
-      </p>
-      {arming ? (
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            className="min-h-10"
-            onClick={() => setArming(false)}
-            disabled={pending}
-          >
-            Keep it
-          </Button>
-          <Button className="min-h-10 bg-down hover:bg-down" pending={pending} onClick={run}>
-            {copy.confirm}
-          </Button>
-        </div>
-      ) : (
-        <Button variant="secondary" className="min-h-10" onClick={() => setArming(true)}>
-          {copy.button}
-        </Button>
-      )}
+      {editable ? (
+        <Link
+          href={`/t/${tournament.id}/edit`}
+          className="flex min-h-10 items-center justify-center rounded-full bg-surface-raised px-4 text-sm font-semibold transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+        >
+          Edit name and logo
+        </Link>
+      ) : null}
+      {next && copy ? (
+        <>
+          <p className="text-sm font-medium leading-5 text-ink-muted">
+            {copy.body}
+            {next.amount > 0n ? (
+              <>
+                {" "}
+                Back to you:{" "}
+                <span className="tabular font-semibold text-ink">${formatUsdc(next.amount)}</span>.
+              </>
+            ) : null}
+          </p>
+          {arming ? (
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                className="min-h-10"
+                onClick={() => setArming(false)}
+                disabled={pending}
+              >
+                Keep it
+              </Button>
+              <Button className="min-h-10 bg-down hover:bg-down" pending={pending} onClick={run}>
+                {copy.confirm}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" className="min-h-10" onClick={() => setArming(true)}>
+              {copy.button}
+            </Button>
+          )}
+        </>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-down">
           {error}
