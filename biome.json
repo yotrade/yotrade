@@ -180,7 +180,7 @@
       }
     },
     {
-      "includes": ["**/*.{test,spec}.{ts,tsx}", "**/test/**", "**/scripts/**"],
+      "includes": ["**/*.{test,spec}.{ts,tsx}", "**/test/**", "**/scripts/**", "**/e2e/**"],
       "linter": {
         "rules": {
           "suspicious": { "noConsole": "off", "noExplicitAny": "off" },
