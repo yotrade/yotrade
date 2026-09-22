@@ -106,7 +106,7 @@ export function HostPanel({ tournament, phase, now }: Props) {
       {editable ? (
         <Link
           href={`/t/${tournament.id}/edit`}
-          className="flex min-h-10 items-center justify-center rounded-full bg-surface-raised px-4 text-sm font-semibold transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
           Edit name and logo
         </Link>
