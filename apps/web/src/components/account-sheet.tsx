@@ -7,6 +7,7 @@ import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { ProfileEditor } from "./profile-editor.tsx";
 import { Avatar } from "./ui/avatar.tsx";
+import { Button } from "./ui/button.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Sheet, SheetRow } from "./ui/sheet.tsx";
 
@@ -16,11 +17,31 @@ const EXPLORER = "https://testnet.monadvision.com/address/";
 export function AccountSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   const { identity, signOut } = useIdentity();
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [profile] = useLocalProfile();
   if (!identity) {
     return null;
   }
   const { address } = identity.wallet.account;
+
+  if (editing) {
+    return (
+      <Sheet open={open} onClose={onClose} label="Edit profile">
+        <header className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="Back to account"
+            onClick={() => setEditing(false)}
+            className="grid size-10 place-items-center rounded-full bg-surface-raised transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
+          >
+            <Icon name="chevron-right" size={16} className="rotate-180" />
+          </button>
+          <h2 className="text-xl font-bold leading-[26px] tracking-tight">Edit profile</h2>
+        </header>
+        <ProfileEditor identity={identity} />
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={open} onClose={onClose} label="Account">
@@ -40,7 +61,9 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose(): void
         </button>
       </div>
 
-      <ProfileEditor identity={identity} />
+      <Button variant="secondary" onClick={() => setEditing(true)}>
+        Edit profile
+      </Button>
 
       <div className="flex flex-col divide-y divide-border/60">
         <SheetRow icon={<Icon name="face-scan" size={20} />} label="Secured by">
