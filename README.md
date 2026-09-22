@@ -20,6 +20,32 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Who it is for
+
+The first users are university blockchain clubs and regional crypto communities, starting with Indonesia and the other Metropolis community supporters. Their lead wants an activity with bragging rights, most members are new to perps and trade small accounts, and a protocol or the community treasury funds the prize to meet traders. Exchanges run a few huge contests for whales; nobody lets a 30-person community run its own with a fair, recomputable score and a contract that pays out.
+
+## Try it in two minutes
+
+Open [yotrade.xyz](https://yotrade.xyz) on a phone or a laptop. There are no accounts to create and no credentials to enter: one passkey prompt makes the account, and testnet gas and funds arrive on their own.
+
+1. Pick a live tournament in the arena and tap **Join**. Spot joins in about 11 seconds, Futures in 6.
+2. Trade a couple of times. Spot fills land on Kuru's order book; Futures orders carry a signed Pyth price.
+3. Watch the leaderboard move and Kimi comment on it. Your row is highlighted.
+4. Host one yourself from **Host**: three steps, a private one hands you an invite link derived from your passkey.
+
+Clear the site data or open a fresh browser and sign in with the same passkey: the account, the tournaments you joined, your profile and your invite links all come back, because nothing lives only on the device.
+
+## Sponsor stack
+
+| Sponsor | Where it is used |
+|---|---|
+| Mera | The whole account layer: one passkey ceremony, a signing session per tab so nothing prompts again, and PRF namespaces that mint a trading account per tournament and an invite capability per private tournament, all reconstructible from the passkey ([`packages/plugins/plugin-mera`](packages/plugins/plugin-mera)) |
+| Kuru | Spot tournaments trade real Kuru order books through the SDK, with the faucet and deposit inside the join flow and Kuru's public fills feeding the score ([`packages/plugins/plugin-kuru`](packages/plugins/plugin-kuru)) |
+| Pyth | Futures tournaments price and settle on Pyth updates that ride with every order; settlement uses the first update after the end ([`packages/contracts/src/perps`](packages/contracts/src/perps)) |
+| Envio | HyperIndex on Envio Cloud: tournaments, entries, results, futures fills and liquidations, profiles and per-trader stats drive every list, page and leaderboard ([`apps/indexer`](apps/indexer)) |
+| Kimi | Commentary on each tournament in the community's language, from the live standings and the last fills ([`apps/web/src/server/commentary.ts`](apps/web/src/server/commentary.ts)) |
+| Alchemy | The RPC transport for the app when `NEXT_PUBLIC_ALCHEMY_API_KEY` is set, with multicall batching on top ([`packages/plugins/plugin-alchemy`](packages/plugins/plugin-alchemy)) |
+
 ## Deployment (Monad testnet, chain 10143)
 
 | Contract | Address |
