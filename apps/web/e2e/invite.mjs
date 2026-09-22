@@ -2,7 +2,8 @@ import { BASE_URL, check, finish, open } from "./lib.mjs";
 
 /**
  * A private tournament: the host creates it and lands on the invite link, the same identity then proves that
- * the arena hides it, that the page without the code refuses, and that the link admits. Two transactions.
+ * the arena hides it, that the page without the code refuses, that a wrong pasted code is refused, and that
+ * the pasted code admits. Two transactions.
  */
 const failures = [];
 const host = await open("/new");
@@ -36,7 +37,19 @@ check(
   (await guest.page.getByText("Invite Cup").count()) === 0,
   "arena lists the private tournament",
 );
-await guest.page.goto(`${BASE_URL}${link.pathname}${link.hash}`);
+// The code on its own, as a chat app that strips fragments would leave it.
+await guest.page.goto(`${BASE_URL}${link.pathname}`);
+await guest.page.getByLabel("Invite code").fill("0x1234");
+await guest.page.getByRole("button", { name: "Use code" }).click();
+check(
+  failures,
+  (await guest.page.getByText("That is not an invite code", { exact: false }).count()) === 1,
+  "a bad code was accepted",
+);
+await guest.page
+  .getByLabel("Invite code")
+  .fill(new URLSearchParams(link.hash.slice(1)).get("invite"));
+await guest.page.getByRole("button", { name: "Use code" }).click();
 await guest.page.getByRole("button", { name: /^Join/ }).click({ timeout: 60_000 });
 await guest.page.getByText("You're in").waitFor({ timeout: 120_000 });
 await guest.shot("invite-joined");

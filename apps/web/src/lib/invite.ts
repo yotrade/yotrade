@@ -13,6 +13,16 @@ export function inviteLink(origin: string, id: bigint, code: Hex): string {
   return `${origin}/t/${id}#${PARAM}=${code}`;
 }
 
+/** What a guest pastes: the bare code, or a whole invite link whose fragment carries it. */
+export function parseInviteCode(input: string): Hex | null {
+  const text = input.trim();
+  if (isInviteCode(text)) {
+    return text;
+  }
+  const hash = text.indexOf("#");
+  return hash === -1 ? null : inviteFromUrl(text.slice(hash));
+}
+
 /** The code in the current URL, if any. Read once, then kept for the tournament on this device. */
 export function inviteFromUrl(hash: string): Hex | null {
   const value = new URLSearchParams(hash.replace(/^#/, "")).get(PARAM) ?? "";

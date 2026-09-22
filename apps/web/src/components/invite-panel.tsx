@@ -18,6 +18,7 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
   const { identity } = useIdentity();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const signer = useQuery({
@@ -62,7 +63,9 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
         <>
           <p className="text-sm font-medium leading-5 text-ink-muted">
             Only people with this link can join. It comes from your passkey, so you can share it
-            again from any device. If it leaks, make a new one: old links stop working at once.
+            again from any device. If a chat app cuts the link short, send the code on its own: the
+            page has a place to paste it. If it leaks, make a new one: old links stop working at
+            once.
           </p>
           <Button
             variant="secondary"
@@ -81,6 +84,16 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
           >
             {copied ? "Link copied" : "Share invite link"}
           </Button>
+          <button
+            type="button"
+            onClick={async () => {
+              await navigator.clipboard.writeText(current.code);
+              setCopiedCode(true);
+            }}
+            className="font-mono text-[13px] font-semibold text-accent transition duration-200 hover:text-accent-strong focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {copiedCode ? "Code copied" : "Copy just the code"}
+          </button>
           <button
             type="button"
             disabled={pending}
