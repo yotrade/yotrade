@@ -26,6 +26,7 @@ import { Leaderboard } from "./leaderboard.tsx";
 import { MarketsStrip } from "./markets-strip.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
+import { ShareButton } from "./share-button.tsx";
 import { StandingsPulse } from "./standings-pulse.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Icon } from "./ui/icon.tsx";
@@ -191,6 +192,8 @@ export function TournamentDetail({ id }: { id: string }) {
           {isPrivate(data.metadataURI) ? "private" : venue}
         </span>
         <PhaseBadge phase={phase} />
+        {/* A private link carries the invite code, which the host's card shares; this one is for public ones. */}
+        {isPrivate(data.metadataURI) ? null : <ShareButton title={meta.name} />}
       </header>
 
       {/* Kit wallet card, full width: the one number that matters, then the facts around it. */}
