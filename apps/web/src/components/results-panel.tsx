@@ -113,7 +113,10 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
                 entry === mine,
               ),
               avatar: profileOf(entry.participant_id)?.avatar,
-              score: `$${formatUsdc(entry.prize)}${entry.claimed ? " ✓" : ""}`,
+              score:
+                entry.prize > 0n
+                  ? `$${formatUsdc(entry.prize)}${entry.claimed ? " ✓" : ""}`
+                  : "No prize",
               you: entry === mine,
             }))}
           />
