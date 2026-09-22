@@ -47,6 +47,7 @@ A fresh account per tournament means clean starting capital, no positions carrie
 ## Lifecycle
 
 1. **Host**: gas drip → Kuru faucet → approve → `createTournament` escrows the pool.
+   The host can rename or swap the logo with `setMetadata` while the tournament is open, and cancel until it starts, reclaim the pool when no result is posted for seven days, or sweep what no winner can claim.
 2. **Join**: gas drip → faucet → deposit into Kuru → `join` records `capitalAtJoin` through the venue adapter. Measured live: 11 s from tap to registered.
 3. **Trade**: market orders on Kuru with three guards: empty side, price impact against the top of the book, slippage after the quote.
 4. **Score**: `(realized PnL inside the window + open inventory at the mark − its cost) / capitalAtJoin`. Inputs are Kuru's public fills and the contract's `capitalAtJoin`. Deposits and transfers are not fills, so they cannot move a score.
