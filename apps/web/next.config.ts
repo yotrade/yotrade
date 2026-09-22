@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import type { NextConfig } from "next";
 
 const securityHeaders = [
@@ -17,6 +19,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: true,
+  // A self-contained server for the container image; traced from the monorepo root so workspace packages ride along.
+  output: "standalone",
+  outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   // Workspace packages ship TypeScript source, not build output.
   transpilePackages: [
     "@yotrade/core",

@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/.next
+**/.turbo
+**/coverage
+**/dist
+apps/web/e2e/shots
+packages/contracts/out
+packages/contracts/cache
+packages/contracts/lib
+packages/contracts/broadcast
+knowledge
+IDEA-*.md
+**/.env
+**/.env.*
+!**/.env.example
