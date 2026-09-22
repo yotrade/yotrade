@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { type MarketSymbol, markets } from "@yotrade/core/addresses";
 
-import { bookRows, CANDLES, RANGES, type RangeName, summarize, toBars } from "./chart.ts";
+import { bookRows, CANDLES, evenlySpaced, RANGES, type RangeName, summarize, toBars } from "./chart.ts";
 import { roiBps } from "./ticket.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
 
 const USDC = 1_000_000;
+/** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
+const LOOKBACK_SECONDS = 30 * 86_400;
 
 /** Everything the market screen shows, from Kuru's public APIs and the chain. */
 export function useMarket(id: string, market: MarketSymbol, range: RangeName, needsDepth: boolean) {
@@ -32,14 +34,13 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
   const candles = useQuery({
     queryKey: ["candles", orderBook, range],
     queryFn: async () => {
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - RANGES[range].seconds * CANDLES;
+      // The newest candles whenever they happened: a thin market rarely fills 96 intervals in a row.
       const rows = await kuru.data.candles(orderBook, {
         interval: RANGES[range].interval,
-        from,
+        from: Math.floor(Date.now() / 1000) - LOOKBACK_SECONDS,
         countback: CANDLES,
       });
-      return { from, to, rows };
+      return { rows };
     },
     refetchInterval: 10_000,
   });
@@ -61,7 +62,9 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     refetchInterval: 3_000,
   });
 
-  const bars = info.data && candles.data ? toBars(candles.data.rows, info.data.pricePrecision) : [];
+  const series = evenlySpaced(
+    info.data && candles.data ? toBars(candles.data.rows, info.data.pricePrecision) : [],
+  );
   const book =
     info.data && depth.data
       ? bookRows(depth.data, info.data.pricePrecision, info.data.sizePrecision)
@@ -78,10 +81,10 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     /** Nothing here may be read as "empty" before it has loaded. */
     chartLoading: info.isPending || candles.isPending,
     bookLoading: info.isPending || depth.isPending,
-    bars,
-    from: candles.data?.from ?? 0,
-    to: candles.data?.to ?? 1,
-    summary: summarize(bars),
+    bars: series.bars,
+    from: series.from,
+    to: series.to,
+    summary: summarize(series.bars),
     book,
     roi: portfolio.data && entry.data ? roiBps(portfolio.data.totalUsdc, entry.data.capitalAtJoin) : null,
     positionUsd: portfolio.data ? Number(portfolio.data.holdings[base]?.valueUsdc ?? 0n) / USDC : null,

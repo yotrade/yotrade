@@ -114,6 +114,19 @@ export function plotOf(bars: readonly Bar[], from: number, to: number, frame: Fr
   };
 }
 
+/**
+ * Bars at their index instead of their time, for markets that trade a few times a day: hours of nothing between
+ * two fills carry no information and would squeeze every candle into a dash. The step line then reads as a
+ * sequence of trades, which on such a market is what it is.
+ */
+export function evenlySpaced(bars: readonly Bar[]): { bars: Bar[]; from: number; to: number } {
+  return {
+    bars: bars.map((bar, index) => ({ ...bar, time: index })),
+    from: 0,
+    to: Math.max(1, bars.length - 1),
+  };
+}
+
 const round = (value: number) => Math.round(value * 100) / 100;
 
 /**

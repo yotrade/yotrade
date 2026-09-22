@@ -6,7 +6,16 @@ import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import Image from "next/image";
 import Link from "next/link";
 
-import { type Bar, CANDLES, linePath, plotOf, RANGES, summarize, toBars } from "@/lib/chart.ts";
+import {
+  type Bar,
+  CANDLES,
+  evenlySpaced,
+  linePath,
+  plotOf,
+  RANGES,
+  summarize,
+  toBars,
+} from "@/lib/chart.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
@@ -21,8 +30,9 @@ import { TokenIcon } from "./ui/token-icon.tsx";
 
 const SPARK = { width: 56, height: 28, padY: 3 };
 const SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
-/** Four days of hourly candles: thin testnet markets rarely trade inside a single day. */
+/** The newest hourly candles, from whenever a thin testnet market last traded. */
 const RANGE = RANGES["1h"];
+const LOOKBACK_SECONDS = 30 * 86_400;
 
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
@@ -72,19 +82,18 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     queryKey: ["market-row", orderBook],
     refetchInterval: 10_000,
     queryFn: async () => {
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - RANGE.seconds * CANDLES;
       const [info, candles, book] = await Promise.all([
         kuru.data.market(orderBook),
-        kuru.data.candles(orderBook, { interval: RANGE.interval, from }),
+        kuru.data.candles(orderBook, {
+          interval: RANGE.interval,
+          from: Math.floor(Date.now() / 1000) - LOOKBACK_SECONDS,
+          countback: CANDLES,
+        }),
         kuru.market.book(symbol),
       ]);
       const bars = toBars(candles, info.pricePrecision);
       return {
-        // The line starts at the first trade: a thin market's few bars would otherwise hug the right edge.
-        from: bars[0]?.time ?? from,
-        to,
-        bars,
+        ...evenlySpaced(bars),
         summary: summarize(bars),
         mid: book.hasLiquidity ? midPrice(book) : null,
         tradable: book.hasLiquidity,
@@ -127,7 +136,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
           {price === null ? "—" : `$${money(price)}`}
         </p>
         <p className={`tabular text-sm font-medium leading-5 ${up ? "text-up" : "text-down"}`}>
-          {summary ? `${formatBps(summary.changeBps)} 4d` : "No trades"}
+          {summary ? `${formatBps(summary.changeBps)} recent` : "No trades"}
         </p>
       </div>
     </Link>
