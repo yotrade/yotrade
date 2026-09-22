@@ -25,7 +25,10 @@ const serverSchema = z.object({
 export type ServerEnv = z.infer<typeof serverSchema>;
 
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
-  const result = serverSchema.safeParse(source);
+  // A container or CI hands over unset variables as empty strings; an empty optional is an absent one.
+  const result = serverSchema.safeParse(
+    Object.fromEntries(Object.entries(source).filter(([, value]) => value !== "")),
+  );
   if (!result.success) {
     // Names only: the values are secrets.
     const names = result.error.issues.map((issue) => issue.path.join(".")).join(", ");

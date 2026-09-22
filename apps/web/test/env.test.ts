@@ -58,3 +58,10 @@ describe("createAppRuntime", () => {
     );
   });
 });
+
+test("an empty optional variable, as a container passes it, counts as unset", () => {
+  expect(
+    parsePublicEnv({ NEXT_PUBLIC_RP_ID: "yotrade.xyz", NEXT_PUBLIC_ALCHEMY_API_KEY: "" })
+      .NEXT_PUBLIC_ALCHEMY_API_KEY,
+  ).toBeUndefined();
+});
