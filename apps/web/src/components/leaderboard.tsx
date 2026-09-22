@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import type { Address } from "viem";
 
 import { formatUsdc } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
+import { useLeaderboard } from "@/lib/use-leaderboard.ts";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import type { Venue } from "@/lib/venue.ts";
 import { Podium } from "./podium.tsx";
@@ -35,17 +35,7 @@ function activity(row: LeaderboardRow, venue: Venue): string {
 }
 
 export function Leaderboard({ id, you, venue }: Props) {
-  const { data, isPending, isError } = useQuery({
-    queryKey: ["leaderboard", id],
-    queryFn: async (): Promise<LeaderboardRow[]> => {
-      const response = await fetch(`/api/leaderboard/${id}`);
-      if (!response.ok) {
-        throw new Error(`Leaderboard answered ${response.status}`);
-      }
-      return ((await response.json()) as { rows: LeaderboardRow[] }).rows;
-    },
-    refetchInterval: 5_000,
-  });
+  const { data, isPending, isError } = useLeaderboard(id);
   const profileOf = useProfiles((data ?? []).map((row) => row.participant));
   const nameOf = (row: LeaderboardRow) =>
     traderName(row.participant, profileOf(row.participant), row.participant === you);
