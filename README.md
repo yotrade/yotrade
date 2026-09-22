@@ -2,7 +2,9 @@
 
 Who's the best trader in your community? Find out live on Monad.
 
-YoTrade lets any community host a trading tournament. A host escrows a prize pool in a contract and shares a link. Members join with a passkey, get a fresh trading account with standardized test capital, and trade real [Kuru](https://kuru.io) order books. A leaderboard anyone can recompute follows every fill, [Kimi](https://platform.kimi.ai) comments on it in the community's language, and the contract pays the winners.
+YoTrade lets any community host a trading tournament. A host escrows a prize pool in a contract, picks the market and who may join, and shares a link. Members join with a passkey and get a fresh trading account per tournament: on **Spot** they trade real [Kuru](https://kuru.io) order books with standardized test capital; on **Futures** they go long or short at [Pyth](https://pyth.network) prices with the same virtual $10,000 as everyone else. A leaderboard anyone can recompute follows every fill, [Kimi](https://platform.kimi.ai) comments on it in the community's language, and the contract pays the winners.
+
+**Private tournaments** are hidden from the arena and need an invite: the code is derived from the host's passkey, its address goes onchain, and the contract checks the code's signature on every join. Leaked links are revoked by rotating the code. Hosts can add a logo (upload or link), traders a name and avatar, all stored onchain.
 
 Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackathons/metropolis), Track 01: Onchain Finance & Trading. Testnet only.
 
@@ -10,11 +12,11 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 
 | Step | What happens | Measured on testnet |
 |---|---|---|
-| Host | Gas, test funds, approve, `createTournament` escrows the pool | 11 s from tap to listed |
-| Join | Passkey → derived account → gas, faucet, Kuru deposit, `join` | 11 s, five transactions |
-| Trade | Market orders with empty-side, price-impact and slippage guards | 2 to 4 s per order |
-| Score | Kuru's public fills + `capitalAtJoin`; deposits cannot move a score | 1.1 s cold, 5 ms cached |
-| Settle | Anyone finalizes, winners are computed, review window, claim | 3 s to post, 8 s to claim |
+| Host | Three steps: basics, prize, schedule; `createTournament` escrows the pool | 2 s once confirmed |
+| Join | Passkey → derived account → gas, faucet, Kuru deposit, `join` (Futures: gas and `join` only) | 11 s spot, 6 s futures |
+| Trade | Spot: market orders with empty-side, impact and slippage guards. Futures: a signed Pyth update rides with every order, 20x cap, permissionless liquidation | 2 to 5 s per order |
+| Score | Spot: Kuru's public fills + `capitalAtJoin`. Futures: equity at Pyth prices. Deposits cannot move a score | 1.1 s cold, 5 ms cached |
+| Settle | Anyone finalizes: futures positions close at the first Pyth price after the end, winners are posted, review window, claim | 6 s to post, 8 s to claim |
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -24,6 +26,8 @@ More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |---|---|
 | `TournamentManager` (UUPS proxy) | [`0xe60aFf1991d9D93e6093da5c813A63B746159D10`](https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10) |
 | `KuruVenueAdapter` | [`0xADefe39B43673641e94cE99613c54266af2490e6`](https://testnet.monadvision.com/address/0xADefe39B43673641e94cE99613c54266af2490e6) |
+| `PerpsEngine` (UUPS proxy) | [`0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336`](https://testnet.monadvision.com/address/0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336) |
+| `PerpsVenueAdapter` | [`0x97167B3126E2dEE1FE8920C129bD118Eb91e9881`](https://testnet.monadvision.com/address/0x97167B3126E2dEE1FE8920C129bD118Eb91e9881) |
 | `ProfileRegistry` (immutable, ownerless) | [`0x9d8B6852705dD7585B3907244d603547a4eA32d6`](https://testnet.monadvision.com/address/0x9d8B6852705dD7585B3907244d603547a4eA32d6) |
 
 Verified on MonadVision (Sourcify). History and configuration: [`packages/contracts/deployments`](packages/contracts/deployments).
@@ -33,10 +37,10 @@ Verified on MonadVision (Sourcify). History and configuration: [`packages/contra
 | Path | Description |
 |---|---|
 | [`apps/web`](apps/web) | Mobile-first web app and server routes (Next.js 16, React 19, Tailwind v4) |
-| [`apps/indexer`](apps/indexer) | Envio HyperIndex: tournaments, entries, results, trader stats |
-| [`packages/contracts`](packages/contracts) | Tournament contracts (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
+| [`apps/indexer`](apps/indexer) | Envio HyperIndex: tournaments, entries, results, futures fills, profiles, trader stats |
+| [`packages/contracts`](packages/contracts) | `TournamentManager` and `PerpsEngine` (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 | `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
-| `packages/plugins/*` | Reusable integrations, one package each: `plugin-mera`, `plugin-kuru`, `plugin-tournament`, `plugin-alchemy` |
+| `packages/plugins/*` | Reusable integrations, one package each: `plugin-mera`, `plugin-kuru`, `plugin-perps`, `plugin-tournament`, `plugin-alchemy` |
 | `packages/tsconfig` | Shared strict TypeScript configuration |
 
 TypeScript packages are consumed as source through explicit subpath exports: no barrel files, no build step.
