@@ -25,7 +25,14 @@ export async function generateMetadata({
     const name = tournament
       ? tournamentMeta(tournament.id, tournament.metadataURI).name
       : `Tournament #${id}`;
-    return { title: name, description: `Trading tournament on Monad: ${name}` };
+    const description = `Trading tournament on Monad: ${name}`;
+    return {
+      title: name,
+      description,
+      openGraph: { title: name, description },
+      // The generated card is wide; the default card style in the layout is the square icon.
+      twitter: { card: "summary_large_image", title: name, description },
+    };
   } catch {
     return { title: `Tournament #${id}` };
   }
