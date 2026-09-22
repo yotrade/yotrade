@@ -45,11 +45,60 @@ type Entry {
   rank: Int
   prize: BigInt!
   claimed: Boolean!
+  "Futures only: fills so far, the cash balance after the last one, and how the account ended."
+  perpsFills: Int!
+  perpsBalance: BigInt
+  liquidated: Boolean!
+  settled: Boolean!
+  fills: [Fill!]! @derivedFrom(field: "entry")
+}
+
+"One fill on the futures venue."
+type Fill {
+  "<tx hash>-<log index>"
+  id: ID!
+  entry: Entry! @index
+  tournament: Tournament! @index
+  trader: Trader! @index
+  "Pyth feed id"
+  market: String! @index
+  "Signed base units, 1e18"
+  sizeDelta: BigInt!
+  "USD 1e18"
+  price: BigInt!
+  realizedPnl: BigInt!
+  fee: BigInt!
+  newSize: BigInt!
+  balance: BigInt!
+  timestamp: BigInt! @index
+  tx: String!
+}
+
+type Liquidation {
+  "<tx hash>-<log index>"
+  id: ID!
+  entry: Entry! @index
+  tournament: Tournament! @index
+  liquidator: String!
+  "Cash after the liquidation, floored at zero"
+  balance: BigInt!
+  timestamp: BigInt!
+}
+
+"A Pyth feed the futures venue accepts."
+type PerpsMarket {
+  "Pyth feed id"
+  id: ID!
+  enabled: Boolean!
 }
 
 type Trader {
   "Participant address"
   id: ID!
+  "From ProfileRegistry. Untrusted text: render as text, never as HTML."
+  name: String!
+  "Kit avatar id; zero means none"
+  avatar: Int!
   tournamentsJoined: Int!
   podiums: Int!
   wins: Int!

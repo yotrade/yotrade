@@ -4,7 +4,8 @@ const BPS = 10_000n;
 const STATS_ID = "global";
 const ZERO_ROOT = `0x${"0".repeat(64)}`;
 
-const entryId = (tournamentId: bigint, participant: string) => `${tournamentId}-${participant}`;
+export const entryId = (tournamentId: bigint, participant: string) =>
+  `${tournamentId}-${participant}`;
 
 /** Same arithmetic as PrizeSplit.prize in the contract: rounds down. */
 const prizeFor = (pool: bigint, shareBps: number | undefined) =>
@@ -19,8 +20,10 @@ const emptyStats: Stats = {
   prizesClaimed: 0n,
 };
 
-const newTrader = (id: string): Trader => ({
+export const newTrader = (id: string): Trader => ({
   id,
+  name: "",
+  avatar: 0,
   tournamentsJoined: 0,
   podiums: 0,
   wins: 0,
@@ -83,6 +86,10 @@ indexer.onEvent({ contract: "TournamentManager", event: "Joined" }, async ({ eve
     rank: undefined,
     prize: 0n,
     claimed: false,
+    perpsFills: 0,
+    perpsBalance: undefined,
+    liquidated: false,
+    settled: false,
   });
   context.Tournament.set({ ...tournament, participantCount: tournament.participantCount + 1 });
   context.Trader.set({ ...trader, tournamentsJoined: trader.tournamentsJoined + 1 });
