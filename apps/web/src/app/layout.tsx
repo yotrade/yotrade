@@ -15,7 +15,7 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const robotoMono = Roboto_Mono({ variable: "--font-roboto-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "YoTrade", template: "%s · YoTrade" },
+  title: { default: "YoTrade", template: "%s | YoTrade" },
   description: DESCRIPTION,
   applicationName: "YoTrade",
   metadataBase: new URL("https://yotrade.xyz"),

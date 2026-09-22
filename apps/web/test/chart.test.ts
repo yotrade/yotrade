@@ -4,6 +4,7 @@ import {
   areaPath,
   bookRows,
   candleShapes,
+  evenlySpaced,
   linePath,
   plotOf,
   summarize,
@@ -119,5 +120,20 @@ describe("chart", () => {
     expect(rows.asks.at(-1)?.share).toBe(1);
     expect(rows.bids[0]).toEqual({ price: 3374.99, size: 2, cumulative: 2, share: 0.5 });
     expect(bookRows({ bids: [], asks: [] }, 1n, 1n)).toEqual({ bids: [], asks: [] });
+  });
+});
+
+describe("evenlySpaced", () => {
+  test("puts bars at their index and spans the frame", () => {
+    const bar = { open: 1, high: 1, low: 1, close: 1, volume: 0 };
+    const spaced = evenlySpaced([
+      { ...bar, time: 1_000 },
+      { ...bar, time: 90_000 },
+      { ...bar, time: 90_001 },
+    ]);
+    expect(spaced.bars.map((item) => item.time)).toEqual([0, 1, 2]);
+    expect(spaced).toMatchObject({ from: 0, to: 2 });
+    // A lone bar still has a span to sit in.
+    expect(evenlySpaced([{ ...bar, time: 5 }])).toMatchObject({ from: 0, to: 1 });
   });
 });
