@@ -91,6 +91,8 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
   return {
     wallet,
     base,
+    /** Symbol and precisions, once known. */
+    info: info.data ?? null,
     joined: Boolean(wallet && entry.data),
     entryPending: entry.isPending,
     /** A buy needs offers and a sell needs bids. Unknown until the book has loaded. */
