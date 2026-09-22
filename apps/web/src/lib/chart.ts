@@ -155,6 +155,8 @@ export function areaPath(bars: readonly Bar[], plot: Plot, to: number, frame: Fr
 }
 
 export interface CandleShape {
+  /** The bar it draws: unique, unlike a rounded x. */
+  readonly time: number;
   readonly x: number;
   readonly wickTop: number;
   readonly wickBottom: number;
@@ -170,6 +172,7 @@ export function candleShapes(bars: readonly Bar[], plot: Plot, frame: Frame): Ca
     const top = plot.y(Math.max(bar.open, bar.close));
     const bottom = plot.y(Math.min(bar.open, bar.close));
     return {
+      time: bar.time,
       x: round(plot.x(bar.time)),
       wickTop: round(plot.y(bar.high)),
       wickBottom: round(plot.y(bar.low)),
