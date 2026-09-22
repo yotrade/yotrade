@@ -62,7 +62,7 @@ export function PriceChart({ bars, from, to, type }: Props) {
 
       {type === "Candles" ? (
         candleShapes(bars, plot, FRAME).map((shape) => (
-          <g key={shape.x} className={shape.up ? "fill-up stroke-up" : "fill-down stroke-down"}>
+          <g key={shape.time} className={shape.up ? "fill-up stroke-up" : "fill-down stroke-down"}>
             <line
               x1={shape.x}
               x2={shape.x}
