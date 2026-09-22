@@ -52,6 +52,33 @@ function Shell({ title, children }: { title: string | null; children: ReactNode 
   );
 }
 
+/** Who gets what, or a note that this one is for the fun of it. */
+function PrizeSplit({ pool, splitBps }: { pool: bigint; splitBps: readonly number[] }) {
+  const data = { prizePool: pool, prizeSplitBps: splitBps };
+  return (
+    <>
+      {data.prizePool > 0n ? (
+        <ol className="flex flex-wrap gap-1.5">
+          {data.prizeSplitBps
+            .map((bps, index) => ({ rank: index + 1, bps }))
+            .map(({ rank, bps }) => (
+              <li
+                key={rank}
+                className="tabular rounded-lg bg-white/20 px-2 py-1 font-mono text-xs font-bold"
+              >
+                #{rank} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
+              </li>
+            ))}
+        </ol>
+      ) : (
+        <p className="text-[13px] font-medium opacity-80">
+          A friendly: no prize pool, bragging rights only.
+        </p>
+      )}
+    </>
+  );
+}
+
 export function TournamentDetail({ id }: { id: string }) {
   const now = useNow();
   // An invite arrives in the fragment. Kept on this device so the join works after any reload.
@@ -128,18 +155,7 @@ export function TournamentDetail({ id }: { id: string }) {
             {formatUsdc(data.prizePool)}
           </p>
         </div>
-        <ol className="flex flex-wrap gap-1.5">
-          {data.prizeSplitBps
-            .map((bps, index) => ({ rank: index + 1, bps }))
-            .map(({ rank, bps }) => (
-              <li
-                key={rank}
-                className="tabular rounded-lg bg-white/20 px-2 py-1 font-mono text-xs font-bold"
-              >
-                #{rank} · {formatUsdc((data.prizePool * BigInt(bps)) / BPS)}
-              </li>
-            ))}
-        </ol>
+        <PrizeSplit pool={data.prizePool} splitBps={data.prizeSplitBps} />
         <dl className="grid grid-cols-3 gap-2 border-t border-white/20 pt-4 text-[13px]">
           <div className="flex flex-col gap-0.5">
             <dt className="font-medium opacity-80">{phase === "upcoming" ? "Starts" : "Ends"}</dt>

@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { formatUsdc, timeLeft, tournamentMeta } from "@/lib/format.ts";
-import { formatBps, roiBps } from "@/lib/ticket.ts";
+import { summarize } from "@/lib/entry-summary.ts";
+import { tournamentMeta } from "@/lib/format.ts";
 import type { MyTournament } from "@/lib/use-my-tournaments.ts";
 import { venueOf } from "@/lib/venue.ts";
 import { TournamentLogo } from "./ui/tournament-logo.tsx";
@@ -15,32 +15,6 @@ const FACES = [
   "bg-[#85e6ff] text-[#0e091c]",
   "bg-[#ff8ee4] text-[#0e091c]",
 ] as const;
-
-/** One big fact and one small line: how I am doing, and where the tournament stands. */
-function summary(item: MyTournament, now: bigint): { headline: string; line: string } {
-  const { tournament, entry, phase, value } = item;
-  const left = timeLeft(phase, tournament, now);
-  if (phase === "upcoming") {
-    return { headline: "—", line: left ? `Starts in ${left}` : "Starting" };
-  }
-  if (phase === "live") {
-    const roi = value === null ? null : roiBps(value, entry.capitalAtJoin);
-    return {
-      headline: roi === null ? "—" : formatBps(roi),
-      line: left ? `Live · ${left} left` : "Live",
-    };
-  }
-  if (entry.prize > 0n) {
-    return {
-      headline: `Won $${formatUsdc(entry.prize)}`,
-      line: entry.claimed ? "Claimed" : "Claim your prize",
-    };
-  }
-  return {
-    headline: entry.rank ? `#${entry.rank}` : "Finished",
-    line: entry.rank ? "Finished" : "No prize",
-  };
-}
 
 function VenueMark({ futures }: { futures: boolean }) {
   if (futures) {
@@ -70,7 +44,7 @@ export function EntryCard({ item, now }: { item: MyTournament; now: bigint }) {
   const { tournament } = item;
   const face = FACES[Number(tournament.id % BigInt(FACES.length))];
   const futures = venueOf(tournament.venue) === "futures";
-  const { headline, line } = summary(item, now);
+  const { headline, line } = summarize(item, now);
   const meta = tournamentMeta(tournament.id, tournament.metadataURI);
 
   return (

@@ -26,6 +26,7 @@ function Flag({ code }: { code: LanguageCode }) {
       aria-hidden
       width={24}
       height={24}
+      loading="eager"
       className="size-6 shrink-0 rounded-full object-cover"
     />
   );

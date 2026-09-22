@@ -70,6 +70,7 @@ export function HomeScreen() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
+      <h1 className="sr-only">Home</h1>
       <header>
         <Link
           href="/account"

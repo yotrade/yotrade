@@ -22,6 +22,13 @@ function outcome({ entry, phase }: MyTournament): { text: string; tone: string }
   if (phase === "upcoming" || phase === "live") {
     return { text: `Joined with $${formatUsdc(entry.capitalAtJoin)}`, tone: "text-ink-muted" };
   }
+  // Ended, but nobody has been named yet: the outcome is not known, so it is not "no prize".
+  if (phase === "scoring") {
+    return { text: "Ended · waiting for results", tone: "text-ink-muted" };
+  }
+  if (phase === "dispute") {
+    return { text: "Results in review", tone: "text-accent" };
+  }
   return { text: "No prize this time", tone: "text-ink-muted" };
 }
 

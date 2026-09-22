@@ -42,6 +42,7 @@ export function Avatar({ address, size = 40, avatar }: Props) {
           alt=""
           width={size}
           height={size}
+          loading="eager"
           className="size-[73%]"
         />
       ) : null}
