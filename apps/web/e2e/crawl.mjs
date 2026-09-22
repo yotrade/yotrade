@@ -27,7 +27,13 @@ const report = [];
 for (const [index, route] of ROUTES.entries()) {
   logs.length = 0;
   await page.goto(`${BASE_URL}${route}`);
-  await page.waitForTimeout(6_000);
+  // Loading states appear after hydration and clear when their data arrives; a slow RPC must not read as a
+  // page stuck loading, so wait until nothing has been busy for a full second, up to half a minute.
+  await page.waitForTimeout(2_000);
+  for (let quiet = 0, waited = 0; quiet < 2 && waited < 30_000; waited += 500) {
+    quiet = (await page.locator('[aria-busy="true"]').count()) === 0 ? quiet + 1 : 0;
+    await page.waitForTimeout(500);
+  }
   const audit = await page.evaluate(() => {
     const named = (el) =>
       el.getAttribute("aria-label") ||
