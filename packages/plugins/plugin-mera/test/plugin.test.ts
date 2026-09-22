@@ -26,6 +26,38 @@ const device = (source: PrfSource) =>
   });
 
 describe("mera plugin", () => {
+  test("a session store brings the identity back without a prompt and forgets it on request", async () => {
+    let kept: { credentialId: string; prfOutput: Uint8Array } | null = null;
+    const session = {
+      load: () => kept,
+      save: (result: typeof kept) => {
+        kept = result;
+      },
+      clear: () => {
+        kept = null;
+      },
+    };
+    const runtime = createRuntime({
+      chain: monadTestnet,
+      transport: offline,
+      plugins: [mera({ rp: { id: "yotrade.xyz", name: "YoTrade" }, source: passkey(7), session })],
+    });
+    expect(runtime.mera.resume()).toBeNull();
+
+    const signedIn = await runtime.mera.signIn();
+    const resumed = runtime.mera.resume();
+    expect(resumed?.wallet.account.address).toBe(signedIn.wallet.account.address);
+    expect(resumed?.tournamentWallet(3n).account.address).toBe(
+      signedIn.tournamentWallet(3n).account.address,
+    );
+    // Ending one identity must not wipe the copy the store holds.
+    signedIn.end();
+    expect(runtime.mera.resume()?.wallet.account.address).toBe(resumed?.wallet.account.address);
+
+    runtime.mera.forget();
+    expect(runtime.mera.resume()).toBeNull();
+  });
+
   test("stateless: a fresh device with the same passkey rebuilds the same accounts", async () => {
     const phone = await device(passkey(7)).mera.register({ name: "ayu", displayName: "Ayu" });
     const laptop = await device(passkey(7)).mera.signIn();
