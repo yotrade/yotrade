@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { hostAction, RESULTS_GRACE } from "@/lib/host.ts";
+import { hostAction, hostedBy, RESULTS_GRACE } from "@/lib/host.ts";
 
 const entry = (rank: number | null, prize: bigint, claimed = false) =>
   ({ rank, prize, claimed }) as never;
@@ -44,5 +44,28 @@ describe("hostAction mirrors the escrow module", () => {
     expect(hostAction({ ...free, phase: "upcoming" })).toEqual({ action: "cancel", amount: 0n });
     expect(hostAction({ ...free, phase: "scoring", now: 2_000n + RESULTS_GRACE })).toBeNull();
     expect(hostAction({ ...free, phase: "claimable" })).toBeNull();
+  });
+});
+
+describe("hostedBy", () => {
+  const me = "0x000000000000000000000000000000000000AbCd" as const;
+  const tournament = (id: bigint, organizer: string, status = "open") =>
+    ({ id, organizer, status, startTime: 100n, endTime: 200n, claimableAt: 0n }) as never;
+
+  test("mine, case-insensitively, newest first, cancelled left out", () => {
+    const rows = hostedBy(
+      [
+        tournament(1n, me.toLowerCase()),
+        tournament(2n, "0x0000000000000000000000000000000000000001"),
+        tournament(3n, me),
+        tournament(4n, me, "cancelled"),
+      ],
+      me,
+      150n,
+    );
+    expect(rows.map((row) => [row.tournament.id, row.phase])).toEqual([
+      [3n, "live"],
+      [1n, "live"],
+    ]);
   });
 });

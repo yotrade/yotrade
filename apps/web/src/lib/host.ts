@@ -1,6 +1,7 @@
-import type { Phase } from "@yotrade/plugin-tournament/phase";
+import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
+import { type Address, isAddressEqual } from "viem";
 
-import type { IndexedEntry } from "./indexer.ts";
+import type { IndexedEntry, IndexedTournament } from "./indexer.ts";
 
 /** `RESULTS_GRACE` in the contract: how long after the end the organizer waits before taking the pool back. */
 export const RESULTS_GRACE = 7n * 86_400n;
@@ -41,4 +42,17 @@ export function hostAction(input: {
     return amount > 0n ? { action: "sweep", amount } : null;
   }
   return null;
+}
+
+/** What `organizer` still has a hand in, newest first: everything they created that was not called off. */
+export function hostedBy(
+  tournaments: readonly IndexedTournament[],
+  organizer: Address,
+  now: bigint,
+): { tournament: IndexedTournament; phase: Phase }[] {
+  return tournaments
+    .filter((tournament) => isAddressEqual(tournament.organizer, organizer))
+    .map((tournament) => ({ tournament, phase: phaseAt(tournament, now) }))
+    .filter(({ phase }) => phase !== "cancelled")
+    .sort((a, b) => Number(b.tournament.id - a.tournament.id));
 }
