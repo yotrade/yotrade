@@ -272,7 +272,7 @@ function IntroScreen({ collapsed, returning, pending, error, onCreate, onSignIn 
 
 /**
  * Nothing in the app works without an account, so visitors meet the kit's onboarding first:
- * welcome, three slides, passkey, ready. The identity lives in memory, so a reload lands on "welcome back".
+ * welcome, three slides, passkey, ready. The identity is kept for the tab, so a reload skips all of it.
  */
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { identity, register, signIn } = useIdentity();

@@ -10,6 +10,7 @@ import { perps } from "@yotrade/plugin-perps/plugin";
 import { tournament } from "@yotrade/plugin-tournament/plugin";
 
 import type { PublicEnv } from "./env.ts";
+import { tabSession } from "./session-store.ts";
 
 /**
  * Stands in for WebAuthn during local end-to-end runs. `process.env.NODE_ENV` is inlined at build time, so in a
@@ -42,7 +43,12 @@ export function createAppRuntime(env: PublicEnv, hermesOptions: HermesOptions = 
       kuru(),
       tournament(),
       perps({ hermes: hermes(hermesOptions) }),
-      mera({ rp: { id: env.NEXT_PUBLIC_RP_ID, name: "YoTrade" }, ...(source ? { source } : {}) }),
+      mera({
+        rp: { id: env.NEXT_PUBLIC_RP_ID, name: "YoTrade" },
+        // Servers have no tab. The store is only touched inside `resume`, `signIn`, `register` and `forget`.
+        session: tabSession,
+        ...(source ? { source } : {}),
+      }),
     ],
   });
 }

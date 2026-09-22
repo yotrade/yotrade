@@ -28,10 +28,21 @@ export interface PrfSource {
   signIn(): Promise<PrfResult>;
 }
 
+/**
+ * Where a signed-in identity may be kept between page loads. Whatever is stored can rebuild every key, so it
+ * belongs in storage that dies with the tab, never on disk. Without a store every load asks for the passkey.
+ */
+export interface SessionStore {
+  load(): PrfResult | null;
+  save(result: PrfResult): void;
+  clear(): void;
+}
+
 export interface MeraOptions {
   /** Relying party: the host the passkey is scoped to, and the name the authenticator shows. */
   readonly rp: { readonly id: string; readonly name: string };
   readonly source?: PrfSource;
+  readonly session?: SessionStore;
 }
 
 export type MeraWallet = WalletClient<Transport, Chain, Account>;
@@ -60,6 +71,8 @@ export function mera(options: MeraOptions) {
     const source = options.source ?? webAuthnSource(options.rp);
 
     function toIdentity({ credentialId, prfOutput }: PrfResult): Identity {
+      // The store keeps its own copy: the one handed in is wiped below.
+      options.session?.save({ credentialId, prfOutput: prfOutput.slice() });
       const entropy = prfOutput.slice();
       prfOutput.fill(0);
       const sessions: { end(): void }[] = [];
@@ -124,9 +137,20 @@ export function mera(options: MeraOptions) {
         return toIdentity(await source.register(user));
       },
 
-      /** Signs in with a discoverable passkey. Nothing is read from storage. */
+      /** Signs in with a discoverable passkey. */
       async signIn(): Promise<Identity> {
         return toIdentity(await source.signIn());
+      },
+
+      /** The identity kept by the session store, without a prompt. Null when there is none. */
+      resume(): Identity | null {
+        const kept = options.session?.load();
+        return kept ? toIdentity(kept) : null;
+      },
+
+      /** Drops what the session store keeps. Call it on sign-out. */
+      forget(): void {
+        options.session?.clear();
       },
     };
   });

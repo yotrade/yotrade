@@ -42,7 +42,7 @@ A WebAuthn PRF output never leaves the browser. HKDF turns it into independent k
 | `yotrade/v1/tournament/<chainId>/<id>` | Isolated trading account for one tournament |
 | `yotrade/v1/vault` | AES-256-GCM key for private data at rest |
 
-A fresh account per tournament means clean starting capital, no positions carried between tournaments, and a compromised session exposes one tournament at most. Nothing is persisted: a reload asks for the passkey again.
+A fresh account per tournament means clean starting capital, no positions carried between tournaments, and a compromised session exposes one tournament at most. The identity is kept for the browser tab only (`sessionStorage`), so a reload comes back signed in while nothing reaches durable storage or another tab; closing the tab or signing out ends it.
 
 ## Lifecycle
 
