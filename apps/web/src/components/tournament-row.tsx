@@ -1,7 +1,7 @@
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 import Link from "next/link";
 
-import { countdown, formatUsdc, tournamentName } from "@/lib/format.ts";
+import { formatUsdc, timeLeft, tournamentName } from "@/lib/format.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { Icon } from "./ui/icon.tsx";
@@ -14,7 +14,9 @@ interface Props {
 
 /** Kit asset row: 40 px icon, name over a muted line, value over a status on the right. */
 export function TournamentRow({ tournament, phase, now }: Props) {
-  const schedule = countdown(phase, tournament, now);
+  // Short on purpose: the row also carries the trader count. "6d 3h" reads as time left.
+  const left = timeLeft(phase, tournament, now);
+  const schedule = left && phase === "upcoming" ? `in ${left}` : left;
   return (
     <Link
       href={`/t/${tournament.id}`}

@@ -24,6 +24,34 @@ const ACTIONS = [
   { href: "/activity", icon: "gift", label: "Results" },
 ] as const satisfies readonly { href: string; icon: IconName; label: string }[];
 
+function Headline({
+  value,
+  roi,
+  accounts,
+}: {
+  value: bigint;
+  roi: number | null;
+  accounts: number;
+}) {
+  return (
+    <div className="flex animate-fade flex-col gap-1">
+      <p className="text-[13px] font-medium text-ink-muted">Across your live accounts</p>
+      <Amount value={value} size="xl" />
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
+        <Icon name="arrow" size={16} />
+        {roi === null ? (
+          "Join a tournament to start trading"
+        ) : (
+          <>
+            <span className={roi >= 0 ? "text-up" : "text-down"}>{formatBps(roi)}</span>
+            {` · ${accounts} live ${accounts === 1 ? "account" : "accounts"}`}
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
 /** The kit's wallet home: account chip, balance, action tiles, cards, tabbed list. */
 export function HomeScreen() {
   const now = useNow();
@@ -71,19 +99,7 @@ export function HomeScreen() {
           <Skeleton className="h-4 w-56" />
         </Loading>
       ) : (
-        <div className="flex animate-fade flex-col gap-1">
-          <Amount value={value} size="xl" />
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
-            <Icon name="arrow" size={16} />
-            {roi === null ? (
-              "Join a tournament to start trading"
-            ) : (
-              <span className={roi >= 0 ? "text-up" : "text-down"}>
-                {formatBps(roi)} across live accounts
-              </span>
-            )}
-          </p>
-        </div>
+        <Headline value={value} roi={roi} accounts={open.length} />
       )}
 
       <div className="grid grid-cols-3 gap-2">
@@ -103,8 +119,8 @@ export function HomeScreen() {
         <Loading label="Loading your tournaments" className="flex flex-col gap-3">
           <Skeleton className="h-4 w-32" />
           <div className="flex gap-2">
-            <Skeleton className="h-[168px] w-[150px] rounded-3xl" />
-            <Skeleton className="h-[168px] w-[150px] rounded-3xl" />
+            <Skeleton className="h-[172px] w-[160px] rounded-3xl" />
+            <Skeleton className="h-[172px] w-[160px] rounded-3xl" />
           </div>
         </Loading>
       ) : null}
