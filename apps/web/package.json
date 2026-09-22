@@ -15,7 +15,8 @@
     "e2e:chart": "node e2e/chart.mjs",
     "e2e:profile": "node e2e/profile.mjs",
     "e2e:futures": "node e2e/futures.mjs",
-    "e2e:invite": "node e2e/invite.mjs"
+    "e2e:invite": "node e2e/invite.mjs",
+    "e2e:host": "node e2e/host.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.2",
