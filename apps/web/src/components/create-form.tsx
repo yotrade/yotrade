@@ -2,6 +2,7 @@
 
 import { tokens } from "@yotrade/core/addresses";
 import { tournamentManagerAbi } from "@yotrade/plugin-tournament/abi";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { erc20Abi, parseEventLogs } from "viem";
@@ -14,6 +15,7 @@ import {
   START_DELAYS,
 } from "@/lib/create.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
+import { saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
@@ -22,11 +24,13 @@ import { Segmented } from "./ui/segmented.tsx";
 import { Select } from "./ui/select.tsx";
 
 const VENUES = ["Spot", "Futures"] as const;
+const VISIBILITIES = ["Public", "Private"] as const;
 
 const keys = <T extends object>(value: T) => Object.keys(value) as (keyof T & string)[];
 
 const INITIAL: Form = {
   venue: "spot",
+  visibility: "public",
   name: "",
   prizePool: "100",
   startDelay: "In 10 minutes",
@@ -78,7 +82,15 @@ export function CreateForm() {
       eventName: "TournamentCreated",
       logs: receipt.logs,
     });
-    return created?.args.id;
+    const id = created?.args.id;
+    if (id === undefined || form.visibility !== "private" || !identity) {
+      return id === undefined ? "/" : `/t/${id}`;
+    }
+    // The invite key comes from the host's passkey: nothing to store, and any device can share or rotate it.
+    const invite = identity.inviteKey(id, 0);
+    await tournament.setInvite(wallet, id, invite.address);
+    saveInvite(id, invite.privateKey);
+    return `/t/${id}#invite=${invite.privateKey}`;
   }
 
   async function submit(event: FormEvent) {
@@ -92,8 +104,8 @@ export function CreateForm() {
     setInvalid(undefined);
     setPending(true);
     try {
-      const id = await create(built.config);
-      router.push(id === undefined ? "/" : `/t/${id}`);
+      // Typed routes cannot express a fragment; the string is one of our own paths.
+      router.push((await create(built.config)) as Route);
     } catch (cause) {
       console.error("create failed", cause);
       setFailure(
@@ -119,6 +131,20 @@ export function CreateForm() {
           {form.venue === "futures"
             ? "Long or short BTC, ETH and SOL with up to 20x, at Pyth prices. Everyone starts with a virtual $10,000."
             : "Buy and sell real tokens on Kuru's order books with test funds."}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-sm font-semibold tracking-tight">Who can join</p>
+        <Segmented<(typeof VISIBILITIES)[number]>
+          label="Who can join"
+          options={VISIBILITIES}
+          value={form.visibility === "private" ? "Private" : "Public"}
+          onChange={(next) => set("visibility", next === "Private" ? "private" : "public")}
+        />
+        <p className="text-[13px] font-medium leading-5 text-ink-muted">
+          {form.visibility === "private"
+            ? "Hidden from the arena. Only people with your invite link can join, and you can revoke it."
+            : "Listed in the arena. Anyone can join until it is full."}
         </p>
       </div>
       <Field
