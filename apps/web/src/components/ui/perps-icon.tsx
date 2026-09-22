@@ -1,15 +1,17 @@
-import { PERPS_MARKETS, type PerpsSlug } from "@/lib/perps-markets.ts";
+import Image from "next/image";
 
-/** A coin's colour and glyph. No third-party marks to license or keep current. */
+import type { PerpsSlug } from "@/lib/perps-markets.ts";
+
+/** The coins' own marks, supplied by the project owner. */
 export function PerpsIcon({ slug, size = 40 }: { slug: PerpsSlug; size?: number }) {
-  const { glyph, tint } = PERPS_MARKETS[slug];
   return (
-    <span
+    <Image
+      src={`/brands/${slug}.png`}
+      alt=""
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-full font-bold text-white"
-      style={{ width: size, height: size, fontSize: size * 0.45, backgroundColor: tint }}
-    >
-      {glyph}
-    </span>
+      width={size}
+      height={size}
+      className="shrink-0 rounded-full bg-surface"
+    />
   );
 }
