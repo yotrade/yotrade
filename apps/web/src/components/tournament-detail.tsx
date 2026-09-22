@@ -20,6 +20,7 @@ import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
 import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
+import { HostPanel } from "./host-panel.tsx";
 import { InvitePanel } from "./invite-panel.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
@@ -29,6 +30,7 @@ import { ResultsPanel } from "./results-panel.tsx";
 import { ShareButton } from "./share-button.tsx";
 import { StandingsPulse } from "./standings-pulse.tsx";
 import { BackButton } from "./ui/back-button.tsx";
+import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
@@ -99,12 +101,18 @@ function Overview({ id, data, phase, venue, now, you, onSeeAll }: OverviewProps)
   const running = phase === "upcoming" || phase === "live";
   return (
     <div key="overview" className="flex animate-enter flex-col gap-3">
+      {phase === "cancelled" ? (
+        <Card className="py-4 text-sm font-medium leading-5 text-ink-muted">
+          The host called this tournament off before it started. Any prize pool went back to them.
+        </Card>
+      ) : null}
       <ResultsPanel tournament={data} phase={phase} now={now} />
       <JoinPanel tournament={data} phase={phase} />
       {phase === "live" || phase === "scoring" || phase === "dispute" ? (
         <StandingsPulse id={id} you={you} onSeeAll={onSeeAll} />
       ) : null}
       {running ? <InvitePanel tournament={data} /> : null}
+      <HostPanel tournament={data} phase={phase} now={now} />
       {running ? <MarketsStrip id={id} venue={venue} /> : null}
       <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
       <details className="group rounded-2xl bg-surface-raised px-4 py-3">
@@ -209,7 +217,9 @@ export function TournamentDetail({ id }: { id: string }) {
         <dl className="grid grid-cols-3 gap-2 border-t border-white/20 pt-4 text-[13px]">
           <div className="flex flex-col gap-0.5">
             <dt className="font-medium opacity-80">{phase === "upcoming" ? "Starts" : "Ends"}</dt>
-            <dd className="tabular font-semibold">{timeLeft(phase, data, now) || "Ended"}</dd>
+            <dd className="tabular font-semibold">
+              {phase === "cancelled" ? "Called off" : timeLeft(phase, data, now) || "Ended"}
+            </dd>
           </div>
           <div className="flex flex-col gap-0.5">
             <dt className="font-medium opacity-80">Traders</dt>
