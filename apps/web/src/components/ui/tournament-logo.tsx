@@ -37,7 +37,8 @@ export function TournamentLogo({ image, size = 40, className = "", onStatus }: P
           width={size}
           height={size}
           referrerPolicy="no-referrer"
-          className="size-full object-cover"
+          // Contained, so a wide brand mark is small rather than cut.
+          className="size-full object-contain p-[12%]"
           onLoad={() => onStatus?.(true)}
           onError={() => {
             setFailed(true);

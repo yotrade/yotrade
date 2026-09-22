@@ -130,7 +130,7 @@ function StepFields({ step, form, set, errorFor, onLogoStatus }: StepProps) {
             onChange={(event) => set("name", event.target.value)}
             {...errorFor("name")}
           />
-          <div className="flex items-end gap-3">
+          <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <Field
                 label="Logo link (optional)"
@@ -146,7 +146,8 @@ function StepFields({ step, form, set, errorFor, onLogoStatus }: StepProps) {
                 {...errorFor("image")}
               />
             </div>
-            <div className="mb-[26px]">
+            {/* Level with the input, not with the hint under it. */}
+            <div className="mt-[30px]">
               <TournamentLogo
                 key={form.image.trim()}
                 image={isLogoUrl(form.image.trim()) ? form.image.trim() : undefined}
