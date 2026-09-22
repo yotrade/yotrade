@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { phaseAt } from "@yotrade/plugin-tournament/phase";
+import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
 import { type ReactNode, useEffect, useState } from "react";
+import type { Address } from "viem";
 
 import {
   formatUsdc,
@@ -12,19 +13,22 @@ import {
   tournamentMeta,
   tournamentName,
 } from "@/lib/format.ts";
+import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
-import { venueOf } from "@/lib/venue.ts";
+import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
 import { InvitePanel } from "./invite-panel.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
+import { MarketsStrip } from "./markets-strip.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
+import { StandingsPulse } from "./standings-pulse.tsx";
 import { BackButton } from "./ui/back-button.tsx";
-import { Card } from "./ui/card.tsx";
+import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
 import { TournamentLogo } from "./ui/tournament-logo.tsx";
@@ -76,6 +80,49 @@ function PrizeSplit({ pool, splitBps }: { pool: bigint; splitBps: readonly numbe
         </p>
       )}
     </>
+  );
+}
+
+interface OverviewProps {
+  readonly id: string;
+  readonly data: IndexedTournamentDetail;
+  readonly phase: Phase;
+  readonly venue: Venue;
+  readonly now: bigint;
+  readonly you: Address | undefined;
+  onSeeAll(): void;
+}
+
+/** The overview tab: results or the race, my status, the host's invite, the markets, the commentator. */
+function Overview({ id, data, phase, venue, now, you, onSeeAll }: OverviewProps) {
+  const running = phase === "upcoming" || phase === "live";
+  return (
+    <div key="overview" className="flex animate-enter flex-col gap-3">
+      <ResultsPanel tournament={data} phase={phase} now={now} />
+      <JoinPanel tournament={data} phase={phase} />
+      {phase === "live" || phase === "scoring" || phase === "dispute" ? (
+        <StandingsPulse id={id} you={you} onSeeAll={onSeeAll} />
+      ) : null}
+      {running ? <InvitePanel tournament={data} /> : null}
+      {running ? <MarketsStrip id={id} venue={venue} /> : null}
+      <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
+      <details className="group rounded-2xl bg-surface-raised px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
+          How it is scored
+          <Icon
+            name="chevron-right"
+            size={14}
+            className="transition-transform group-open:rotate-90"
+          />
+        </summary>
+        <p className="pt-2 text-sm font-medium leading-5 text-ink-muted">
+          {venue === "futures"
+            ? "Return on a virtual $10,000, traded long or short at Pyth prices with up to 20x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by "
+            : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
+          <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
+        </p>
+      </details>
+    </div>
   );
 }
 
@@ -181,21 +228,15 @@ export function TournamentDetail({ id }: { id: string }) {
       <TabMenu<Tab> label="Tournament sections" tabs={TABS} value={tab} onChange={setTab} />
 
       {tab === "Overview" ? (
-        <div key="overview" className="flex animate-enter flex-col gap-3">
-          <ResultsPanel tournament={data} phase={phase} now={now} />
-          <JoinPanel tournament={data} phase={phase} />
-          {phase === "upcoming" || phase === "live" ? <InvitePanel tournament={data} /> : null}
-          <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
-          <Card className="flex flex-col gap-2">
-            <p className="text-sm font-semibold tracking-tight">How it is scored</p>
-            <p className="text-sm font-medium leading-5 text-ink-muted">
-              {venue === "futures"
-                ? "Return on a virtual $10,000, traded long or short at Pyth prices with up to 20x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by "
-                : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
-              <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
-            </p>
-          </Card>
-        </div>
+        <Overview
+          id={id}
+          data={data}
+          phase={phase}
+          venue={venue}
+          now={now}
+          you={you}
+          onSeeAll={() => setTab("Leaderboard")}
+        />
       ) : (
         <div key="leaderboard" className="animate-enter">
           <Leaderboard id={id} you={you} venue={venue} />
