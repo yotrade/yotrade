@@ -11,7 +11,7 @@ import { erc20Abi, type Hex } from "viem";
 import { formatUsdc, shortAddress } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
-import { loadInvite } from "@/lib/invite.ts";
+import { loadInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
 import { toUsdc } from "@/lib/perps-markets.ts";
 import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
@@ -23,6 +23,7 @@ import { useRuntime } from "@/lib/use-runtime.ts";
 import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
+import { Field } from "./ui/field.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
@@ -156,7 +157,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
     queryKey: ["invite-signer", tournament.id.toString()],
     queryFn: () => runtime.tournament.inviteSignerOf(tournament.id),
   });
-  const code = loadInvite(tournament.id);
+  const [code, setCode] = useState(() => loadInvite(tournament.id));
   const entry = useQuery({
     queryKey: ["entry", tournament.id.toString(), address],
     queryFn: () => (address ? runtime.tournament.entry(tournament.id, address) : null),
@@ -194,12 +195,12 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   }
   if (inviteSigner.data && inviteSigner.data !== ZERO_ADDRESS && !code) {
     return (
-      <Card className="flex flex-col gap-1 py-4">
-        <p className="font-semibold">This tournament is private</p>
-        <p className="text-sm font-medium leading-5 text-ink-muted">
-          Ask the host for the invite link. Opening it is all it takes.
-        </p>
-      </Card>
+      <InviteGate
+        onCode={(next) => {
+          saveInvite(tournament.id, next);
+          setCode(next);
+        }}
+      />
     );
   }
   if (tournament.participantCount >= tournament.maxParticipants) {
@@ -262,6 +263,55 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
       <Button pending={step !== null} onClick={join}>
         Join tournament
       </Button>
+    </Card>
+  );
+}
+
+/** The private card: the link still works on its own, and a code or link can be pasted here instead. */
+function InviteGate({ onCode }: { onCode(code: Hex): void }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string>();
+  return (
+    <Card className="flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-1">
+        <p className="font-semibold">This tournament is private</p>
+        <p className="text-sm font-medium leading-5 text-ink-muted">
+          Ask the host for the invite. Opening their link is all it takes, or paste the code here.
+        </p>
+      </div>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const code = parseInviteCode(value);
+          if (code) {
+            onCode(code);
+          } else {
+            setError("That is not an invite code. It starts with 0x and is 66 characters long.");
+          }
+        }}
+      >
+        <Field
+          label="Invite code"
+          placeholder="0x… or the whole invite link"
+          autoComplete="off"
+          spellCheck={false}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            setError(undefined);
+          }}
+          {...(error ? { error } : {})}
+        />
+        <Button
+          type="submit"
+          variant="secondary"
+          className="min-h-10"
+          disabled={value.trim() === ""}
+        >
+          Use code
+        </Button>
+      </form>
     </Card>
   );
 }
