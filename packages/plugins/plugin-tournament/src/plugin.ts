@@ -7,9 +7,11 @@ import {
   erc20Abi,
   type Hash,
   type Hex,
+  numberToHex,
   type Transport,
   type WalletClient,
 } from "viem";
+import { sign } from "viem/accounts";
 
 import { tournamentManagerAbi as abi } from "./generated/abi.ts";
 import { type Phase, phaseAt, type Status, toStatus } from "./phase.ts";
@@ -175,6 +177,31 @@ export function tournament(options: TournamentOptions = {}) {
             args: [id, tradingAccount, proof],
           }),
         );
+      },
+
+      /** Sets or rotates the invite signer. Zero opens entry again. Organizer only. */
+      setInvite: (wallet: Wallet, id: bigint, signer: Address) =>
+        confirm(
+          wallet.writeContract({ ...contract, functionName: "setInvite", args: [id, signer] }),
+        ),
+
+      inviteSignerOf: (id: bigint) =>
+        publicClient.readContract({ ...contract, functionName: "inviteSignerOf", args: [id] }),
+
+      /**
+       * The invite proof for `participant`: the code's signature over the contract's digest, as the three
+       * words `join` reads from the end of its proof argument.
+       */
+      async inviteProof(code: Hex, id: bigint, participant: Address): Promise<Hex[]> {
+        const digest = await publicClient.readContract({
+          ...contract,
+          functionName: "inviteDigest",
+          args: [id, participant],
+        });
+        // The digest already carries the EIP-191 prefix, so it is signed raw.
+        const signature = await sign({ hash: digest, privateKey: code, to: "object" });
+        const v = signature.v ?? BigInt((signature.yParity ?? 0) + 27);
+        return [signature.r, signature.s, numberToHex(v, { size: 32 })];
       },
 
       postResults(wallet: Wallet, id: bigint, winners: readonly Address[]) {
