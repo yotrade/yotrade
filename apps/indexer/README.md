@@ -1,12 +1,14 @@
 # @yotrade/indexer
 
-[Envio HyperIndex](https://docs.envio.dev) indexer for `TournamentManager` on Monad testnet. It feeds the tournament list, the participant list, the scorer and trader profiles.
+[Envio HyperIndex](https://docs.envio.dev) indexer for `TournamentManager`, `PerpsEngine` and `ProfileRegistry` on Monad testnet. It feeds the tournament list, the participant list, the scorer, futures trade history and trader profiles.
 
 | Entity | What it holds |
 |---|---|
 | `Tournament` | Config, status, participant count, posted winners, claims and refunds |
-| `Entry` | Participant, trading account, capital at join (the ROI denominator), rank, prize, claim |
-| `Trader` | Tournaments joined, podiums, wins, total prize |
+| `Entry` | Participant, trading account, capital at join (the ROI denominator), rank, prize, claim; for futures the fill count, last balance, liquidation and settlement |
+| `Fill`, `Liquidation` | Every futures fill and liquidation, with the Pyth price and the balance after |
+| `PerpsMarket` | Pyth feeds the futures venue accepts |
+| `Trader` | Name and avatar from `ProfileRegistry`, tournaments joined, podiums, wins, total prize |
 | `Stats` | Global counters |
 
 ```bash

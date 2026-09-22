@@ -16,9 +16,25 @@ contracts:
       - event: PrizeClaimed(uint256 indexed id, address indexed winner, uint256 rank, uint256 amount)
       - event: TournamentCancelled(uint256 indexed id, uint256 refunded)
       - event: RemainderSwept(uint256 indexed id, uint256 amount)
+  - name: ProfileRegistry
+    events:
+      - event: ProfileSet(address indexed account, string name, uint8 avatar)
+  - name: PerpsEngine
+    events:
+      - event: MarketUpdated(bytes32 indexed market, bool enabled)
+      - event: Traded(uint256 indexed tournamentId, address indexed trader, bytes32 indexed market, int256 sizeDelta, uint256 price, int256 realizedPnl, uint256 fee, int256 newSize, int256 balance)
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: Liquidated(uint256 indexed tournamentId, address indexed trader, address indexed liquidator, int256 balance)
+      - event: Settled(uint256 indexed tournamentId, address indexed trader, int256 balance)
 chains:
   - id: 10143 # Monad testnet
     start_block: 64421055 # TournamentManager proxy deployment
     contracts:
       - name: TournamentManager
         address: "0xe60aFf1991d9D93e6093da5c813A63B746159D10"
+      - name: ProfileRegistry
+        address: "0x9d8B6852705dD7585B3907244d603547a4eA32d6"
+      - name: PerpsEngine
+        address: "0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336"
