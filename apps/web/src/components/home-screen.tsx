@@ -35,7 +35,7 @@ function Headline({
 }) {
   return (
     <div className="flex animate-fade flex-col gap-1">
-      <p className="text-[13px] font-medium text-ink-muted">Across your live accounts</p>
+      <p className="text-[13px] font-medium text-ink-muted">Across your live tournaments</p>
       <Amount value={value} size="xl" />
       <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
         <Icon name="arrow" size={16} />
@@ -44,7 +44,7 @@ function Headline({
         ) : (
           <>
             <span className={roi >= 0 ? "text-up" : "text-down"}>{formatBps(roi)}</span>
-            {` · ${accounts} live ${accounts === 1 ? "account" : "accounts"}`}
+            {` · in ${accounts} live ${accounts === 1 ? "tournament" : "tournaments"}`}
           </>
         )}
       </p>
