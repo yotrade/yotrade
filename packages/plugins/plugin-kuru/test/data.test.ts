@@ -42,7 +42,21 @@ describe("data client", () => {
               isMaker: false,
               price: "10202644",
               filledSize: "32205",
+              fees: { makerFee: "0", takerFee: "22995000000000000" },
               pnl: { realizedPnl: "0", openSize: "97955", openCost: "99999951" },
+              blockTimestamp: 1_789_983_348,
+              transactionHash: "0xa723",
+            },
+            // One order walking two levels: the API emits a partial record with no running position.
+            {
+              tradeId: "790",
+              marketAddress: "0x5bde",
+              symbol: "CBBTCUSDC",
+              isBuy: true,
+              isMaker: false,
+              price: "10202644",
+              filledSize: "65750",
+              pnl: { realizedPnl: "0", openSize: null, openCost: null },
               blockTimestamp: 1_789_983_348,
               transactionHash: "0xa723",
             },
@@ -51,13 +65,15 @@ describe("data client", () => {
       }),
     );
 
-    const [trade] = await client.trades(80n, 5);
+    const [trade, partial] = await client.trades(80n, 5);
     expect(trade).toMatchObject({
       price: 10_202_644n,
       openSize: 97_955n,
       openCost: 99_999_951n,
+      feeUsdc: 22_995n,
       isBuy: true,
     });
+    expect(partial).toMatchObject({ openSize: 0n, openCost: 0n, feeUsdc: 0n });
     expect(calls.at(-1)).toBe("https://kuru.test/api/v1/users/80/trades?limit=5");
   });
 
