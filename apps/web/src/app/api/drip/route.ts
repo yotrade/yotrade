@@ -49,6 +49,8 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: "Expected { address }" }, { status: 400 });
   }
+  // Vercel overwrites this header with the client address. Behind another proxy a caller could forge it,
+  // which only lets them at the global hourly cap, never past it.
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   try {
