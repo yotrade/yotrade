@@ -18,6 +18,8 @@ const serverSchema = z.object({
   /** Pyth Hermes key for futures price updates. Without it the price proxy answers 503. */
   PYTH_API_KEY: z.string().min(1).optional(),
   PYTH_HERMES_URL: z.url().default("https://pyth.dourolabs.app/hermes"),
+  /** Vercel Blob token for logo uploads. Without it the picker hides and hosts paste a link. */
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
