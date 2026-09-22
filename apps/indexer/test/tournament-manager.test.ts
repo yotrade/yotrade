@@ -194,6 +194,21 @@ describe("tournament lifecycle", () => {
     });
   });
 
+  it("replaces the metadata when the organizer changes it", async () => {
+    const indexer = createTestIndexer();
+    await run(indexer, [
+      created(1n),
+      {
+        contract: "TournamentManager",
+        event: "MetadataUpdated",
+        params: { id: 1n, metadataURI: "ipfs://renamed" },
+      },
+    ]);
+    expect(await indexer.Tournament.getOrThrow("1")).toMatchObject({
+      metadataURI: "ipfs://renamed",
+    });
+  });
+
   it("counts a trader once across tournaments and flags allowlisted tournaments", async () => {
     const indexer = createTestIndexer();
     const gated = created(2n);

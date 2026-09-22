@@ -182,6 +182,14 @@ indexer.onEvent(
 );
 
 indexer.onEvent(
+  { contract: "TournamentManager", event: "MetadataUpdated" },
+  async ({ event, context }) => {
+    const tournament = await context.Tournament.getOrThrow(event.params.id.toString());
+    context.Tournament.set({ ...tournament, metadataURI: event.params.metadataURI });
+  },
+);
+
+indexer.onEvent(
   { contract: "TournamentManager", event: "RemainderSwept" },
   async ({ event, context }) => {
     const tournament = await context.Tournament.getOrThrow(event.params.id.toString());
