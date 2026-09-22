@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     "@yotrade/plugin-alchemy",
     "@yotrade/plugin-kuru",
     "@yotrade/plugin-mera",
+    "@yotrade/plugin-perps",
     "@yotrade/plugin-tournament",
   ],
   headers: () => Promise.resolve([{ source: "/:path*", headers: securityHeaders }]),
