@@ -1,6 +1,7 @@
 "use client";
 
 import { tokens } from "@yotrade/core/addresses";
+import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { tournamentManagerAbi } from "@yotrade/plugin-tournament/abi";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -16,16 +17,15 @@ import {
 } from "@/lib/create.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import { saveInvite } from "@/lib/invite.ts";
-import { isLogoUrl } from "@/lib/logo-url.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { LogoPicker } from "./logo-picker.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Button } from "./ui/button.tsx";
 import { Field } from "./ui/field.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Segmented } from "./ui/segmented.tsx";
 import { Select } from "./ui/select.tsx";
-import { TournamentLogo } from "./ui/tournament-logo.tsx";
 
 const VENUES = ["Spot", "Futures"] as const;
 const VISIBILITIES = ["Public", "Private"] as const;
@@ -114,9 +114,10 @@ interface StepProps {
   set<K extends keyof Form>(key: K, value: Form[K]): void;
   errorFor(field: keyof Form): { error?: string };
   onLogoStatus(ok: boolean | undefined): void;
+  readonly wallet: MeraWallet;
 }
 
-function StepFields({ step, form, set, errorFor, onLogoStatus }: StepProps) {
+function StepFields({ step, form, set, errorFor, onLogoStatus, wallet }: StepProps) {
   return (
     <>
       {step === 0 ? (
@@ -130,32 +131,13 @@ function StepFields({ step, form, set, errorFor, onLogoStatus }: StepProps) {
             onChange={(event) => set("name", event.target.value)}
             {...errorFor("name")}
           />
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <Field
-                label="Logo link (optional)"
-                placeholder="https://your.community/logo.png"
-                inputMode="url"
-                autoComplete="off"
-                value={form.image}
-                onChange={(event) => {
-                  onLogoStatus(undefined);
-                  set("image", event.target.value);
-                }}
-                hint="A square PNG, JPG or SVG on any https site. Shown on cards and the tournament page."
-                {...errorFor("image")}
-              />
-            </div>
-            {/* Level with the input, not with the hint under it. */}
-            <div className="mt-[30px]">
-              <TournamentLogo
-                key={form.image.trim()}
-                image={isLogoUrl(form.image.trim()) ? form.image.trim() : undefined}
-                size={56}
-                onStatus={onLogoStatus}
-              />
-            </div>
-          </div>
+          <LogoPicker
+            wallet={wallet}
+            value={form.image}
+            error={errorFor("image").error}
+            onChange={(next) => set("image", next)}
+            onStatus={onLogoStatus}
+          />
           <Choice
             label="Market"
             options={VENUES}
@@ -380,6 +362,7 @@ export function CreateForm() {
           set={set}
           errorFor={errorFor}
           onLogoStatus={setLogoOk}
+          wallet={wallet}
         />
       </div>
 

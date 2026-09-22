@@ -28,4 +28,8 @@ export function isLogoUrl(value: string): boolean {
   }
 }
 
+/** What a host signs to upload a logo. The timestamp keeps a captured signature from being replayed for long. */
+export const uploadMessage = (address: string, issuedAt: number) =>
+  `YoTrade logo upload\n${address.toLowerCase()}\n${issuedAt}`;
+
 export const logoSrc = (image: string) => `/api/logo?url=${encodeURIComponent(image)}`;

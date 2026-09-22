@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.2",
+    "@vercel/blob": "^2.8.0",
     "@yotrade/core": "workspace:*",
     "@yotrade/plugin-alchemy": "workspace:*",
     "@yotrade/plugin-kuru": "workspace:*",
