@@ -8,6 +8,7 @@ import { leverage, signedUsd, usd } from "@/lib/perps-format.ts";
 import { PERPS_MARKETS, type PerpsSlug } from "@/lib/perps-markets.ts";
 import { type PerpsPosition, type PerpsSnapshot, usePerpsMarket } from "@/lib/use-perps.ts";
 import type { ReferenceSeries } from "@/lib/use-reference.ts";
+import { FillsList } from "./fills-list.tsx";
 import { ACTION, Headline, RangeTabs } from "./market-screen.tsx";
 import { describe, type PerpsSide, PerpsTicket } from "./perps-ticket.tsx";
 import { PriceChart } from "./price-chart.tsx";
@@ -222,6 +223,9 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
       ) : null}
 
       {market.state === "joined" ? <AccountStats snapshot={account.data} /> : null}
+      {market.state === "joined" && wallet ? (
+        <FillsList id={id} trader={wallet.account.address} slug={slug} />
+      ) : null}
 
       {account.data?.risk.liquidatable ? (
         <p role="alert" className="rounded-2xl bg-down/10 p-3 text-sm font-medium text-down">

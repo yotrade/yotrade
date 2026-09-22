@@ -62,3 +62,39 @@ describe("createIndexer", () => {
     expect(await indexer.tournament(99n)).toBeNull();
   });
 });
+
+describe("createIndexer fills", () => {
+  test("parses a trader's fills with signed sizes and profits", async () => {
+    const fetcher = (() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            data: {
+              fills: [
+                {
+                  id: "0xabc-3",
+                  market: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+                  sizeDelta: "-500000000000000000",
+                  price: "86000000000000000000000",
+                  realizedPnl: "-12500000000000000000",
+                  fee: "21500000000000000000",
+                  newSize: "0",
+                  timestamp: "1790000000",
+                  tx: "0xabc",
+                },
+              ],
+            },
+          }),
+        ),
+      )) as unknown as Fetch;
+    const [fill] = await createIndexer("https://indexer", fetcher).fillsOf(
+      7n,
+      "0x00000000000000000000000000000000000a11ce",
+    );
+    expect(fill).toMatchObject({
+      sizeDelta: -500000000000000000n,
+      realizedPnl: -12500000000000000000n,
+      newSize: 0n,
+    });
+  });
+});

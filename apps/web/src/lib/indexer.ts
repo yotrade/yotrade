@@ -42,12 +42,26 @@ const tournamentSchema = z.object({
 
 const ownEntrySchema = entrySchema.extend({ tournament_id: bigint });
 
+/** One futures fill, straight from the `Traded` event: sizes and prices in 1e18. */
+const fillSchema = z.object({
+  id: z.string(),
+  market: z.string(),
+  sizeDelta: z.string().regex(/^-?\d+$/).transform(BigInt),
+  price: bigint,
+  realizedPnl: z.string().regex(/^-?\d+$/).transform(BigInt),
+  fee: bigint,
+  newSize: z.string().regex(/^-?\d+$/).transform(BigInt),
+  timestamp: bigint,
+  tx: z.string(),
+});
+
 const detailSchema = tournamentSchema.extend({ entries: z.array(entrySchema) });
 
 export type IndexedTournament = z.infer<typeof tournamentSchema>;
 export type IndexedEntry = z.infer<typeof entrySchema>;
 export type IndexedOwnEntry = z.infer<typeof ownEntrySchema>;
 export type IndexedTournamentDetail = z.infer<typeof detailSchema>;
+export type IndexedFill = z.infer<typeof fillSchema>;
 
 const TOURNAMENT_FIELDS = `id organizer venue prizePool startingCapital startTime endTime claimableAt maxParticipants
   participantCount allowlisted prizeSplitBps metadataURI status winners`;
@@ -100,6 +114,18 @@ export function createIndexer(url: string, fetcher: Fetch = fetch) {
         z.object({ entries: z.array(ownEntrySchema) }),
       );
       return data.entries;
+    },
+
+    /** A trader's futures fills in one tournament, newest first. */
+    async fillsOf(id: bigint, trader: Address, limit = 50): Promise<IndexedFill[]> {
+      const data = await query(
+        `query ($entry: String!, $limit: Int!) { fills: Fill(where: { entry_id: { _eq: $entry } }, order_by: { timestamp: desc }, limit: $limit) {
+          id market sizeDelta price realizedPnl fee newSize timestamp tx
+        } }`,
+        { entry: `${id}-${trader.toLowerCase()}`, limit },
+        z.object({ fills: z.array(fillSchema) }),
+      );
+      return data.fills;
     },
 
     async tournament(id: bigint): Promise<IndexedTournamentDetail | null> {
