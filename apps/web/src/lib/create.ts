@@ -25,6 +25,7 @@ const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 
 export interface CreateForm {
   readonly venue: Venue;
+  readonly visibility: "public" | "private";
   readonly name: string;
   readonly prizePool: string;
   readonly startDelay: keyof typeof START_DELAYS;
@@ -40,7 +41,8 @@ export type BuildResult =
 /** Form → contract `Config`. Rejects here what the contract would reject after the organizer paid for gas. */
 export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
   const name = form.name.trim();
-  const metadataURI = `data:application/json,${encodeURIComponent(JSON.stringify({ name }))}`;
+  const metadata = form.visibility === "private" ? { name, visibility: "private" } : { name };
+  const metadataURI = `data:application/json,${encodeURIComponent(JSON.stringify(metadata))}`;
   if (name === "") {
     return { ok: false, field: "name", reason: "Give your tournament a name" };
   }
