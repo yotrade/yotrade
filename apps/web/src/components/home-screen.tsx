@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { shortAddress } from "@/lib/format.ts";
+import { hostedBy } from "@/lib/host.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLocalProfile } from "@/lib/use-local-profile.ts";
@@ -10,6 +11,7 @@ import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { EntryCard } from "./entry-card.tsx";
 import { TournamentBrowser } from "./tournament-browser.tsx";
+import { TournamentRow } from "./tournament-row.tsx";
 import { Amount } from "./ui/amount.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Icon, type IconName } from "./ui/icon.tsx";
@@ -65,6 +67,7 @@ export function HomeScreen() {
   const value = open.reduce((sum, item) => sum + (item.value ?? 0n), 0n);
   const capital = open.reduce((sum, item) => sum + item.entry.capitalAtJoin, 0n);
   const roi = roiBps(value, capital);
+  const hosted = hostedBy(tournaments.data ?? [], address, now);
   // Until the accounts are known, zero is not an answer. A failed load falls through to the real states.
   const loading = !(mine.data || mine.isError || tournaments.isError);
 
@@ -132,6 +135,19 @@ export function HomeScreen() {
                 style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
               >
                 <EntryCard item={item} now={now} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {hosted.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <SectionLabel>You host</SectionLabel>
+          <ul className="flex flex-col gap-2">
+            {hosted.map(({ tournament, phase }) => (
+              <li key={tournament.id.toString()} className="animate-enter">
+                <TournamentRow tournament={tournament} phase={phase} now={now} />
               </li>
             ))}
           </ul>
