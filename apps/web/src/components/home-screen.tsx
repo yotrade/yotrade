@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { shortAddress } from "@/lib/format.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
@@ -9,7 +8,6 @@ import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { AccountSheet } from "./account-sheet.tsx";
 import { EntryCard } from "./entry-card.tsx";
 import { TournamentBrowser } from "./tournament-browser.tsx";
 import { Amount } from "./ui/amount.tsx";
@@ -57,7 +55,6 @@ export function HomeScreen() {
   const now = useNow();
   const { identity } = useIdentity();
   const { tournaments, mine } = useMyTournaments();
-  const [account, setAccount] = useState(false);
   const [profile] = useLocalProfile();
 
   if (!identity) {
@@ -74,11 +71,9 @@ export function HomeScreen() {
   return (
     <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <header>
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          onClick={() => setAccount(true)}
-          className="flex items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4 text-left transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+        <Link
+          href="/account"
+          className="flex w-fit items-center gap-2 rounded-full bg-surface-raised py-1.5 pl-1.5 pr-4 text-left transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
           <Avatar address={address} size={36} avatar={profile.avatar} />
           <span className="flex flex-col">
@@ -89,8 +84,8 @@ export function HomeScreen() {
               {shortAddress(address)}
             </span>
           </span>
-          <Icon name="chevron-right" size={14} className="ml-1 rotate-90" />
-        </button>
+          <Icon name="chevron-right" size={14} className="ml-1" />
+        </Link>
       </header>
 
       {loading ? (
@@ -143,8 +138,6 @@ export function HomeScreen() {
       ) : null}
 
       <TournamentBrowser tournaments={tournaments.data} failed={tournaments.isError} />
-
-      <AccountSheet open={account} onClose={() => setAccount(false)} />
     </main>
   );
 }
