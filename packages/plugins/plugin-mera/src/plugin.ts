@@ -7,12 +7,16 @@ import { toViemAccount } from "@category-labs/mera/viem";
 import { definePlugin } from "@yotrade/core/plugin";
 import {
   type Account,
+  type Address,
+  bytesToHex,
   type Chain,
   createWalletClient,
   custom,
+  type Hex,
   type Transport,
   type WalletClient,
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 import { deriveKey, deriveSecp256k1Key, PRF_SALT } from "./derive.ts";
 import { createVault, type Vault } from "./vault.ts";
@@ -47,6 +51,12 @@ export interface MeraOptions {
 
 export type MeraWallet = WalletClient<Transport, Chain, Account>;
 
+/** A secp256k1 key used as a shared secret: the private part goes in a link, the address goes onchain. */
+export interface InviteKey {
+  readonly privateKey: Hex;
+  readonly address: Address;
+}
+
 export interface Identity {
   readonly credentialId: string;
   /** The participant's main account. Signs without prompting for the lifetime of the identity. */
@@ -55,6 +65,11 @@ export interface Identity {
   tournamentWallet(tournamentId: bigint): MeraWallet;
   /** Encrypts private data for untrusted storage. Only this passkey can open it again. */
   vault(): Promise<Vault>;
+  /**
+   * The invite code of a tournament this passkey hosts: a capability key, not an account. Deterministic, so
+   * the host can share or rotate it from any device without storing anything. Rotating means a new epoch.
+   */
+  inviteKey(tournamentId: bigint, epoch: number): InviteKey;
   /** Ends every signing session and wipes the entropy. The identity is unusable afterwards. */
   end(): void;
 }
@@ -118,6 +133,14 @@ export function mera(options: MeraOptions) {
         vault() {
           assertLive();
           return createVault(deriveKey(entropy, { kind: "vault" }));
+        },
+
+        inviteKey(tournamentId, epoch) {
+          assertLive();
+          const privateKey = bytesToHex(
+            deriveSecp256k1Key(entropy, { kind: "invite", chainId: chain.id, tournamentId, epoch }),
+          );
+          return { privateKey, address: privateKeyToAccount(privateKey).address };
         },
 
         end() {

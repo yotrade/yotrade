@@ -54,6 +54,8 @@ A fresh account per tournament means clean starting capital, no positions carrie
 6. **Dispute window**: the admin can void wrong results before prizes unlock.
 7. **Claim**: winners pull their share; unfilled ranks and rounding dust return to the organizer.
 
+A **private** tournament is hidden from the lists and needs an invite: the host's passkey derives an invite key per tournament (one more Mera namespace), its address goes onchain with `setInvite`, and the code travels in the link fragment. `join` presents the code's signature over a digest bound to chain, contract, tournament and participant. A leaked link is revoked by rotating to the next epoch; any device with the passkey finds the current one.
+
 A **Futures** tournament differs in three steps. Joining is gas drip → `join`: the capital is a virtual 10,000 USD, the same for everyone. Trading sends a signed Pyth update with every order, so the fill price is the oracle's and not the trader's. The score is equity over the start; finalize first closes every open position at the first Pyth price at or after the end (`settle`), then posts the winners, so the ranking can be recomputed from the chain alone. Measured live: join 6 s, fill 3 to 5 s, finalize with settlement 6 s.
 
 ## Trust model

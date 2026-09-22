@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildConfig, type CreateForm } from "../src/lib/create.ts";
-import { tournamentName } from "../src/lib/format.ts";
+import { isPrivate, tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
   venue: "spot",
+  visibility: "public",
   name: "  Jogja Cup 🏆 ",
   prizePool: "250.5",
   startDelay: "In 10 minutes",
@@ -14,6 +15,14 @@ const FORM: CreateForm = {
 };
 
 describe("buildConfig", () => {
+  test("a private tournament says so in its metadata, a public one stays terse", () => {
+    const pub = buildConfig(FORM, 1_000n);
+    const priv = buildConfig({ ...FORM, visibility: "private" }, 1_000n);
+    expect(pub.ok && isPrivate(pub.config.metadataURI)).toBe(false);
+    expect(priv.ok && isPrivate(priv.config.metadataURI)).toBe(true);
+    expect(priv.ok && tournamentName(1n, priv.config.metadataURI)).toBe("Jogja Cup 🏆");
+  });
+
   test("a futures tournament names the perps venue and asks for no capital", () => {
     const result = buildConfig({ ...FORM, venue: "futures" }, 1_000n);
     expect(result.ok).toBe(true);

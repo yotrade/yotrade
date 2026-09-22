@@ -29,6 +29,8 @@ abstract contract TournamentStorage {
         mapping(address venue => bool approved) approvedVenues;
         /// Prize tokens owed by the contract, per token: the sum of `unpaid` over that token's tournaments.
         mapping(address token => uint256 amount) escrowed;
+        /// Address of the invite code's key. Joining then needs the code's signature. Zero means open entry.
+        mapping(uint256 id => address signer) inviteSigners;
     }
 
     // keccak256(abi.encode(uint256(keccak256("yotrade.storage.TournamentManager")) - 1)) & ~bytes32(uint256(0xff))

@@ -2,14 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { phaseAt } from "@yotrade/plugin-tournament/phase";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
-import { formatUsdc, shortAddress, timeLeft, tournamentName } from "@/lib/format.ts";
+import { formatUsdc, isPrivate, shortAddress, timeLeft, tournamentName } from "@/lib/format.ts";
 import { indexer } from "@/lib/indexer-client.ts";
+import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
 import { venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
+import { InvitePanel } from "./invite-panel.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
@@ -44,6 +46,13 @@ function Shell({ title, children }: { title: string | null; children: ReactNode 
 
 export function TournamentDetail({ id }: { id: string }) {
   const now = useNow();
+  // An invite arrives in the fragment. Kept on this device so the join works after any reload.
+  useEffect(() => {
+    const code = inviteFromUrl(window.location.hash);
+    if (code) {
+      saveInvite(BigInt(id), code);
+    }
+  }, [id]);
   const [tab, setTab] = useState<Tab>("Overview");
   const { identity } = useIdentity();
   const you = identity?.tournamentWallet(BigInt(id)).account.address;
@@ -95,7 +104,7 @@ export function TournamentDetail({ id }: { id: string }) {
           {tournamentName(data.id, data.metadataURI)}
         </h1>
         <span className="rounded-lg bg-surface-raised px-2 py-1 font-mono text-[11px] font-bold uppercase text-ink-muted">
-          {venue}
+          {isPrivate(data.metadataURI) ? "private" : venue}
         </span>
         <PhaseBadge phase={phase} />
       </header>
@@ -149,6 +158,7 @@ export function TournamentDetail({ id }: { id: string }) {
         <div key="overview" className="flex animate-enter flex-col gap-3">
           <ResultsPanel tournament={data} phase={phase} now={now} />
           <JoinPanel tournament={data} phase={phase} />
+          {phase === "upcoming" || phase === "live" ? <InvitePanel tournament={data} /> : null}
           <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
           <Card className="flex flex-col gap-2">
             <p className="text-sm font-semibold tracking-tight">How it is scored</p>

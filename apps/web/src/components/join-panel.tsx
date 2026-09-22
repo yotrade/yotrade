@@ -6,11 +6,12 @@ import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 import Link from "next/link";
 import { useState } from "react";
-import { erc20Abi } from "viem";
+import { erc20Abi, type Hex } from "viem";
 
 import { formatUsdc, shortAddress } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
+import { loadInvite } from "@/lib/invite.ts";
 import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
 import { toUsdc } from "@/lib/perps-markets.ts";
 import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
@@ -25,6 +26,8 @@ import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 const STEP_LABELS: Record<JoinStep, string> = {
   gas: "Getting gas",
   faucet: "Claiming test funds from Kuru",
@@ -32,7 +35,7 @@ const STEP_LABELS: Record<JoinStep, string> = {
   join: "Registering onchain",
 };
 
-function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint): JoinDeps {
+function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint, code: Hex | null): JoinDeps {
   const { publicClient, kuru, tournament } = runtime;
   const address = wallet.account.address;
 
@@ -50,8 +53,24 @@ function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint): JoinDeps
     canClaimFaucet: async () => (await kuru.faucet.nextClaimAt(address)) === null,
     claimFaucet: () => kuru.faucet.claim(wallet),
     deposit: (amount) => kuru.account.deposit(wallet, tokens.usdc.address, amount),
-    join: () => tournament.join(wallet, id, address),
+    join: async () =>
+      tournament.join(
+        wallet,
+        id,
+        address,
+        code ? await tournament.inviteProof(code, id, address) : [],
+      ),
   };
+}
+
+function describeJoinError(cause: unknown): string {
+  if (cause instanceof JoinError || cause instanceof GasError) {
+    return cause.message;
+  }
+  if (String(cause).includes("InvalidInvite")) {
+    return "This invite link is no longer valid. Ask the host for a new one.";
+  }
+  return "Joining stopped before it finished. Tap again to continue where it left off.";
 }
 
 /** Joined: what my account is worth, and the one thing to do next. */
@@ -133,6 +152,11 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   const wallet = identity?.tournamentWallet(tournament.id);
   const venue = venueOf(tournament.venue);
   const address = wallet?.account.address;
+  const inviteSigner = useQuery({
+    queryKey: ["invite-signer", tournament.id.toString()],
+    queryFn: () => runtime.tournament.inviteSignerOf(tournament.id),
+  });
+  const code = loadInvite(tournament.id);
   const entry = useQuery({
     queryKey: ["entry", tournament.id.toString(), address],
     queryFn: () => (address ? runtime.tournament.entry(tournament.id, address) : null),
@@ -168,6 +192,16 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   if (tournament.allowlisted) {
     return <p className="text-sm text-ink-muted">This tournament is invite only.</p>;
   }
+  if (inviteSigner.data && inviteSigner.data !== ZERO_ADDRESS && !code) {
+    return (
+      <Card className="flex flex-col gap-1 py-4">
+        <p className="font-semibold">This tournament is private</p>
+        <p className="text-sm font-medium leading-5 text-ink-muted">
+          Ask the host for the invite link. Opening it is all it takes.
+        </p>
+      </Card>
+    );
+  }
   if (tournament.participantCount >= tournament.maxParticipants) {
     return <p className="text-sm text-ink-muted">This tournament is full.</p>;
   }
@@ -179,7 +213,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
     setError(undefined);
     try {
       await runJoin(
-        joinDeps(runtime, wallet, tournament.id),
+        joinDeps(runtime, wallet, tournament.id, code),
         tournament.startingCapital,
         setStep,
         venue,
@@ -192,11 +226,7 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
       await queryClient.invalidateQueries({ queryKey: ["entry"] });
       await queryClient.invalidateQueries({ queryKey: ["tournament"] });
     } catch (cause) {
-      setError(
-        cause instanceof JoinError || cause instanceof GasError
-          ? cause.message
-          : "Joining stopped before it finished. Tap again to continue where it left off.",
-      );
+      setError(describeJoinError(cause));
     } finally {
       setStep(null);
     }

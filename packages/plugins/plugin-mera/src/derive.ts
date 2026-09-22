@@ -17,13 +17,22 @@ export const PRF_SALT: Uint8Array = sha256(utf8ToBytes(`${DOMAIN}/prf-salt`));
 export type Namespace =
   | { readonly kind: "account" }
   | { readonly kind: "tournament"; readonly chainId: number; readonly tournamentId: bigint }
-  | { readonly kind: "vault" };
+  | { readonly kind: "vault" }
+  /** The invite code of a tournament the passkey hosts. `epoch` counts rotations. */
+  | {
+      readonly kind: "invite";
+      readonly chainId: number;
+      readonly tournamentId: bigint;
+      readonly epoch: number;
+    };
 
 function info(namespace: Namespace, attempt: number): Uint8Array {
-  const path =
-    namespace.kind === "tournament"
-      ? `tournament/${namespace.chainId}/${namespace.tournamentId}`
-      : namespace.kind;
+  let path: string = namespace.kind;
+  if (namespace.kind === "tournament") {
+    path = `tournament/${namespace.chainId}/${namespace.tournamentId}`;
+  } else if (namespace.kind === "invite") {
+    path = `invite/${namespace.chainId}/${namespace.tournamentId}/${namespace.epoch}`;
+  }
   return utf8ToBytes(`${DOMAIN}/${path}#${attempt}`);
 }
 

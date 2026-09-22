@@ -17,22 +17,32 @@ export function shortAddress(address: Address): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-const metadataSchema = z.object({ name: z.string().trim().min(1) });
+const metadataSchema = z.object({
+  name: z.string().trim().min(1),
+  visibility: z.enum(["public", "private"]).default("public"),
+});
 
-/** The organizer writes the metadata, so it is untrusted: anything unexpected falls back to a neutral name. */
-export function tournamentName(id: bigint, metadataUri: string): string {
-  const fallback = `Tournament #${id}`;
+/** The organizer writes the metadata, so it is untrusted: anything unexpected falls back to the defaults. */
+export function tournamentMeta(id: bigint, metadataUri: string) {
+  const fallback = { name: `Tournament #${id}`, visibility: "public" as const };
   if (!metadataUri.startsWith(JSON_DATA_URI)) {
     return fallback;
   }
   try {
     const raw: unknown = JSON.parse(decodeURIComponent(metadataUri.slice(JSON_DATA_URI.length)));
     const parsed = metadataSchema.safeParse(raw);
-    return parsed.success ? parsed.data.name.slice(0, MAX_NAME_LENGTH) : fallback;
+    return parsed.success
+      ? { name: parsed.data.name.slice(0, MAX_NAME_LENGTH), visibility: parsed.data.visibility }
+      : fallback;
   } catch {
     return fallback;
   }
 }
+
+export const tournamentName = (id: bigint, metadataUri: string) => tournamentMeta(id, metadataUri).name;
+
+/** Hidden from the lists. Entry is enforced by the contract's invite, this only decides where it is shown. */
+export const isPrivate = (metadataUri: string) => tournamentMeta(0n, metadataUri).visibility === "private";
 
 /** "2d 4h", "3h 12m", "45s". Empty once the moment has passed. */
 export function timeUntil(targetSeconds: bigint, nowSeconds: bigint): string {

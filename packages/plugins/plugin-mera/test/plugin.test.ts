@@ -26,6 +26,18 @@ const device = (source: PrfSource) =>
   });
 
 describe("mera plugin", () => {
+  test("invite keys are deterministic per tournament and epoch, and unrelated to the accounts", async () => {
+    const host = await device(passkey(7)).mera.signIn();
+    const again = await device(passkey(7)).mera.signIn();
+    const first = host.inviteKey(3n, 0);
+    expect(again.inviteKey(3n, 0)).toEqual(first);
+    expect(host.inviteKey(3n, 1).address).not.toBe(first.address);
+    expect(host.inviteKey(4n, 0).address).not.toBe(first.address);
+    expect(first.address).not.toBe(host.wallet.account.address);
+    expect(first.address).not.toBe(host.tournamentWallet(3n).account.address);
+    expect(first.privateKey).toMatch(/^0x[0-9a-f]{64}$/);
+  });
+
   test("a session store brings the identity back without a prompt and forgets it on request", async () => {
     let kept: { credentialId: string; prfOutput: Uint8Array } | null = null;
     const session = {
