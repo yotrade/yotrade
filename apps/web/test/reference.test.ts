@@ -75,13 +75,13 @@ describe("reference prices", () => {
     );
     const gold = await reference("xaut0", "15m");
     expect(gold.label).toContain("PAXG");
-    expect(gold.to - gold.from).toBe(86_400);
+    expect(gold.to - gold.from).toBe(384 * 900);
     await reference("xaut0", "15m");
     await reference("mon", "1s");
     expect(urls).toEqual([
-      "https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=96",
+      "https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=384",
       // Gate has no one-second candle, so the shortest timeframe falls back to ten seconds.
-      "https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=MON_USDT&interval=10s&limit=96",
+      "https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=MON_USDT&interval=10s&limit=384",
     ]);
     time += 30_000;
     await reference("xaut0", "15m");

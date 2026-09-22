@@ -4,7 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 
 import { type MarketSymbol, markets } from "@yotrade/core/addresses";
 
-import { bookRows, CANDLES, evenlySpaced, RANGES, type RangeName, summarize, toBars } from "./chart.ts";
+import {
+  bookRows,
+  CANDLES,
+  fillGaps,
+  MAX_CANDLES,
+  RANGES,
+  type RangeName,
+  summarize,
+  toBars,
+} from "./chart.ts";
 import { roiBps } from "./ticket.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
@@ -12,6 +21,8 @@ import { useRuntime } from "./use-runtime.ts";
 const USDC = 1_000_000;
 /** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
 const LOOKBACK_SECONDS = 30 * 86_400;
+/** Kuru serves at most 500 candles per call. */
+const MAX_FILLS = 500;
 
 /** Everything the market screen shows, from Kuru's public APIs and the chain. */
 export function useMarket(id: string, market: MarketSymbol, range: RangeName, needsDepth: boolean) {
@@ -34,13 +45,14 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
   const candles = useQuery({
     queryKey: ["candles", orderBook, range],
     queryFn: async () => {
-      // The newest candles whenever they happened: a thin market rarely fills 96 intervals in a row.
+      // The newest fills whenever they happened; the slots between them are filled in below.
+      const to = Math.floor(Date.now() / 1000);
       const rows = await kuru.data.candles(orderBook, {
         interval: RANGES[range].interval,
-        from: Math.floor(Date.now() / 1000) - LOOKBACK_SECONDS,
-        countback: CANDLES,
+        from: to - LOOKBACK_SECONDS,
+        countback: MAX_FILLS,
       });
-      return { rows };
+      return { rows, to };
     },
     refetchInterval: 10_000,
   });
@@ -62,9 +74,15 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     refetchInterval: 3_000,
   });
 
-  const series = evenlySpaced(
-    info.data && candles.data ? toBars(candles.data.rows, info.data.pricePrecision) : [],
-  );
+  const bars =
+    info.data && candles.data
+      ? fillGaps(
+          toBars(candles.data.rows, info.data.pricePrecision),
+          RANGES[range].seconds,
+          candles.data.to,
+          MAX_CANDLES,
+        )
+      : [];
   const book =
     info.data && depth.data
       ? bookRows(depth.data, info.data.pricePrecision, info.data.sizePrecision)
@@ -81,10 +99,11 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     /** Nothing here may be read as "empty" before it has loaded. */
     chartLoading: info.isPending || candles.isPending,
     bookLoading: info.isPending || depth.isPending,
-    bars: series.bars,
-    from: series.from,
-    to: series.to,
-    summary: summarize(series.bars),
+    bars,
+    from: bars[0]?.time ?? 0,
+    to: bars.at(-1)?.time ?? 1,
+    // The headline and the stats describe the default view, not everything kept for zooming out.
+    summary: summarize(bars.slice(-CANDLES)),
     book,
     roi: portfolio.data && entry.data ? roiBps(portfolio.data.totalUsdc, entry.data.capitalAtJoin) : null,
     positionUsd: portfolio.data ? Number(portfolio.data.holdings[base]?.valueUsdc ?? 0n) / USDC : null,

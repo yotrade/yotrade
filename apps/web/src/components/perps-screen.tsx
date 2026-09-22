@@ -154,7 +154,7 @@ function Chart({ series, type }: { series: ReferenceSeries | undefined; type: Ch
   }
   return (
     <div className="animate-fade">
-      <PriceChart bars={series.bars} from={series.from} to={series.to} type={type} />
+      <PriceChart bars={series.bars} type={type} />
     </div>
   );
 }
