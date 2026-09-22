@@ -48,13 +48,17 @@ Browser scripts in [`e2e/`](e2e) drive the real app against Monad testnet with h
 
 Each script exits non-zero on a failed check and leaves screenshots in `e2e/shots/`.
 
-## Deployment (Vercel)
+## Deployment
 
-1. Import the repository, set **Root Directory** to `apps/web`. Bun is detected from `bun.lock`.
-2. Set the variables from `.env.example`. `NEXT_PUBLIC_RP_ID` is the production hostname, for example `yotrade.xyz`.
+The live app runs at [app.yotrade.xyz](https://app.yotrade.xyz) from the container image defined in the repository's root `Dockerfile`: a standalone Next.js server traced from the monorepo root, listening on port 3000. Coolify on the VPS builds it from `main` and publishes it on `127.0.0.1:3030`; the host's nginx terminates TLS with a Let's Encrypt certificate and proxies to that port (`setup-yotrade-nginx.sh` on the host, rerunnable). Deploys are triggered through the Coolify API after a merge; there is no push hook.
+
+1. `NEXT_PUBLIC_*` variables are inlined at build time, so they are build arguments of the image. `NEXT_PUBLIC_RP_ID` is `yotrade.xyz`: passkeys are scoped to it, so the app can move between subdomains without anyone losing an account.
+2. The server variables above are runtime environment of the container.
 3. Fund the drip wallet with a small MON float and grant `SCORER_ROLE` to the scorer address.
 
-Decide the domain before the first real user. Passkeys are scoped to the relying-party id and accounts are derived from the passkey: a different domain means new, empty accounts for everyone.
+Vercel works too: import the repository with **Root Directory** `apps/web` and set the same variables.
+
+Decide the domain before the first real user. Accounts are derived from the passkey under the relying-party id: a different id means new, empty accounts for everyone.
 
 Rate limits, caches and send queues are in memory, which is correct for one instance. Move them to a shared store before scaling out.
 

@@ -26,7 +26,7 @@ The first users are university blockchain clubs and regional crypto communities,
 
 ## Try it in two minutes
 
-Open [yotrade.xyz](https://yotrade.xyz) on a phone or a laptop. There are no accounts to create and no credentials to enter: one passkey prompt makes the account, and testnet gas and funds arrive on their own.
+Open [app.yotrade.xyz](https://app.yotrade.xyz) on a phone or a laptop. There are no accounts to create and no credentials to enter: one passkey prompt makes the account, and testnet gas and funds arrive on their own.
 
 1. Pick a live tournament in the arena and tap **Join**. Spot joins in about 11 seconds, Futures in 6.
 2. Trade a couple of times. Spot fills land on Kuru's order book; Futures orders carry a signed Pyth price.

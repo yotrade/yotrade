@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: { default: "YoTrade", template: "%s | YoTrade" },
   description: DESCRIPTION,
   applicationName: "YoTrade",
-  metadataBase: new URL("https://yotrade.xyz"),
+  metadataBase: new URL("https://app.yotrade.xyz"),
   openGraph: {
     type: "website",
     siteName: "YoTrade",

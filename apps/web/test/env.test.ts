@@ -16,7 +16,9 @@ describe("parsePublicEnv", () => {
     expect(() => parsePublicEnv({ NEXT_PUBLIC_RPC_URL: "not a url" })).toThrow(
       /NEXT_PUBLIC_RPC_URL/,
     );
-    expect(() => parsePublicEnv({ NEXT_PUBLIC_RP_ID: "" })).toThrow(/NEXT_PUBLIC_RP_ID/);
+    expect(() => parsePublicEnv({ NEXT_PUBLIC_INDEXER_URL: "nope" })).toThrow(
+      /NEXT_PUBLIC_INDEXER_URL/,
+    );
   });
 });
 
@@ -57,4 +59,11 @@ describe("createAppRuntime", () => {
       "NEXT_PUBLIC_E2E_PRF_SEED",
     );
   });
+});
+
+test("an empty optional variable, as a container passes it, counts as unset", () => {
+  expect(
+    parsePublicEnv({ NEXT_PUBLIC_RP_ID: "yotrade.xyz", NEXT_PUBLIC_ALCHEMY_API_KEY: "" })
+      .NEXT_PUBLIC_ALCHEMY_API_KEY,
+  ).toBeUndefined();
 });

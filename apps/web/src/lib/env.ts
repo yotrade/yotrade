@@ -24,7 +24,10 @@ const publicSchema = z.object({
 export type PublicEnv = z.infer<typeof publicSchema>;
 
 export function parsePublicEnv(source: Record<string, string | undefined>): PublicEnv {
-  const result = publicSchema.safeParse(source);
+  // A container or CI hands over unset variables as empty strings; an empty optional is an absent one.
+  const result = publicSchema.safeParse(
+    Object.fromEntries(Object.entries(source).filter(([, value]) => value !== "")),
+  );
   if (!result.success) {
     throw new Error(`Invalid public environment:\n${z.prettifyError(result.error)}`);
   }
