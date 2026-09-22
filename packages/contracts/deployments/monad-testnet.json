@@ -6,7 +6,7 @@
   "solc": "0.8.37",
   "TournamentManager": {
     "proxy": "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
-    "implementation": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
+    "implementation": "0x3708b17f0187eE6eA382Ab3bFb692BA1E270A154",
     "deployBlock": 64421055,
     "verified": "sourcify (MonadVision)",
     "implementationHistory": [
@@ -20,7 +20,11 @@
       },
       {
         "address": "0x7B8C2DBCb7feC9e7184E9224f5b3F0adaBB5914D",
-        "note": "same source, clean build, verified; current"
+        "note": "same source, clean build, verified"
+      },
+      {
+        "address": "0x3708b17f0187eE6eA382Ab3bFb692BA1E270A154",
+        "note": "private tournaments: setInvite and invite signatures in join (2026-09-22), verified; current"
       }
     ]
   },
