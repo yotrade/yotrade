@@ -1,14 +1,14 @@
 import { type PerpsMarketSymbol, pyth } from "@yotrade/core/addresses";
 import type { Hex } from "viem";
 
-/** Futures markets by URL slug. The slugs never collide with the spot ones, so a URL names its venue. */
+/** Futures markets by URL slug, each with its mark in `public/brands/<slug>.png`. Slugs never collide with spot. */
 export const PERPS_MARKETS = {
-  btc: { symbol: "BTC/USD", name: "Bitcoin", label: "BTC", glyph: "₿", tint: "#f7931a" },
-  eth: { symbol: "ETH/USD", name: "Ethereum", label: "ETH", glyph: "Ξ", tint: "#627eea" },
-  sol: { symbol: "SOL/USD", name: "Solana", label: "SOL", glyph: "◎", tint: "#9945ff" },
+  btc: { symbol: "BTC/USD", name: "Bitcoin", label: "BTC" },
+  eth: { symbol: "ETH/USD", name: "Ethereum", label: "ETH" },
+  sol: { symbol: "SOL/USD", name: "Solana", label: "SOL" },
 } as const satisfies Record<
   string,
-  { symbol: PerpsMarketSymbol; name: string; label: string; glyph: string; tint: string }
+  { symbol: PerpsMarketSymbol; name: string; label: string }
 >;
 
 export type PerpsSlug = keyof typeof PERPS_MARKETS;
