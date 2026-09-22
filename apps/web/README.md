@@ -31,6 +31,22 @@ bun run dev
 | `BLOB_READ_WRITE_TOKEN` (Vercel Blob) | Hosts cannot upload a logo; the create flow shows the link field instead |
 | `LOGO_BLOCKLIST` (optional, comma-separated substrings) | Every tournament logo is served; set it to hide a logo that must go, since metadata onchain cannot be changed |
 
+## End-to-end checks
+
+Browser scripts in [`e2e/`](e2e) drive the real app against Monad testnet with headless Chrome (`playwright-core`, `channel: chrome`). They sign in with the seeded identity, so set `NEXT_PUBLIC_E2E_PRF_SEED` in `.env.local` and run `bun run dev`; point `E2E_BASE_URL` at it when it is not on port 3000.
+
+| Script | What it proves | Sends transactions |
+|---|---|---|
+| `bun run e2e:crawl` | Every route: no console output, named controls, labelled inputs, no overflow, nothing stuck loading, one heading | No |
+| `bun run e2e:create` | The three-step create flow validates and goes back | No |
+| `bun run e2e:session` | A reload keeps the session, sign-out ends it | No |
+| `bun run e2e:chart` | Timeframes, wheel zoom, drag pan, reset | No |
+| `bun run e2e:profile` | Name and avatar save, and publish to open tournaments | Yes |
+| `bun run e2e:invite` | A private tournament hides, refuses without the code, admits with it | Yes |
+| `bun run e2e:futures` | Create, join, long, close, short, finalize with settlement (about eight minutes) | Yes |
+
+Each script exits non-zero on a failed check and leaves screenshots in `e2e/shots/`.
+
 ## Deployment (Vercel)
 
 1. Import the repository, set **Root Directory** to `apps/web`. Bun is detected from `bun.lock`.

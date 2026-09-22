@@ -58,6 +58,12 @@ A **private** tournament is hidden from the lists and needs an invite: the host'
 
 A **Futures** tournament differs in three steps. Joining is gas drip → `join`: the capital is a virtual 10,000 USD, the same for everyone. Trading sends a signed Pyth update with every order, so the fill price is the oracle's and not the trader's. The score is equity over the start; finalize first closes every open position at the first Pyth price at or after the end (`settle`), then posts the winners, so the ranking can be recomputed from the chain alone. Measured live: join 6 s, fill 3 to 5 s, finalize with settlement 6 s.
 
+## Media and sharing
+
+- **Logos** live in the tournament's onchain metadata as an https link. Hosts paste one or upload a file: the browser crops and shrinks it, the upload is signed by the host's account, sniffed by magic bytes, rate limited, and stored on Vercel Blob behind a two-method store interface. Viewers never fetch a logo from its origin: `/api/logo` resolves the host, refuses private addresses on every redirect hop, accepts images under 1 MB only, and caches. `LOGO_BLOCKLIST` hides a logo that must go.
+- **Links unfurl** into a generated card (`/t/[id]/opengraph-image`) with the name, prize, market, dates and trader count, revalidated every minute. Public tournaments have a share button; private ones share through the host's invite card because their link carries the code.
+- **Profiles** (name, avatar) are written by each tournament account to `ProfileRegistry` and read in one multicall per screen.
+
 ## Trust model
 
 | Actor | Can | Cannot |
