@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildConfig, type CreateForm } from "../src/lib/create.ts";
-import { isPrivate, tournamentName } from "../src/lib/format.ts";
+import { isPrivate, tournamentMeta, tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
   venue: "spot",
   visibility: "public",
+  image: "",
   name: "  Jogja Cup 🏆 ",
   prizePool: "250.5",
   startDelay: "In 10 minutes",
@@ -15,6 +16,21 @@ const FORM: CreateForm = {
 };
 
 describe("buildConfig", () => {
+  test("a logo link goes into the metadata, a bad one is refused", () => {
+    const withLogo = buildConfig({ ...FORM, image: " https://cdn.example.com/logo.png " }, 1_000n);
+    expect(withLogo.ok && tournamentMeta(1n, withLogo.config.metadataURI).image).toBe(
+      "https://cdn.example.com/logo.png",
+    );
+    expect(
+      buildConfig({ ...FORM, image: "http://cdn.example.com/logo.png" }, 1_000n),
+    ).toMatchObject({
+      ok: false,
+      field: "image",
+    });
+    const plain = buildConfig(FORM, 1_000n);
+    expect(plain.ok && plain.config.metadataURI.includes("image")).toBe(false);
+  });
+
   test("a private tournament says so in its metadata, a public one stays terse", () => {
     const pub = buildConfig(FORM, 1_000n);
     const priv = buildConfig({ ...FORM, visibility: "private" }, 1_000n);

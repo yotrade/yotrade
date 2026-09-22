@@ -16,6 +16,7 @@ import {
 } from "@/lib/create.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import { saveInvite } from "@/lib/invite.ts";
+import { isLogoUrl } from "@/lib/logo-url.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { BackButton } from "./ui/back-button.tsx";
@@ -24,6 +25,7 @@ import { Field } from "./ui/field.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Segmented } from "./ui/segmented.tsx";
 import { Select } from "./ui/select.tsx";
+import { TournamentLogo } from "./ui/tournament-logo.tsx";
 
 const VENUES = ["Spot", "Futures"] as const;
 const VISIBILITIES = ["Public", "Private"] as const;
@@ -34,6 +36,7 @@ const INITIAL: Form = {
   venue: "spot",
   visibility: "public",
   name: "",
+  image: "",
   prizePool: "100",
   startDelay: "In 10 minutes",
   duration: "1 day",
@@ -86,6 +89,7 @@ function Choice<T extends string>({
 function Review({ form }: { form: Form }) {
   const rows: [string, string][] = [
     ["Name", form.name.trim() || "—"],
+    ["Logo", form.image.trim() ? "Custom" : "Default"],
     ["Market", form.venue === "futures" ? "Futures · Pyth" : "Spot · Kuru"],
     ["Who can join", form.visibility === "private" ? "Invite link only" : "Anyone"],
     ["Prize", `${form.prizePool || "0"} USDC · ${form.split}`],
@@ -109,9 +113,10 @@ interface StepProps {
   readonly form: Form;
   set<K extends keyof Form>(key: K, value: Form[K]): void;
   errorFor(field: keyof Form): { error?: string };
+  onLogoStatus(ok: boolean | undefined): void;
 }
 
-function StepFields({ step, form, set, errorFor }: StepProps) {
+function StepFields({ step, form, set, errorFor, onLogoStatus }: StepProps) {
   return (
     <>
       {step === 0 ? (
@@ -125,6 +130,31 @@ function StepFields({ step, form, set, errorFor }: StepProps) {
             onChange={(event) => set("name", event.target.value)}
             {...errorFor("name")}
           />
+          <div className="flex items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <Field
+                label="Logo link (optional)"
+                placeholder="https://your.community/logo.png"
+                inputMode="url"
+                autoComplete="off"
+                value={form.image}
+                onChange={(event) => {
+                  onLogoStatus(undefined);
+                  set("image", event.target.value);
+                }}
+                hint="A square PNG, JPG or SVG on any https site. Shown on cards and the tournament page."
+                {...errorFor("image")}
+              />
+            </div>
+            <div className="mb-[26px]">
+              <TournamentLogo
+                key={form.image.trim()}
+                image={isLogoUrl(form.image.trim()) ? form.image.trim() : undefined}
+                size={56}
+                onStatus={onLogoStatus}
+              />
+            </div>
+          </div>
           <Choice
             label="Market"
             options={VENUES}
@@ -207,6 +237,7 @@ export function CreateForm() {
   const [failure, setFailure] = useState<string>();
   const [pending, setPending] = useState(false);
   const [step, setStep] = useState(0);
+  const [logoOk, setLogoOk] = useState<boolean>();
 
   if (!identity) {
     // The onboarding gate guarantees an identity before any page renders.
@@ -256,6 +287,7 @@ export function CreateForm() {
   /** Fields that live on each step, so a rejected field sends the host back to where it is. */
   const stepOf: Record<keyof Form, number> = {
     name: 0,
+    image: 0,
     venue: 0,
     visibility: 0,
     prizePool: 1,
@@ -270,6 +302,14 @@ export function CreateForm() {
     if (!built.ok && stepOf[built.field] <= step) {
       setInvalid(built);
       setStep(stepOf[built.field]);
+      return;
+    }
+    // The link is written to the chain for good, so a logo that does not load stops here.
+    if (step === 0 && form.image.trim() !== "" && logoOk !== true) {
+      setInvalid({
+        field: "image",
+        reason: "That image did not load. Check the link or clear it.",
+      });
       return;
     }
     setInvalid(undefined);
@@ -333,7 +373,13 @@ export function CreateForm() {
       <Progress step={step} />
 
       <div key={step} className="flex animate-enter flex-col gap-4">
-        <StepFields step={step} form={form} set={set} errorFor={errorFor} />
+        <StepFields
+          step={step}
+          form={form}
+          set={set}
+          errorFor={errorFor}
+          onLogoStatus={setLogoOk}
+        />
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-md flex-col gap-2 bg-surface/90 px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-3 backdrop-blur">

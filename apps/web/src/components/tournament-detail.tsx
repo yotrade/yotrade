@@ -4,7 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { phaseAt } from "@yotrade/plugin-tournament/phase";
 import { type ReactNode, useEffect, useState } from "react";
 
-import { formatUsdc, isPrivate, shortAddress, timeLeft, tournamentName } from "@/lib/format.ts";
+import {
+  formatUsdc,
+  isPrivate,
+  shortAddress,
+  timeLeft,
+  tournamentMeta,
+  tournamentName,
+} from "@/lib/format.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
@@ -20,6 +27,7 @@ import { BackButton } from "./ui/back-button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TabMenu } from "./ui/tab-menu.tsx";
+import { TournamentLogo } from "./ui/tournament-logo.tsx";
 
 const BPS = 10_000n;
 const TABS = ["Overview", "Leaderboard"] as const;
@@ -95,13 +103,15 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const phase = phaseAt(data, now);
   const venue = venueOf(data.venue);
+  const meta = tournamentMeta(data.id, data.metadataURI);
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
       <header className="flex items-center gap-3">
         <BackButton />
+        {meta.image ? <TournamentLogo image={meta.image} size={36} /> : null}
         <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-[26px] tracking-tight">
-          {tournamentName(data.id, data.metadataURI)}
+          {meta.name}
         </h1>
         <span className="rounded-lg bg-surface-raised px-2 py-1 font-mono text-[11px] font-bold uppercase text-ink-muted">
           {isPrivate(data.metadataURI) ? "private" : venue}

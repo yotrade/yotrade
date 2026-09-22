@@ -3,6 +3,7 @@ import { parseUnits } from "viem";
 import { tokens, yotrade } from "@yotrade/core/addresses";
 import type { TournamentConfig } from "@yotrade/plugin-tournament/plugin";
 
+import { isLogoUrl } from "./logo-url.ts";
 import type { Venue } from "./venue.ts";
 
 export const SPLITS = {
@@ -26,6 +27,8 @@ const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 export interface CreateForm {
   readonly venue: Venue;
   readonly visibility: "public" | "private";
+  /** Optional https link to the host's logo. */
+  readonly image: string;
   readonly name: string;
   readonly prizePool: string;
   readonly startDelay: keyof typeof START_DELAYS;
@@ -41,13 +44,21 @@ export type BuildResult =
 /** Form → contract `Config`. Rejects here what the contract would reject after the organizer paid for gas. */
 export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
   const name = form.name.trim();
-  const metadata = form.visibility === "private" ? { name, visibility: "private" } : { name };
-  const metadataURI = `data:application/json,${encodeURIComponent(JSON.stringify(metadata))}`;
+  const image = form.image.trim();
   if (name === "") {
     return { ok: false, field: "name", reason: "Give your tournament a name" };
   }
+  if (image !== "" && !isLogoUrl(image)) {
+    return { ok: false, field: "image", reason: "Paste an https link to an image" };
+  }
+  const metadata = {
+    name,
+    ...(form.visibility === "private" ? { visibility: "private" } : {}),
+    ...(image === "" ? {} : { image }),
+  };
+  const metadataURI = `data:application/json,${encodeURIComponent(JSON.stringify(metadata))}`;
   if (new TextEncoder().encode(metadataURI).length > MAX_METADATA_BYTES) {
-    return { ok: false, field: "name", reason: "That name is too long" };
+    return { ok: false, field: image === "" ? "name" : "image", reason: "That is too long to store" };
   }
   if (!/^\d+(\.\d{1,6})?$/.test(form.prizePool.trim())) {
     return { ok: false, field: "prizePool", reason: "Enter an amount in USDC, or 0" };
