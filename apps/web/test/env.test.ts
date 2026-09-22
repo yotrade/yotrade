@@ -8,7 +8,7 @@ describe("parsePublicEnv", () => {
     expect(parsePublicEnv({})).toEqual({
       NEXT_PUBLIC_RP_ID: "localhost",
       NEXT_PUBLIC_RPC_URL: "https://testnet-rpc.monad.xyz",
-      NEXT_PUBLIC_INDEXER_URL: "https://indexer.dev.hyperindex.xyz/78dbffe/v1/graphql",
+      NEXT_PUBLIC_INDEXER_URL: "https://indexer.dev.hyperindex.xyz/ef7fbaa/v1/graphql",
     });
   });
 
