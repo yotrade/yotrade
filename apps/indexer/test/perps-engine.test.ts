@@ -74,6 +74,7 @@ describe("futures venue", () => {
 
     const entry = await indexer.Entry.getOrThrow(`1-${ALICE}`);
     expect(entry).toMatchObject({ perpsFills: 2, perpsBalance: START - 60n * WAD, settled: false });
+    // biome-ignore lint/style/useNamingConvention: Envio filter operator
     const fills = await indexer.Fill.getWhere({ entry_id: { _eq: entry.id } });
     expect(fills).toHaveLength(2);
     expect(fills[0]).toMatchObject({ market: BTC, price: 60_000n * WAD, trader_id: ALICE });
@@ -107,6 +108,7 @@ describe("futures venue", () => {
       settled: true,
       perpsBalance: START + 970n * WAD,
     });
+    // biome-ignore lint/style/useNamingConvention: Envio filter operator
     const liquidations = await indexer.Liquidation.getWhere({ tournament_id: { _eq: "1" } });
     expect(liquidations).toHaveLength(1);
     expect(liquidations[0]).toMatchObject({ liquidator: BOB, balance: 0n });
