@@ -28,6 +28,7 @@ bun run dev
 | `SCORER_PRIVATE_KEY` (holds `SCORER_ROLE` only) | Results cannot be posted: finalize answers 503 |
 | `KIMI_API_KEY` | The commentary card stays hidden |
 | `PYTH_API_KEY` | Futures cannot be traded or scored: `/api/pyth` answers 503 |
+| `LOGO_BLOCKLIST` (optional, comma-separated substrings) | Every tournament logo is served; set it to hide a logo that must go, since metadata onchain cannot be changed |
 
 ## Deployment (Vercel)
 

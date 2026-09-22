@@ -20,11 +20,13 @@ export function shortAddress(address: Address): string {
 const metadataSchema = z.object({
   name: z.string().trim().min(1),
   visibility: z.enum(["public", "private"]).default("public"),
+  /** Host's logo. Only the shape is checked here; the image proxy decides whether it is served. */
+  image: z.string().regex(/^https:\/\/\S{1,197}$/).optional(),
 });
 
 /** The organizer writes the metadata, so it is untrusted: anything unexpected falls back to the defaults. */
 export function tournamentMeta(id: bigint, metadataUri: string) {
-  const fallback = { name: `Tournament #${id}`, visibility: "public" as const };
+  const fallback = { name: `Tournament #${id}`, visibility: "public" as const, image: undefined };
   if (!metadataUri.startsWith(JSON_DATA_URI)) {
     return fallback;
   }
@@ -32,7 +34,11 @@ export function tournamentMeta(id: bigint, metadataUri: string) {
     const raw: unknown = JSON.parse(decodeURIComponent(metadataUri.slice(JSON_DATA_URI.length)));
     const parsed = metadataSchema.safeParse(raw);
     return parsed.success
-      ? { name: parsed.data.name.slice(0, MAX_NAME_LENGTH), visibility: parsed.data.visibility }
+      ? {
+          name: parsed.data.name.slice(0, MAX_NAME_LENGTH),
+          visibility: parsed.data.visibility,
+          image: parsed.data.image,
+        }
       : fallback;
   } catch {
     return fallback;
