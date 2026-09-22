@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { hostInvite, inviteFromUrl, inviteLink, isInviteCode } from "@/lib/invite.ts";
+import {
+  hostInvite,
+  inviteFromUrl,
+  inviteLink,
+  isInviteCode,
+  parseInviteCode,
+} from "@/lib/invite.ts";
 
 const CODE = `0x${"ab".repeat(32)}` as const;
 
@@ -25,5 +31,15 @@ describe("invite links", () => {
       epoch: 2,
     });
     expect(hostInvite(identity, 7n, "0x00000000000000000000000000000000000000ff")).toBeNull();
+  });
+});
+
+describe("parseInviteCode", () => {
+  test("takes the bare code, a whole link, or nothing", () => {
+    const code = `0x${"ab".repeat(32)}` as const;
+    expect(parseInviteCode(` ${code}\n`)).toBe(code);
+    expect(parseInviteCode(`https://app.yotrade.xyz/t/7#invite=${code}`)).toBe(code);
+    expect(parseInviteCode("https://app.yotrade.xyz/t/7")).toBeNull();
+    expect(parseInviteCode("0x1234")).toBeNull();
   });
 });
