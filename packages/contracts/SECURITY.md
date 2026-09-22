@@ -36,6 +36,17 @@ Scores are computed offchain from the venue's public data and are reproducible b
 | Merkle second-preimage on the allowlist | Leaves are double-hashed |
 | Log reordering by a callback | Events are emitted before external calls, pinned by a regression test |
 
+## Private tournaments
+
+An organizer may set an invite signer (`setInvite`). Joining then needs the invite key's signature over `inviteDigest(id, participant)`, passed as the last three words of the proof argument, next to a Merkle proof when the tournament also has an allowlist.
+
+| Threat | Mitigation |
+|---|---|
+| Replaying a signature for another participant, tournament, contract or chain | The digest binds all four; a signature admits one address to one tournament |
+| A leaked invite link | The organizer rotates the signer at any time before the end; old signatures stop working at once. `maxParticipants` still caps the damage |
+| Signature malleability | `ECDSA.tryRecover` rejects high-`s` values, and `v` must fit in one byte |
+| Learning the code from the chain | Only the key's address is stored; the code itself travels in the link fragment and never reaches a server |
+
 ## Invariants (stateful fuzzing, `test/invariant`)
 
 1. For every token, the contract's balance is at least `escrowed[token]`, and `escrowed[token]` equals the sum of `unpaid` over its tournaments.
