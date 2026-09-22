@@ -51,7 +51,7 @@ function Step({ entry, step }: { entry: PodiumEntry | undefined; step: (typeof S
         {step.rank === 1 ? <Icon name="crown-gold" size={28} className="animate-float" /> : null}
       </div>
       <span
-        className={`mt-1 rounded-full ring-[3px] ring-offset-2 ring-offset-surface ${step.ring}`}
+        className={`mt-1 rounded-full ring-[3px] ring-offset-2 ring-offset-surface ${entry.you ? "ring-ink" : step.ring}`}
       >
         <Avatar address={entry.address} size={step.avatar} avatar={entry.avatar} />
       </span>
