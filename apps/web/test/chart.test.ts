@@ -4,7 +4,7 @@ import {
   areaPath,
   bookRows,
   candleShapes,
-  evenlySpaced,
+  fillGaps,
   linePath,
   plotOf,
   summarize,
@@ -123,17 +123,47 @@ describe("chart", () => {
   });
 });
 
-describe("evenlySpaced", () => {
-  test("puts bars at their index and spans the frame", () => {
-    const bar = { open: 1, high: 1, low: 1, close: 1, volume: 0 };
-    const spaced = evenlySpaced([
-      { ...bar, time: 1_000 },
-      { ...bar, time: 90_000 },
-      { ...bar, time: 90_001 },
-    ]);
-    expect(spaced.bars.map((item) => item.time)).toEqual([0, 1, 2]);
-    expect(spaced).toMatchObject({ from: 0, to: 2 });
-    // A lone bar still has a span to sit in.
-    expect(evenlySpaced([{ ...bar, time: 5 }])).toMatchObject({ from: 0, to: 1 });
+describe("fillGaps", () => {
+  const fill = (time: number, close: number, open = close) => ({
+    time,
+    open,
+    high: Math.max(open, close),
+    low: Math.min(open, close),
+    close,
+    volume: 1,
+  });
+
+  test("one bar per slot: fills merge, empty slots hold the last price", () => {
+    const bars = fillGaps(
+      [fill(100, 10), fill(130, 12, 10), fill(140, 11), fill(400, 20)],
+      60,
+      419,
+      6,
+    );
+    expect(bars.map((bar) => bar.time)).toEqual([60, 120, 180, 240, 300, 360]);
+    expect(bars[0]).toMatchObject({ open: 10, close: 10, volume: 1 });
+    // Two fills in the 120 slot become one candle: first open, last close, extremes, summed volume.
+    expect(bars[1]).toMatchObject({ open: 10, high: 12, low: 10, close: 11, volume: 2 });
+    expect(bars[2]).toMatchObject({ open: 11, high: 11, low: 11, close: 11, volume: 0 });
+    expect(bars[5]).toMatchObject({ close: 20, volume: 1 });
+  });
+
+  test("a window after the last fill is flat at that fill; before any fill, nothing", () => {
+    const flat = fillGaps([fill(100, 10)], 60, 1_000, 3);
+    expect(flat.map((bar) => bar.close)).toEqual([10, 10, 10]);
+    expect(flat.every((bar) => bar.volume === 0)).toBe(true);
+    expect(fillGaps([], 60, 1_000, 3)).toEqual([]);
+    // A long window starts at the first fill instead of inventing a flat past.
+    const young = fillGaps([fill(1_000, 10), fill(1_100, 11)], 60, 1_199, 100);
+    expect(young).toHaveLength(4);
+    expect(young[0]?.time).toBe(960);
+  });
+
+  test("an old outlier leaves a short window and stays in a long one", () => {
+    const bars = [fill(0, 100), fill(3_600, 50), fill(7_000, 100), fill(7_100, 101)];
+    const short = fillGaps(bars, 60, 7_199, 4);
+    expect(Math.min(...short.map((bar) => bar.low))).toBe(100);
+    const long = fillGaps(bars, 3_600, 7_199, 3);
+    expect(Math.min(...long.map((bar) => bar.low))).toBe(50);
   });
 });

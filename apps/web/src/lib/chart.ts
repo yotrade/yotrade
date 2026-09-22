@@ -12,6 +12,8 @@ export interface Bar {
 
 /** Candles per chart. Ninety-six 15-minute candles are exactly one day. */
 export const CANDLES = 96;
+/** How many candles are kept behind the default view, for zooming out and panning back. */
+export const MAX_CANDLES = 384;
 
 /**
  * Candle timeframes, the way a trading screen offers them. `kuru` is the nearest interval Kuru's API serves;
@@ -21,9 +23,9 @@ export const RANGES = {
   "1s": { interval: "1s", seconds: 1 },
   "1m": { interval: "1m", seconds: 60 },
   "5m": { interval: "5m", seconds: 300 },
-  "15m": { interval: "5m", seconds: 300 },
+  "15m": { interval: "5m", seconds: 900 },
   "1h": { interval: "1h", seconds: 3_600 },
-  "4h": { interval: "1h", seconds: 3_600 },
+  "4h": { interval: "1h", seconds: 14_400 },
   "1D": { interval: "1d", seconds: 86_400 },
 } as const;
 export type RangeName = keyof typeof RANGES;
@@ -115,16 +117,57 @@ export function plotOf(bars: readonly Bar[], from: number, to: number, frame: Fr
 }
 
 /**
- * Bars at their index instead of their time, for markets that trade a few times a day: hours of nothing between
- * two fills carry no information and would squeeze every candle into a dash. The step line then reads as a
- * sequence of trades, which on such a market is what it is.
+ * One bar per `step` seconds for the last `count` slots ending at `end`, the way every charting tool draws a
+ * thin market: fills that fall in a slot merge into its candle, and a slot without a fill is a flat candle at
+ * the last known price. Timeframes then mean what they say, and an old outlier drops out of a short window.
+ * Nothing is drawn before the first fill ever, and nothing at all when there is none.
  */
-export function evenlySpaced(bars: readonly Bar[]): { bars: Bar[]; from: number; to: number } {
-  return {
-    bars: bars.map((bar, index) => ({ ...bar, time: index })),
-    from: 0,
-    to: Math.max(1, bars.length - 1),
-  };
+export function fillGaps(bars: readonly Bar[], step: number, end: number, count: number): Bar[] {
+  const sorted = [...bars].sort((a, b) => a.time - b.time);
+  const last = sorted.at(-1);
+  if (!last) {
+    return [];
+  }
+  const lastSlot = Math.floor(end / step) * step;
+  const firstFill = sorted[0] ? Math.floor(sorted[0].time / step) * step : lastSlot;
+  const firstSlot = Math.max(lastSlot - (count - 1) * step, Math.min(firstFill, lastSlot));
+  // The price carried into the window: the latest fill before it, or the first fill ever.
+  let close = sorted[0]?.open ?? 0;
+  for (const bar of sorted) {
+    if (bar.time >= firstSlot) {
+      break;
+    }
+    close = bar.close;
+  }
+  const out: Bar[] = [];
+  let index = sorted.findIndex((bar) => bar.time >= firstSlot);
+  for (let slot = firstSlot; slot <= lastSlot; slot += step) {
+    let merged: Bar | null = null;
+    while (index !== -1 && index < sorted.length) {
+      const bar = sorted[index];
+      if (!bar || bar.time >= slot + step) {
+        break;
+      }
+      merged = merged
+        ? {
+            time: slot,
+            open: merged.open,
+            high: Math.max(merged.high, bar.high),
+            low: Math.min(merged.low, bar.low),
+            close: bar.close,
+            volume: merged.volume + bar.volume,
+          }
+        : { ...bar, time: slot };
+      index += 1;
+    }
+    if (merged) {
+      close = merged.close;
+      out.push(merged);
+    } else {
+      out.push({ time: slot, open: close, high: close, low: close, close, volume: 0 });
+    }
+  }
+  return out;
 }
 
 const round = (value: number) => Math.round(value * 100) / 100;
