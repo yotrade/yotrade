@@ -3,7 +3,7 @@
 import { markets } from "@yotrade/core/addresses";
 import Link from "next/link";
 
-import { summarize } from "@/lib/chart.ts";
+import { CANDLES, summarize } from "@/lib/chart.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { PERPS_MARKETS, PERPS_SLUGS, type PerpsSlug } from "@/lib/perps-markets.ts";
 import { formatBps } from "@/lib/ticket.ts";
@@ -19,7 +19,7 @@ const SPOT_SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
 function Chip({ id, slug, venue }: { id: string; slug: MarketSlug | PerpsSlug; venue: Venue }) {
   // The global 24 h move, from the cached reference series: what the market is doing right now.
   const reference = useReference(slug, "15m");
-  const change = summarize(reference.data?.bars ?? [])?.changeBps;
+  const change = summarize((reference.data?.bars ?? []).slice(-CANDLES))?.changeBps;
   const label =
     venue === "futures"
       ? `${PERPS_MARKETS[slug as PerpsSlug].label}-PERP`

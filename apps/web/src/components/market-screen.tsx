@@ -103,7 +103,7 @@ function MarketView({ view, type, data }: { view: View; type: ChartType; data: M
   if (view === "Depth") {
     return <DepthChart bids={data.book.bids} asks={data.book.asks} />;
   }
-  return <PriceChart bars={data.bars} from={data.from} to={data.to} type={type} />;
+  return <PriceChart bars={data.bars} type={type} />;
 }
 
 export function RangeTabs({

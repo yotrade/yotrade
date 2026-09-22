@@ -3,7 +3,7 @@
 import { pnl, STARTING_BALANCE } from "@yotrade/plugin-perps/math";
 import Link from "next/link";
 
-import { linePath, plotOf, summarize } from "@/lib/chart.ts";
+import { CANDLES, linePath, plotOf, summarize } from "@/lib/chart.ts";
 import { leverage, signedUsd, usd } from "@/lib/perps-format.ts";
 import {
   feedOf,
@@ -48,8 +48,11 @@ function MarketRow({
       </Loading>
     );
   }
-  const series = reference.data;
-  const summary = summarize(series?.bars ?? []);
+  // Ninety-six 15-minute candles are the last 24 hours; the series holds more for the chart's zoom.
+  const bars = (reference.data?.bars ?? []).slice(-CANDLES);
+  const series =
+    reference.data && bars[0] ? { ...reference.data, bars, from: bars[0].time } : undefined;
+  const summary = summarize(bars);
   const up = (summary?.changeBps ?? 0) >= 0;
   return (
     <Link href={`/t/${id}/trade/${slug}`} className={ROW}>

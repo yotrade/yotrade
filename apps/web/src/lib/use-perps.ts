@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Risk, risk, type Valued } from "@yotrade/plugin-perps/math";
 import type { Address, Hex } from "viem";
 
-import { type RangeName, summarize } from "./chart.ts";
+import { CANDLES, type RangeName, summarize } from "./chart.ts";
 import { fundGas } from "./fund-gas.ts";
 import { usdNumber } from "./perps-format.ts";
 import { feedOf, type PerpsSlug } from "./perps-markets.ts";
@@ -73,7 +73,8 @@ export function usePerpsMarket(id: string, slug: PerpsSlug, range: RangeName) {
 
   const price = account.data?.prices[feed.toLowerCase() as Hex];
   const position = account.data?.positions.find((p) => p.market.toLowerCase() === feed.toLowerCase());
-  const summary = summarize(reference.data?.bars ?? []);
+  // The headline describes the default view; the rest of the series is there for zooming out.
+  const summary = summarize((reference.data?.bars ?? []).slice(-CANDLES));
   let state: "loading" | "joined" | "out" = entry.data ? "joined" : "out";
   if (entry.isPending) {
     state = "loading";

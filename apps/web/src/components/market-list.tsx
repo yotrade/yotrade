@@ -9,7 +9,7 @@ import Link from "next/link";
 import {
   type Bar,
   CANDLES,
-  evenlySpaced,
+  fillGaps,
   linePath,
   plotOf,
   RANGES,
@@ -82,18 +82,21 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
     queryKey: ["market-row", orderBook],
     refetchInterval: 10_000,
     queryFn: async () => {
+      const to = Math.floor(Date.now() / 1000);
       const [info, candles, book] = await Promise.all([
         kuru.data.market(orderBook),
         kuru.data.candles(orderBook, {
           interval: RANGE.interval,
-          from: Math.floor(Date.now() / 1000) - LOOKBACK_SECONDS,
+          from: to - LOOKBACK_SECONDS,
           countback: CANDLES,
         }),
         kuru.market.book(symbol),
       ]);
-      const bars = toBars(candles, info.pricePrecision);
+      const bars = fillGaps(toBars(candles, info.pricePrecision), RANGE.seconds, to, CANDLES);
       return {
-        ...evenlySpaced(bars),
+        from: bars[0]?.time ?? to - RANGE.seconds * CANDLES,
+        to,
+        bars,
         summary: summarize(bars),
         mid: book.hasLiquidity ? midPrice(book) : null,
         tradable: book.hasLiquidity,

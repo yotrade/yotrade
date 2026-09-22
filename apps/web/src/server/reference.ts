@@ -1,4 +1,4 @@
-import { type Bar, CANDLES, type RangeName } from "@/lib/chart.ts";
+import { type Bar, MAX_CANDLES, type RangeName } from "@/lib/chart.ts";
 import type { MarketSlug } from "@/lib/markets.ts";
 import type { PerpsSlug } from "@/lib/perps-markets.ts";
 
@@ -97,8 +97,8 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     const [interval, seconds] = PLAN[range][source.venue];
     const url =
       source.venue === "binance"
-        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${interval}&limit=${CANDLES}`
-        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${interval}&limit=${CANDLES}`;
+        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${interval}&limit=${MAX_CANDLES}`
+        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${interval}&limit=${MAX_CANDLES}`;
     const response = await fetcher(url, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -109,7 +109,7 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     const body: unknown = await response.json();
     const bars = source.venue === "binance" ? parseBinance(body) : parseGate(body);
     const to = Math.floor(now() / 1000);
-    return { label: source.label, from: to - seconds * CANDLES, to, bars };
+    return { label: source.label, from: to - seconds * MAX_CANDLES, to, bars };
   }
 
   return function reference(market: ReferenceSlug, range: RangeName): Promise<Reference> {
