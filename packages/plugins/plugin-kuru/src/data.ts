@@ -18,7 +18,11 @@ export interface DataTrade {
   readonly isMaker: boolean;
   readonly price: bigint;
   readonly filledSize: bigint;
+  /** Raw quote units scaled by 1e18, like the performance endpoint. */
   readonly realizedPnl: bigint;
+  /** Fees paid on this fill, in raw USDC units (six decimals). */
+  readonly feeUsdc: bigint;
+  /** Inventory after the fill. Zero on the partial records the API emits for one order filling several levels. */
   readonly openSize: bigint;
   readonly openCost: bigint;
   readonly timestamp: number;
@@ -59,7 +63,8 @@ interface RawTrade {
   isMaker: boolean;
   price: string;
   filledSize: string;
-  pnl: { realizedPnl: string; openSize: string; openCost: string };
+  fees?: { makerFee?: string | null; takerFee?: string | null };
+  pnl: { realizedPnl: string; openSize: string | null; openCost: string | null };
   blockTimestamp: number;
   transactionHash: Hash;
 }
@@ -255,8 +260,9 @@ export function createDataClient(
         price: BigInt(row.price),
         filledSize: BigInt(row.filledSize),
         realizedPnl: BigInt(row.pnl.realizedPnl),
-        openSize: BigInt(row.pnl.openSize),
-        openCost: BigInt(row.pnl.openCost),
+        feeUsdc: (BigInt(row.fees?.takerFee ?? 0) + BigInt(row.fees?.makerFee ?? 0)) / PNL_TO_USDC,
+        openSize: BigInt(row.pnl.openSize ?? 0),
+        openCost: BigInt(row.pnl.openCost ?? 0),
         timestamp: row.blockTimestamp,
         transactionHash: row.transactionHash,
       }));

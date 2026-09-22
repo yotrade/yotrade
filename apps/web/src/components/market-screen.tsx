@@ -12,6 +12,7 @@ import { DepthChart } from "./depth-chart.tsx";
 import { OrderBook } from "./order-book.tsx";
 import { OrderTicket, type Side } from "./order-ticket.tsx";
 import { PriceChart } from "./price-chart.tsx";
+import { SpotFillsList } from "./spot-fills-list.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Dropdown } from "./ui/dropdown.tsx";
 import { Segmented } from "./ui/segmented.tsx";
@@ -228,6 +229,13 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
       </div>
       {chart ? <RangeTabs value={range} onChange={setRange} /> : null}
       <Stats data={data} />
+      {data.joined && data.wallet && data.info ? (
+        <SpotFillsList
+          trader={data.wallet.account.address}
+          info={data.info}
+          base={TOKEN_LABELS[data.base]}
+        />
+      ) : null}
 
       {done ? (
         <p role="status" className="animate-enter text-center text-sm font-semibold text-up">
