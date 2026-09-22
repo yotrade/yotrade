@@ -41,8 +41,12 @@ export type BuildResult =
   | { readonly ok: true; readonly config: TournamentConfig }
   | { readonly ok: false; readonly field: keyof CreateForm; readonly reason: string };
 
-/** Form → contract `Config`. Rejects here what the contract would reject after the organizer paid for gas. */
-export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
+export type MetadataResult =
+  | { readonly ok: true; readonly metadataURI: string }
+  | { readonly ok: false; readonly field: "name" | "image"; readonly reason: string };
+
+/** What the app stores about a tournament, as the data URI the contract keeps. Same rules at create and edit. */
+export function buildMetadata(form: Pick<CreateForm, "name" | "visibility" | "image">): MetadataResult {
   const name = form.name.trim();
   const image = form.image.trim();
   if (name === "") {
@@ -60,6 +64,16 @@ export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
   if (new TextEncoder().encode(metadataURI).length > MAX_METADATA_BYTES) {
     return { ok: false, field: image === "" ? "name" : "image", reason: "That is too long to store" };
   }
+  return { ok: true, metadataURI };
+}
+
+/** Form → contract `Config`. Rejects here what the contract would reject after the organizer paid for gas. */
+export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
+  const metadata = buildMetadata(form);
+  if (!metadata.ok) {
+    return metadata;
+  }
+  const { metadataURI } = metadata;
   if (!/^\d+(\.\d{1,6})?$/.test(form.prizePool.trim())) {
     return { ok: false, field: "prizePool", reason: "Enter an amount in USDC, or 0" };
   }

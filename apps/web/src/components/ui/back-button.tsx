@@ -27,7 +27,7 @@ export function BackButton({
   fallback = "/",
   label = "Back",
 }: {
-  fallback?: "/" | "/arena" | "/account";
+  fallback?: "/" | "/arena" | "/account" | `/t/${string}`;
   label?: string;
 }) {
   const router = useRouter();

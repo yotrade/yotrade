@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildConfig, type CreateForm } from "../src/lib/create.ts";
+import { buildConfig, buildMetadata, type CreateForm } from "../src/lib/create.ts";
 import { isPrivate, tournamentMeta, tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
@@ -76,5 +76,18 @@ describe("buildConfig", () => {
     expect(bad({ maxParticipants: "1" })).toBe("maxParticipants");
     expect(bad({ maxParticipants: "2.5" })).toBe("maxParticipants");
     expect(bad({ prizePool: "0" })).toBe("ok");
+  });
+});
+
+describe("buildMetadata", () => {
+  test("keeps the visibility it is given so an edit cannot leak a private tournament", () => {
+    const built = buildMetadata({ name: " Renamed ", visibility: "private", image: "" });
+    expect(built).toEqual({
+      ok: true,
+      metadataURI: `data:application/json,${encodeURIComponent('{"name":"Renamed","visibility":"private"}')}`,
+    });
+    expect(buildMetadata({ name: "  ", visibility: "public", image: "" })).toMatchObject({
+      field: "name",
+    });
   });
 });
