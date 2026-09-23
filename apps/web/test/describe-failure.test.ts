@@ -10,12 +10,15 @@ import {
 import { ActionError, describeFailure, isSettled, revertName } from "@/lib/describe-failure.ts";
 import { GasError } from "@/lib/fund-gas.ts";
 
-const reverted = (errorName: "TournamentFull" | "AlreadyClaimed" | "WrongStatus") =>
+const reverted = (
+  errorName: "TournamentFull" | "AlreadyClaimed" | "WrongStatus",
+  args: unknown[] = [],
+) =>
   new ContractFunctionExecutionError(
     new ContractFunctionRevertedError({
       abi: tournamentManagerAbi,
       functionName: "join",
-      data: encodeErrorResult({ abi: tournamentManagerAbi, errorName }),
+      data: encodeErrorResult({ abi: tournamentManagerAbi, errorName, args } as never),
     }),
     {
       abi: tournamentManagerAbi,
@@ -41,7 +44,7 @@ describe("describeFailure", () => {
 
   test("knows which reverts mean the state has moved on", () => {
     expect(isSettled(reverted("AlreadyClaimed"))).toBe(true);
-    expect(isSettled(reverted("WrongStatus"))).toBe(true);
+    expect(isSettled(reverted("WrongStatus", [1]))).toBe(true);
     expect(isSettled(reverted("TournamentFull"))).toBe(false);
     expect(isSettled(new Error("x"))).toBe(false);
   });
