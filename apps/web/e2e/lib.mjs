@@ -7,7 +7,9 @@ export const BASE_URL = process.env["E2E_BASE_URL"] ?? "http://localhost:3000";
 export const SHOTS = new URL("./shots/", import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 
-const NOISE = /Download the React DevTools|\[HMR\]|Fast Refresh|Failed to load resource/;
+// The last one is React's dev-only performance track tripping on a fast unmount; production has no such code.
+const NOISE =
+  /Download the React DevTools|\[HMR\]|Fast Refresh|Failed to load resource|cannot have a negative time stamp/;
 
 /**
  * A phone-sized headless Chrome signed in with the seeded identity (`NEXT_PUBLIC_E2E_PRF_SEED`), opted in for
@@ -30,7 +32,11 @@ export async function open(path = "/", { signIn = true } = {}) {
       logs.push(m.text().slice(0, 200));
     }
   });
-  page.on("pageerror", (e) => logs.push(`pageerror: ${e.message.slice(0, 200)}`));
+  page.on("pageerror", (e) => {
+    if (!NOISE.test(e.message)) {
+      logs.push(`pageerror: ${e.message.slice(0, 200)}`);
+    }
+  });
   await page.goto(`${BASE_URL}${path}`);
   if (signIn) {
     const button = page.getByRole("button", {

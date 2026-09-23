@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { erc20Abi, type Hex } from "viem";
 
-import { formatUsdc, shortAddress } from "@/lib/format.ts";
+import { formatUsdc } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { loadInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
@@ -105,40 +105,37 @@ function MyStatus({
   const value = (venue === "futures" ? equity : portfolio.data?.totalUsdc) ?? capitalAtJoin;
   const roi = roiBps(value, capitalAtJoin);
 
+  if (phase !== "upcoming" && phase !== "live") {
+    // After the end the results card and the table say everything.
+    return null;
+  }
   return (
-    <Card className="flex flex-col gap-4 py-4">
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
-          <Icon name="check" size={20} />
-        </span>
+    <div className="fixed inset-x-0 bottom-[max(env(safe-area-inset-bottom),16px)] z-10 mx-auto w-full max-w-md px-5">
+      <div className="flex items-center gap-3 rounded-full bg-ink p-2 pl-4 text-white shadow-[0_8px_24px_#0e091c40]">
         <div className="flex min-w-0 flex-1 flex-col">
-          <p className="font-semibold leading-[21px]">You&apos;re in</p>
-          <p className="truncate font-mono text-[13px] text-ink-muted">{shortAddress(address)}</p>
+          <p className="text-[11px] font-semibold leading-4 text-white/70">
+            You&apos;re in{phase === "upcoming" ? " · opens at the start" : ""}
+          </p>
+          <p className="tabular flex items-baseline gap-2 font-semibold leading-5">
+            ${formatUsdc(value)}
+            {roi === null ? null : (
+              <span className={`text-sm ${roi >= 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]"}`}>
+                {formatBps(roi)}
+              </span>
+            )}
+          </p>
         </div>
-        <div className="flex flex-col items-end">
-          <p className="tabular font-semibold leading-[21px]">${formatUsdc(value)}</p>
-          {roi === null ? null : (
-            <p className={`tabular text-sm font-medium ${roi >= 0 ? "text-up" : "text-down"}`}>
-              {formatBps(roi)}
-            </p>
-          )}
-        </div>
+        {phase === "live" ? (
+          <Link
+            href={`/t/${id}/trade`}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+          >
+            <Icon name="swap" size={18} className="brightness-0 invert" />
+            Trade
+          </Link>
+        ) : null}
       </div>
-      {phase === "live" ? (
-        <Link
-          href={`/t/${id}/trade`}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-accent bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
-        >
-          <Icon name="swap" size={18} className="brightness-0 invert" />
-          Trade
-        </Link>
-      ) : null}
-      {phase === "upcoming" ? (
-        <p className="text-sm font-medium text-ink-muted">
-          Trading opens when the tournament starts.
-        </p>
-      ) : null}
-    </Card>
+    </div>
   );
 }
 
