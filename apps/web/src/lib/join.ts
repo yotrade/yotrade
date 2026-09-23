@@ -60,9 +60,12 @@ export async function runJoin(
     }
   }
 
-  if (inWallet > 0n) {
+  // Only the starting capital goes in: every trader starts equal, and a size the book can carry stays the
+  // natural one. The rest of the claim stays in the wallet.
+  const shortfall = required - inKuru;
+  if (shortfall > 0n) {
     onStep("deposit");
-    await deps.deposit(inWallet);
+    await deps.deposit(shortfall < inWallet ? shortfall : inWallet);
   }
 
   onStep("join");
