@@ -5,14 +5,7 @@ import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
 import { type ReactNode, useEffect } from "react";
 import type { Address } from "viem";
 
-import {
-  formatUsdc,
-  isPrivate,
-  shortAddress,
-  timeLeft,
-  tournamentMeta,
-  tournamentName,
-} from "@/lib/format.ts";
+import { formatUsdc, isPrivate, shortAddress, timeLeft, tournamentMeta } from "@/lib/format.ts";
 import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
@@ -104,7 +97,6 @@ function Overview({ id, data, phase, venue, now, you }: OverviewProps) {
       <JoinPanel tournament={data} phase={phase} />
       {running ? <InvitePanel tournament={data} /> : null}
       <HostPanel tournament={data} phase={phase} now={now} />
-      <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
       <Leaderboard id={id} you={you} venue={venue} />
       <details className="group rounded-2xl bg-surface-raised px-4 py-3">
         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
@@ -122,6 +114,7 @@ function Overview({ id, data, phase, venue, now, you }: OverviewProps) {
           <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
         </p>
       </details>
+      <Commentary id={id} />
     </div>
   );
 }
