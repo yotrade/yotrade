@@ -4,9 +4,11 @@ import { type Address, type Hash, parseEther } from "viem";
 export const DRIP_AMOUNT = parseEther("0.4");
 /** Below this an account cannot reliably pay for a swap: Monad charges the gas limit, about 0.05 MON each. */
 export const MIN_BALANCE = parseEther("0.1");
+/** An account that can still trade is not topped up again this soon; one that ran dry is, within the caps. */
 const ADDRESS_COOLDOWN_MS = 10 * 60_000;
 const HOUR_MS = 60 * 60_000;
-const MAX_PER_IP_PER_HOUR = 5;
+/** A room of judges shares one address: enough for the room, still nothing to farm. */
+const MAX_PER_IP_PER_HOUR = 20;
 const MAX_PER_HOUR = 60;
 
 export type DripResult =
@@ -35,9 +37,9 @@ export function createDripper({ getBalance, send, now = Date.now }: DripDeps) {
 
   const recent = (times: number[], at: number) => times.filter((time) => at - time < HOUR_MS);
 
-  function limit(address: Address, ip: string, at: number): number | null {
+  function limit(address: Address, ip: string, at: number, dry: boolean): number | null {
     const last = lastByAddress.get(address.toLowerCase());
-    if (last !== undefined && at - last < ADDRESS_COOLDOWN_MS) {
+    if (!dry && last !== undefined && at - last < ADDRESS_COOLDOWN_MS) {
       return last + ADDRESS_COOLDOWN_MS;
     }
     const mine = recent(byIp.get(ip) ?? [], at);
@@ -52,11 +54,12 @@ export function createDripper({ getBalance, send, now = Date.now }: DripDeps) {
   return function drip(address: Address, ip: string): Promise<DripResult> {
     const run = async (): Promise<DripResult> => {
       const at = now();
-      const retryAt = limit(address, ip, at);
+      const dry = (await getBalance(address)) < MIN_BALANCE;
+      const retryAt = limit(address, ip, at, dry);
       if (retryAt !== null) {
         return { status: "limited", retryAt };
       }
-      if ((await getBalance(address)) >= MIN_BALANCE) {
+      if (!dry) {
         return { status: "sufficient" };
       }
       // Recorded before sending: a failed send still counts, so errors cannot be used to bypass the limits.
