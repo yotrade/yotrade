@@ -185,6 +185,10 @@ export function tournament(options: TournamentOptions = {}) {
           wallet.writeContract({ ...contract, functionName: "setInvite", args: [id, signer] }),
         ),
 
+      /** Starts an upcoming tournament now, keeping its duration. Only the organizer. */
+      startNow: (wallet: Wallet, id: bigint) =>
+        confirm(wallet.writeContract({ ...contract, functionName: "startNow", args: [id] })),
+
       setMetadata: (wallet: Wallet, id: bigint, metadataURI: string) =>
         confirm(
           wallet.writeContract({
