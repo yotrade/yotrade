@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import type { Address } from "viem";
 
 import {
@@ -24,26 +24,21 @@ import { HostPanel } from "./host-panel.tsx";
 import { InvitePanel } from "./invite-panel.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
-import { MarketsStrip } from "./markets-strip.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
 import { ShareButton } from "./share-button.tsx";
-import { StandingsPulse } from "./standings-pulse.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
-import { TabMenu } from "./ui/tab-menu.tsx";
 import { TournamentLogo } from "./ui/tournament-logo.tsx";
 
 const BPS = 10_000n;
-const TABS = ["Overview", "Leaderboard"] as const;
-type Tab = (typeof TABS)[number];
 
 /** Every state keeps the header: a page without a way back is a dead end. */
 function Shell({ title, children }: { title: string | null; children: ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
+    <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <header className="flex items-center gap-3">
         <BackButton />
         {title === null ? (
@@ -93,14 +88,13 @@ interface OverviewProps {
   readonly venue: Venue;
   readonly now: bigint;
   readonly you: Address | undefined;
-  onSeeAll(): void;
 }
 
-/** The overview tab: results or the race, my status, the host's invite, the markets, the commentator. */
-function Overview({ id, data, phase, venue, now, you, onSeeAll }: OverviewProps) {
+/** Under the card: results or the join, the host's cards, the commentator, then the table itself. */
+function Overview({ id, data, phase, venue, now, you }: OverviewProps) {
   const running = phase === "upcoming" || phase === "live";
   return (
-    <div key="overview" className="flex animate-enter flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {phase === "cancelled" ? (
         <Card className="py-4 text-sm font-medium leading-5 text-ink-muted">
           The host called this tournament off before it started. Any prize pool went back to them.
@@ -108,13 +102,10 @@ function Overview({ id, data, phase, venue, now, you, onSeeAll }: OverviewProps)
       ) : null}
       <ResultsPanel tournament={data} phase={phase} now={now} />
       <JoinPanel tournament={data} phase={phase} />
-      {phase === "live" || phase === "scoring" || phase === "dispute" ? (
-        <StandingsPulse id={id} you={you} onSeeAll={onSeeAll} />
-      ) : null}
       {running ? <InvitePanel tournament={data} /> : null}
       <HostPanel tournament={data} phase={phase} now={now} />
-      {running ? <MarketsStrip id={id} venue={venue} /> : null}
       <Commentary id={id} name={tournamentName(data.id, data.metadataURI)} />
+      <Leaderboard id={id} you={you} venue={venue} />
       <details className="group rounded-2xl bg-surface-raised px-4 py-3">
         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
           How it is scored
@@ -144,7 +135,6 @@ export function TournamentDetail({ id }: { id: string }) {
       saveInvite(BigInt(id), code);
     }
   }, [id]);
-  const [tab, setTab] = useState<Tab>("Overview");
   const { identity } = useIdentity();
   const you = identity?.tournamentWallet(BigInt(id)).account.address;
   const { data, isPending, isError } = useQuery({
@@ -189,7 +179,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const meta = tournamentMeta(data.id, data.metadataURI);
 
   return (
-    <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
+    <main className="flex flex-1 flex-col gap-6 pb-28 pt-4">
       <header className="flex items-center gap-3">
         <BackButton />
         {meta.image ? <TournamentLogo image={meta.image} size={36} /> : null}
@@ -238,23 +228,7 @@ export function TournamentDetail({ id }: { id: string }) {
         </dl>
       </section>
 
-      <TabMenu<Tab> label="Tournament sections" tabs={TABS} value={tab} onChange={setTab} />
-
-      {tab === "Overview" ? (
-        <Overview
-          id={id}
-          data={data}
-          phase={phase}
-          venue={venue}
-          now={now}
-          you={you}
-          onSeeAll={() => setTab("Leaderboard")}
-        />
-      ) : (
-        <div key="leaderboard" className="animate-enter">
-          <Leaderboard id={id} you={you} venue={venue} />
-        </div>
-      )}
+      <Overview id={id} data={data} phase={phase} venue={venue} now={now} you={you} />
     </main>
   );
 }
