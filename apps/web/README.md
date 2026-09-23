@@ -44,6 +44,7 @@ Browser scripts in [`e2e/`](e2e) drive the real app against Monad testnet with h
 | `bun run e2e:profile` | Name and avatar save, and publish to open tournaments | Yes |
 | `bun run e2e:invite` | A private tournament hides, refuses without the code, refuses a wrong pasted code, admits the right one | Yes |
 | `bun run e2e:host` | The organizer finds the tournament on Home, renames it, is offered cancel, backs out, then cancels | Yes |
+| `bun run e2e:game` | Host a game, open it by its code from Home, lobby, join with a name, Start now, live | Yes |
 | `bun run e2e:futures` | Create, join, long, close, short, finalize with settlement (about eight minutes) | Yes |
 
 Each script exits non-zero on a failed check and leaves screenshots in `e2e/shots/`.

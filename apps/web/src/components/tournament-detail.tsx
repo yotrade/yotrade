@@ -13,12 +13,14 @@ import { roomCode, spaced } from "@/lib/room-code.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { useChainSchedule, withChainSchedule } from "@/lib/use-schedule.ts";
 import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
 import { HostPanel } from "./host-panel.tsx";
 import { InvitePanel } from "./invite-panel.tsx";
 import { JoinPanel } from "./join-panel.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
+import { LobbyList } from "./lobby-list.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
 import { ShareButton } from "./share-button.tsx";
@@ -122,7 +124,11 @@ function Overview({ id, data, phase, venue, now, you, leverageCap }: OverviewPro
       <JoinPanel tournament={data} phase={phase} />
       {running ? <InvitePanel tournament={data} /> : null}
       <HostPanel tournament={data} phase={phase} now={now} />
-      <Leaderboard id={id} you={you} venue={venue} />
+      {phase === "upcoming" ? (
+        <LobbyList tournament={data} now={now} you={you} />
+      ) : (
+        <Leaderboard id={id} you={you} venue={venue} />
+      )}
       <details className="group rounded-2xl bg-surface-raised px-4 py-3">
         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
           How it is scored
@@ -155,11 +161,14 @@ export function TournamentDetail({ id }: { id: string }) {
   }, [id]);
   const { identity } = useIdentity();
   const you = identity?.tournamentWallet(BigInt(id)).account.address;
-  const { data, isPending, isError } = useQuery({
+  const indexed = useQuery({
     queryKey: ["tournament", id],
     queryFn: () => indexer.tournament(BigInt(id)),
     refetchInterval: 5_000,
   });
+  const schedule = useChainSchedule(id);
+  const { isPending, isError } = indexed;
+  const data = indexed.data ? withChainSchedule(indexed.data, schedule.data) : indexed.data;
   const { perps } = useRuntime();
   const leverageCap = useQuery({
     queryKey: ["leverage-cap", id],
@@ -199,6 +208,20 @@ export function TournamentDetail({ id }: { id: string }) {
     );
   }
 
+  return <Loaded id={id} data={data} now={now} you={you} leverageCap={leverageCap.data} />;
+}
+
+interface LoadedProps {
+  readonly id: string;
+  readonly data: IndexedTournamentDetail;
+  readonly now: bigint;
+  readonly you: Address | undefined;
+  readonly leverageCap: string | undefined;
+}
+
+/** The page once the tournament is known: header, hero card, and the overview under it. */
+function Loaded({ id, data, now, you, leverageCap: cap }: LoadedProps) {
+  const leverageCap = { data: cap };
   const phase = phaseAt(data, now);
   const venue = venueOf(data.venue);
   // Futures show the cap once the chain has answered; a default number would lie for a moment.

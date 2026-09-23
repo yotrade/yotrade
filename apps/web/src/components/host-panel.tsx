@@ -112,10 +112,11 @@ export function HostPanel({ tournament, phase, now }: Props) {
         <Icon name="wallet" size={20} />
         {copy?.title ?? "You host this tournament"}
       </p>
+      {phase === "upcoming" ? <StartNowButton id={tournament.id} /> : null}
       {editable ? (
         <Link
           href={`/t/${tournament.id}/screen`}
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
           Show on a big screen
         </Link>
@@ -186,6 +187,45 @@ function MoneyAction({ copy, amount, arming, pending, onArm, onKeep, onRun }: Mo
           {copy.button}
         </Button>
       )}
+    </>
+  );
+}
+
+/** Kahoot's "Start": the room is full enough, the host says go, the duration they chose still holds. */
+function StartNowButton({ id }: { id: bigint }) {
+  const { publicClient, tournament: manager } = useRuntime();
+  const { identity } = useIdentity();
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  async function start() {
+    if (!identity) {
+      return;
+    }
+    setPending(true);
+    setError(undefined);
+    try {
+      await fundGas(publicClient, identity.wallet.account.address);
+      await manager.startNow(identity.wallet, id);
+      await queryClient.invalidateQueries({ queryKey: ["schedule"] });
+      await queryClient.invalidateQueries({ queryKey: ["tournament"] });
+    } catch (cause) {
+      console.error("startNow failed", cause);
+      setError(describeFailure(cause, "The game did not start. Try again."));
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <>
+      <Button className="min-h-10" pending={pending} onClick={start}>
+        Start now
+      </Button>
+      {error ? (
+        <p role="alert" className="text-sm text-down">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }
