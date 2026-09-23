@@ -25,6 +25,8 @@ abstract contract PerpsStorage {
         address adapter;
         mapping(bytes32 market => bool enabled) markets;
         mapping(uint256 tournamentId => mapping(address trader => Account)) accounts;
+        /// Zero means the default. Set by the organizer before the start.
+        mapping(uint256 tournamentId => uint256 cap) leverageCaps;
     }
 
     // keccak256(abi.encode(uint256(keccak256("yotrade.storage.PerpsEngine")) - 1)) & ~bytes32(uint256(0xff))
