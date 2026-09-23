@@ -228,6 +228,29 @@ function useFillable(
   return { fillable, fillableText: amountText(fillable, decimalsIn, isBuy) };
 }
 
+/** The smallest order Kuru takes, in the units of the token paid. Undefined until the market is known. */
+function minimumOrder(
+  minQuoteNotional: bigint | undefined,
+  isBuy: boolean,
+  book: Book | undefined,
+  baseDecimals: number,
+): { amount: bigint; label: string } | undefined {
+  if (minQuoteNotional === undefined) {
+    return undefined;
+  }
+  if (isBuy) {
+    return { amount: minQuoteNotional, label: `${formatUsdc(minQuoteNotional)} USDC` };
+  }
+  if (!book?.hasBid) {
+    return undefined;
+  }
+  // base = quote × precision × 10^baseDecimals / (bid × 10^quoteDecimals)
+  const amount =
+    (minQuoteNotional * book.pricePrecision * 10n ** BigInt(baseDecimals)) /
+    (book.bid * 10n ** BigInt(tokens.usdc.decimals));
+  return { amount, label: `about ${formatUsdc(minQuoteNotional)} USDC` };
+}
+
 /** A balance that has not loaded is not a balance of zero. */
 function BalanceLine({ loaded, text }: { loaded: boolean; text: string }) {
   return loaded ? `Balance: ${text}` : <Skeleton className="mt-1 h-3 w-20" />;
@@ -267,8 +290,16 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
   const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
   const { fillable, fillableText } = useFillable(info.data, isBuy, base, decimals);
 
+  // Kuru refuses orders under a quote notional. A buy pays quote, so the floor is that number; a sell pays
+  // base, so the floor is that number at the top of the book.
+  const minimum = minimumOrder(
+    info.data?.minQuoteNotional,
+    isBuy,
+    book.data,
+    tokens[base].decimals,
+  );
   const settledInput = useDebounced(input, 300);
-  const settled = parseTicket(settledInput, decimals, available);
+  const settled = parseTicket(settledInput, decimals, available, minimum);
   const quote = useQuery({
     queryKey: ["quote", market, side, settled.ok ? settled.amount.toString() : null],
     queryFn: () =>
@@ -284,7 +315,7 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const ticket = parseTicket(input, decimals, available);
+    const ticket = parseTicket(input, decimals, available, minimum);
     if (!ticket.ok) {
       setError(ticket.reason);
       return;
