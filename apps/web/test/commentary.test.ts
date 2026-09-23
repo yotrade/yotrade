@@ -114,6 +114,24 @@ describe("commentary", () => {
     expect(calls).toBe(401);
   });
 
+  test("switches reasoning off through OpenRouter, and sends nothing extra elsewhere", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const via = (baseUrl: string) =>
+      createCommentator({
+        apiKey: "k",
+        baseUrl,
+        model: "moonshotai/kimi-k2.5",
+        fetch: (_url, init) => {
+          bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+          return Promise.resolve(reply("ok"));
+        },
+      });
+    await via("https://openrouter.ai/api/v1")("1", {}, "en");
+    await via("https://api.moonshot.ai/v1")("1", {}, "en");
+    expect(bodies[0]?.["reasoning"]).toEqual({ enabled: false });
+    expect(bodies[1]).not.toHaveProperty("reasoning");
+  });
+
   test("fails loudly on an error status or an empty answer", async () => {
     const failing = (response: Response) =>
       createCommentator({

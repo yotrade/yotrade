@@ -49,6 +49,8 @@ export function factsOf(board: Leaderboard, phase: string, nowSeconds: bigint) {
   };
 }
 
+const isOpenRouter = (baseUrl: string) => new URL(baseUrl).hostname === "openrouter.ai";
+
 export interface CommentatorDeps {
   readonly apiKey: string;
   readonly baseUrl: string;
@@ -90,6 +92,9 @@ export function createCommentator({
         model,
         temperature: 0.8,
         max_tokens: MAX_TOKENS,
+        // Kimi K2.5 thinks by default and then blows the timeout on a two-sentence job. OpenRouter's switch;
+        // Moonshot's own API has none and ignores nothing, so it is sent only where it is understood.
+        ...(isOpenRouter(baseUrl) ? { reasoning: { enabled: false } } : {}),
         messages: [
           { role: "system", content: `${SYSTEM}\n- Write in ${LANGUAGES[language]}.` },
           { role: "user", content: JSON.stringify(facts) },
