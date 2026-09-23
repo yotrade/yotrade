@@ -51,6 +51,7 @@ interface ITournamentManager {
     event DisputeWindowUpdated(uint64 disputeWindow);
     event InviteUpdated(uint256 indexed id, address indexed signer);
     event MetadataUpdated(uint256 indexed id, string metadataURI);
+    event ScheduleUpdated(uint256 indexed id, uint64 startTime, uint64 endTime);
 
     error ZeroAddress();
     error InvalidSchedule();
@@ -96,6 +97,9 @@ interface ITournamentManager {
 
     /// @notice Replaces the metadata URI. Only the organizer, only while open and before the end.
     function setMetadata(uint256 id, string calldata metadataURI) external;
+
+    /// @notice Starts an upcoming tournament now and keeps its duration. Only the organizer, only before the start.
+    function startNow(uint256 id) external;
 
     /// @notice What the invite code signs: bound to this chain, contract, tournament and participant, so a
     /// signature cannot be replayed elsewhere or by someone else.

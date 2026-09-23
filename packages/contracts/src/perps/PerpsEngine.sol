@@ -36,8 +36,9 @@ contract PerpsEngine is
     int256 public constant STARTING_BALANCE = 10_000e18;
     /// @notice Taker fee on every fill.
     uint256 public constant FEE_BPS = 5;
-    /// @notice Leverage cap of a tournament whose organizer never set one.
-    uint256 public constant DEFAULT_LEVERAGE = 20;
+    /// @notice Leverage cap of a tournament whose organizer never set one: every tournament offers 100x unless
+    /// its host deliberately chose less.
+    uint256 public constant DEFAULT_LEVERAGE = 100;
     /// @notice Maintenance margin is half the initial margin: `MAINTENANCE_NUMERATOR / cap` basis points, so
     /// 1,000 at 5x, 250 at 20x and 50 at 100x. An account is liquidatable under that share of its notional.
     uint256 public constant MAINTENANCE_NUMERATOR = 5000;
@@ -170,7 +171,7 @@ contract PerpsEngine is
 
     /// @inheritdoc IPerpsEngine
     function setLeverageCap(uint256 tournamentId, uint256 cap) external {
-        if (cap != 5 && cap != DEFAULT_LEVERAGE && cap != 100) revert InvalidLeverage(cap);
+        if (cap != 5 && cap != 20 && cap != 100) revert InvalidLeverage(cap);
         Layout storage $ = _layout();
         // Only the organizer matters here; the rest of the state is the manager's business.
         // slither-disable-start unused-return

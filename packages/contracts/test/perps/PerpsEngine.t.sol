@@ -36,6 +36,9 @@ contract PerpsEngineTest is PerpsFixture {
         start = uint64(vm.getBlockTimestamp() + 1 hours);
         end = start + 1 days;
         id = _create(address(adapter), start, end);
+        // The cases below were written against 20x: 2.5% maintenance, 62 bps confidence.
+        vm.prank(organizer);
+        engine.setLeverageCap(id, 20);
         _join(id, alice);
         _join(id, bob);
         vm.deal(alice, 1 ether);
@@ -428,7 +431,7 @@ contract PerpsEngineTest is PerpsFixture {
 
     function test_setLeverageCap_onlyTheOrganizerBeforeTheStartWithAnAllowedValue() public {
         uint256 next = _create(address(adapter), end + 1 hours, end + 2 hours);
-        assertEq(engine.leverageCapOf(next), 20);
+        assertEq(engine.leverageCapOf(next), 100);
 
         vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.InvalidLeverage.selector, 50));
         vm.prank(organizer);
@@ -459,12 +462,14 @@ contract PerpsEngineTest is PerpsFixture {
         engine.setLeverageCap(spot, 5);
     }
 
-    /// @dev Two tournaments over the same window: one at 100x, one left at the default.
+    /// @dev Two tournaments over the same window: one at 100x, one capped at 20x.
     function _hundredX() internal returns (uint256 next, uint256 plain) {
         next = _create(address(adapter), end + 1 hours, end + 2 hours);
         plain = _create(address(adapter), end + 1 hours, end + 2 hours);
         vm.prank(organizer);
         engine.setLeverageCap(next, 100);
+        vm.prank(organizer);
+        engine.setLeverageCap(plain, 20);
         _join(next, alice);
         _join(next, bob);
         _join(plain, bob);

@@ -66,6 +66,22 @@ abstract contract EscrowModule is TournamentBase {
     }
 
     /// @inheritdoc ITournamentManager
+    /// @dev A room fills up and the host says go, as in a game show. The duration the host chose is kept, so
+    /// the end moves by as much as the start does.
+    function startNow(uint256 id) external {
+        Tournament storage t = _open(id);
+        if (msg.sender != t.organizer) revert NotOrganizer();
+        uint64 start = t.config.startTime;
+        if (block.timestamp >= start) revert TournamentStarted();
+        // A timestamp fits 64 bits for the next 500 billion years.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint64 now_ = uint64(block.timestamp);
+        uint64 end = now_ + (t.config.endTime - start);
+        (t.config.startTime, t.config.endTime) = (now_, end);
+        emit ScheduleUpdated(id, now_, end);
+    }
+
+    /// @inheritdoc ITournamentManager
     /// @dev The organizer may cancel until trading starts. The admin may cancel any open tournament, for example
     /// when the venue is down.
     function cancel(uint256 id) external nonReentrant {
