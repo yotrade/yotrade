@@ -23,6 +23,10 @@ const fills = await runtime.kuru.data.trades(accountId);        // public, no ke
 - `swap` throws `EmptyBookError` when a market has no two-sided liquidity. Onchain such a swap succeeds and fills nothing.
 - Values are integers in token units. `midPrice` returns a number for display only.
 
+## Liquidity on testnet
+
+Testnet books are thin enough for one order to clear a side. `bun run seed` plans a two-sided ladder for the maker account (`MAKER_PRIVATE_KEY`), `bun run seed --execute` claims the faucet, deposits, cancels the maker's old orders and rests it. The `seed` workflow runs it every day at 01:00 UTC and on demand from the Actions tab, with the key as a repository secret.
+
 ## Tests
 
 ```bash
