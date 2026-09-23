@@ -37,7 +37,7 @@ export function Commentary({ id, name }: { id: string; name: string }) {
       }
       return ((await response.json()) as { text: string | null }).text;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   if (data === null) {

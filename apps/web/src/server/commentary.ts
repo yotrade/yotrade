@@ -4,10 +4,16 @@ import { countdown, shortAddress, tournamentName } from "@/lib/format.ts";
 import { LANGUAGES, type LanguageCode } from "@/lib/languages.ts";
 import type { Leaderboard } from "./leaderboard.ts";
 
-const CACHE_MS = 30_000;
+/** An answer is kept this long even when the board moved: the card is colour, not a ticker. */
+const CACHE_MS = 120_000;
+/** Kimi is asked at most this often per instance and day; after that the last answers stay on screen. */
+const DAILY_CAP = 400;
+const DAY_MS = 24 * 60 * 60_000;
 const TIMEOUT_MS = 20_000;
 const MAX_ROWS = 10;
 const MAX_LENGTH = 400;
+/** Two or three short sentences: room for about 280 characters, nothing to pay for beyond that. */
+const MAX_TOKENS = 120;
 
 const SYSTEM = `You are the live commentator of a community trading tournament on Monad.
 Write two or three short, energetic sentences about the current standings.
@@ -20,6 +26,8 @@ Rules:
 export interface Commentary {
   readonly text: string;
   readonly generatedAt: number;
+  /** The fact sheet this text describes. Unchanged facts get the same text back for free. */
+  readonly facts?: string;
 }
 
 /** The fact sheet Kimi sees: numbers the app already computed, rounded the way the UI shows them. */
@@ -62,6 +70,16 @@ export function createCommentator({
 }: CommentatorDeps) {
   const cache = new Map<string, Commentary>();
   const inFlight = new Map<string, Promise<Commentary>>();
+  let day = 0;
+  let spentToday = 0;
+  const underBudget = (at: number) => {
+    const today = Math.floor(at / DAY_MS);
+    if (today !== day) {
+      day = today;
+      spentToday = 0;
+    }
+    return spentToday < DAILY_CAP;
+  };
 
   async function ask(facts: unknown, language: LanguageCode): Promise<Commentary> {
     const response = await fetcher(`${baseUrl}/chat/completions`, {
@@ -71,7 +89,7 @@ export function createCommentator({
       body: JSON.stringify({
         model,
         temperature: 0.8,
-        max_tokens: 300,
+        max_tokens: MAX_TOKENS,
         messages: [
           { role: "system", content: `${SYSTEM}\n- Write in ${LANGUAGES[language]}.` },
           { role: "user", content: JSON.stringify(facts) },
@@ -96,17 +114,27 @@ export function createCommentator({
   ): Promise<Commentary> {
     const cacheKey = `${key}:${language}`;
     const cached = cache.get(cacheKey);
-    if (cached && now() - cached.generatedAt < CACHE_MS) {
+    const sheet = JSON.stringify(facts);
+    // Fresh enough, or nothing on the board moved, or the day's allowance is spent: the last answer stands.
+    if (
+      cached &&
+      (now() - cached.generatedAt < CACHE_MS || cached.facts === sheet || !underBudget(now()))
+    ) {
       return Promise.resolve(cached);
+    }
+    if (!(cached || underBudget(now()))) {
+      return Promise.reject(new Error("Commentary budget for today is spent"));
     }
     const running = inFlight.get(cacheKey);
     if (running) {
       return running;
     }
+    spentToday += 1;
     const next = ask(facts, language)
       .then((result) => {
-        cache.set(cacheKey, result);
-        return result;
+        const entry = { ...result, facts: sheet };
+        cache.set(cacheKey, entry);
+        return entry;
       })
       .finally(() => inFlight.delete(cacheKey));
     inFlight.set(cacheKey, next);
