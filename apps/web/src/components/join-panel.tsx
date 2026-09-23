@@ -8,11 +8,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { erc20Abi, type Hex } from "viem";
 
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { formatUsdc } from "@/lib/format.ts";
-import { fundGas, GasError } from "@/lib/fund-gas.ts";
+import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { loadInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
-import { JOIN_STEPS, type JoinDeps, JoinError, type JoinStep, runJoin } from "@/lib/join.ts";
+import { JOIN_STEPS, type JoinDeps, type JoinStep, runJoin } from "@/lib/join.ts";
 import { toUsdc } from "@/lib/perps-markets.ts";
 import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
@@ -65,13 +66,10 @@ function joinDeps(runtime: AppRuntime, wallet: MeraWallet, id: bigint, code: Hex
 }
 
 function describeJoinError(cause: unknown): string {
-  if (cause instanceof JoinError || cause instanceof GasError) {
-    return cause.message;
-  }
-  if (String(cause).includes("InvalidInvite")) {
-    return "This invite link is no longer valid. Ask the host for a new one.";
-  }
-  return "Joining stopped before it finished. Tap again to continue where it left off.";
+  return describeFailure(
+    cause,
+    "Joining stopped before it finished. Tap again to continue where it left off.",
+  );
 }
 
 /** Joined: what my account is worth, and the one thing to do next. */

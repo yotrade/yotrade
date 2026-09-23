@@ -9,6 +9,7 @@ import { type Book, midPrice } from "@yotrade/plugin-kuru/pricing";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { type FormEvent, useState } from "react";
 
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { formatToken, formatUsdc } from "@/lib/format.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import {
@@ -45,7 +46,7 @@ function failureCopy(cause: unknown): string {
   if (cause instanceof PriceImpactError) {
     return "The book is too thin for this size. Nothing was traded. Try a smaller amount.";
   }
-  return "The order did not go through. Nothing was traded.";
+  return describeFailure(cause, "The order did not go through. Nothing was traded.");
 }
 
 interface InfoProps {

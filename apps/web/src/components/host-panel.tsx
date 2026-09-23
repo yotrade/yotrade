@@ -5,6 +5,7 @@ import type { Phase } from "@yotrade/plugin-tournament/phase";
 import Link from "next/link";
 import { useState } from "react";
 
+import { describeFailure, isSettled } from "@/lib/describe-failure.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import { type HostAction, hostAction } from "@/lib/host.ts";
@@ -50,6 +51,8 @@ export function HostPanel({ tournament, phase, now }: Props) {
   const [arming, setArming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  // The indexer trails the chain by seconds: a finished action must not offer itself again meanwhile.
+  const [done, setDone] = useState(false);
   const host = identity?.wallet.account.address === tournament.organizer;
   const state = useQuery({
     queryKey: ["tournament-state", tournament.id.toString()],
@@ -58,23 +61,28 @@ export function HostPanel({ tournament, phase, now }: Props) {
     refetchInterval: 10_000,
   });
 
-  if (!(host && identity && state.data)) {
-    return null;
-  }
-  const next = hostAction({
-    phase,
-    prizePool: tournament.prizePool,
-    endTime: tournament.endTime,
-    now,
-    unpaid: state.data.unpaid,
-    entries: tournament.entries,
-  });
+  const next = state.data
+    ? hostAction({
+        phase,
+        prizePool: tournament.prizePool,
+        endTime: tournament.endTime,
+        now,
+        unpaid: state.data.unpaid,
+        entries: tournament.entries,
+      })
+    : null;
   // The contract takes new metadata while the tournament is open and not over: the same window as an invite.
   const editable = phase === "upcoming" || phase === "live";
-  if (!(next || editable)) {
+  if (!(host && identity && state.data) || done || !(next || editable)) {
     return null;
   }
   const copy = next ? COPY[next.action] : null;
+
+  // A revert that says the state moved on is the same outcome as success: the offer no longer applies.
+  const settle = (cause: unknown) =>
+    isSettled(cause)
+      ? setDone(true)
+      : setError(describeFailure(cause, "That did not go through. Nothing changed; try again."));
 
   async function run() {
     if (!(identity && next)) {
@@ -89,9 +97,10 @@ export function HostPanel({ tournament, phase, now }: Props) {
       await queryClient.invalidateQueries({ queryKey: ["tournaments"] });
       await queryClient.invalidateQueries({ queryKey: ["tournament-state"] });
       setArming(false);
+      setDone(true);
     } catch (cause) {
       console.error(`${next.action} failed`, cause);
-      setError("That did not go through. Nothing changed; try again.");
+      settle(cause);
     } finally {
       setPending(false);
     }
@@ -112,37 +121,15 @@ export function HostPanel({ tournament, phase, now }: Props) {
         </Link>
       ) : null}
       {next && copy ? (
-        <>
-          <p className="text-sm font-medium leading-5 text-ink-muted">
-            {copy.body}
-            {next.amount > 0n ? (
-              <>
-                {" "}
-                Back to you:{" "}
-                <span className="tabular font-semibold text-ink">${formatUsdc(next.amount)}</span>.
-              </>
-            ) : null}
-          </p>
-          {arming ? (
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                className="min-h-10"
-                onClick={() => setArming(false)}
-                disabled={pending}
-              >
-                Keep it
-              </Button>
-              <Button className="min-h-10 bg-down hover:bg-down" pending={pending} onClick={run}>
-                {copy.confirm}
-              </Button>
-            </div>
-          ) : (
-            <Button variant="secondary" className="min-h-10" onClick={() => setArming(true)}>
-              {copy.button}
-            </Button>
-          )}
-        </>
+        <MoneyAction
+          copy={copy}
+          amount={next.amount}
+          arming={arming}
+          pending={pending}
+          onArm={() => setArming(true)}
+          onKeep={() => setArming(false)}
+          onRun={run}
+        />
       ) : null}
       {error ? (
         <p role="alert" className="text-sm text-down">
@@ -150,5 +137,47 @@ export function HostPanel({ tournament, phase, now }: Props) {
         </p>
       ) : null}
     </Card>
+  );
+}
+
+interface MoneyActionProps {
+  readonly copy: (typeof COPY)[HostAction];
+  readonly amount: bigint;
+  readonly arming: boolean;
+  readonly pending: boolean;
+  onArm(): void;
+  onKeep(): void;
+  onRun(): void;
+}
+
+/** The one money move: armed on the first tap, sent on the second. */
+function MoneyAction({ copy, amount, arming, pending, onArm, onKeep, onRun }: MoneyActionProps) {
+  return (
+    <>
+      <p className="text-sm font-medium leading-5 text-ink-muted">
+        {copy.body}
+        {amount > 0n ? (
+          <>
+            {" "}
+            Back to you:{" "}
+            <span className="tabular font-semibold text-ink">${formatUsdc(amount)}</span>.
+          </>
+        ) : null}
+      </p>
+      {arming ? (
+        <div className="flex gap-2">
+          <Button variant="secondary" className="min-h-10" onClick={onKeep} disabled={pending}>
+            Keep it
+          </Button>
+          <Button className="min-h-10 bg-down hover:bg-down" pending={pending} onClick={onRun}>
+            {copy.confirm}
+          </Button>
+        </div>
+      ) : (
+        <Button variant="secondary" className="min-h-10" onClick={onArm}>
+          {copy.button}
+        </Button>
+      )}
+    </>
   );
 }
