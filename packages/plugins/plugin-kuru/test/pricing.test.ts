@@ -28,6 +28,12 @@ describe("valueInQuote", () => {
     expect(valueInQuote(97_955n, 8, 6, btc)).toBe(97_955_979n); // the spike's fill, about 97.96 USDC
   });
 
+  test("marks at the ask when buyers emptied the bids, and at zero on an empty book", () => {
+    const asksOnly = toBook(0n, 10_000_200n, 100n);
+    expect(valueInQuote(100_000_000n, 8, 6, asksOnly)).toBe(100_002_000_000n);
+    expect(valueInQuote(100_000_000n, 8, 6, toBook(0n, 0n, 100n))).toBe(0n);
+  });
+
   test("values an 18-decimal token with a six-decimal price", () => {
     const mon = toBook(50_754n, 50_856n, 1_000_000n); // mid 0.050805
     expect(valueInQuote(10n ** 18n, 18, 6, mon)).toBe(50_805n);
