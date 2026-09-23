@@ -35,20 +35,6 @@ abstract contract RegistrationModule is TournamentBase {
     }
 
     /// @inheritdoc ITournamentManager
-    function setInvite(uint256 id, address signer) external {
-        Tournament storage t = _open(id);
-        if (msg.sender != t.organizer) revert NotOrganizer();
-        if (block.timestamp >= t.config.endTime) revert TournamentEnded();
-        _layout().inviteSigners[id] = signer;
-        emit InviteUpdated(id, signer);
-    }
-
-    /// @inheritdoc ITournamentManager
-    function inviteSignerOf(uint256 id) external view returns (address) {
-        return _layout().inviteSigners[id];
-    }
-
-    /// @inheritdoc ITournamentManager
     function inviteDigest(uint256 id, address participant) public view returns (bytes32) {
         return MessageHashUtils.toEthSignedMessageHash(
             keccak256(abi.encode("YoTrade invite", block.chainid, address(this), id, participant))

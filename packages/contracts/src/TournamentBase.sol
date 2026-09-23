@@ -11,7 +11,8 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @title TournamentBase
-/// @notice What every module builds on: roles, pause, reentrancy guard, shared storage and the status guards.
+/// @notice What every module builds on: roles, pause, reentrancy guard, shared storage and the status and
+/// organizer guards.
 /// @dev One default admin with a two-step, delayed transfer (`AccessControlDefaultAdminRules`).
 abstract contract TournamentBase is
     ITournamentManager,
@@ -26,11 +27,23 @@ abstract contract TournamentBase is
 
     uint256 public constant BPS = PrizeSplit.BPS;
     uint256 public constant MAX_WINNERS = PrizeSplit.MAX_WINNERS;
+    /// @notice The URI is stored and emitted, so its size is bounded.
+    uint256 public constant MAX_METADATA_LENGTH = 512;
 
     /// @dev Reverts unless the tournament exists and is open.
     function _open(uint256 id) internal view returns (Tournament storage t) {
         t = _layout().tournaments[id];
         if (t.status != Status.Open) revert WrongStatus(t.status);
+    }
+
+    /// @dev Reverts unless the tournament is open and the caller organizes it.
+    function _hosted(uint256 id) internal view returns (Tournament storage t) {
+        t = _open(id);
+        _onlyOrganizer(t);
+    }
+
+    function _onlyOrganizer(Tournament storage t) internal view {
+        if (msg.sender != t.organizer) revert NotOrganizer();
     }
 
     /// @dev Reverts unless results are posted and the dispute window has passed.
