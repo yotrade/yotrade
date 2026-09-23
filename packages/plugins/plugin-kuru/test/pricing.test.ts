@@ -90,8 +90,8 @@ describe("one-sided books", () => {
     expect([asksOnly.hasBid, asksOnly.hasAsk, asksOnly.hasLiquidity]).toEqual([false, true, false]);
   });
 
-  test("inventory is marked at the bid when that is all there is, and at zero when nobody bids", () => {
+  test("inventory is marked at whichever side is left: the bid, or the ask when buyers cleared the bids", () => {
     expect(valueInQuote(1_800n * 10n ** 18n, 18, 6, bidsOnly)).toBe(91_357_200n);
-    expect(valueInQuote(888_740n, 8, 6, asksOnly)).toBe(0n);
+    expect(valueInQuote(888_740n, 8, 6, asksOnly)).toBeGreaterThan(0n);
   });
 });
