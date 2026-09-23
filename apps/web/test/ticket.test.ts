@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatBps, parseTicket, roiBps, shortcutAmount } from "../src/lib/ticket.ts";
+import {
+  fillableWithin,
+  formatBps,
+  parseTicket,
+  roiBps,
+  shortcutAmount,
+} from "../src/lib/ticket.ts";
 
 describe("parseTicket", () => {
   test("parses against the token's decimals", () => {
@@ -57,5 +63,41 @@ describe("shortcutAmount", () => {
       const text = shortcutAmount(available, 100n, decimals, dollar);
       expect(parseTicket(text, decimals, available).ok).toBe(true);
     }
+  });
+});
+
+describe("fillableWithin", () => {
+  // Prices in hundredths, sizes in hundred-millionths: 4,300.00 and 0.10 read as 430000 and 10000000.
+  const units = {
+    pricePrecision: 100n,
+    sizePrecision: 100_000_000n,
+    baseDecimals: 6,
+    quoteDecimals: 6,
+  };
+  const depth = {
+    asks: [
+      { price: 430_000n, size: 10_000_000n },
+      { price: 431_000n, size: 10_000_000n },
+      { price: 1_000_000n, size: 100_000_000n },
+    ],
+    bids: [
+      { price: 429_000n, size: 20_000_000n },
+      { price: 100_000n, size: 100_000_000n },
+    ],
+  };
+
+  test("a buy sums the asks inside the band in quote units, and stops at the first level outside it", () => {
+    // 0.1 × 4,300 + 0.1 × 4,310 = 861 USDC; the 10,000 ask is far outside 2.5%.
+    expect(fillableWithin(depth, true, 250, units)).toBe(861_000_000n);
+  });
+
+  test("a sell sums the bids inside the band in base units", () => {
+    expect(fillableWithin(depth, false, 250, units)).toBe(200_000n);
+    expect(fillableWithin({ asks: [], bids: [] }, false, 250, units)).toBe(0n);
+  });
+
+  test("shortcuts never exceed the cap", () => {
+    expect(shortcutAmount(10_000_000_000n, 25n, 6, true, 861_000_000n)).toBe("861");
+    expect(shortcutAmount(10_000_000_000n, 25n, 6, true, 5_000_000_000n)).toBe("2500");
   });
 });
