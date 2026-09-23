@@ -77,13 +77,41 @@ describe("commentary", () => {
       fetch: () => Promise.resolve(reply("x".repeat(1_000 + calls++))),
       now: () => time,
     });
-    expect((await commentary("1", {}, "en")).text).toHaveLength(400);
-    await commentary("1", {}, "en");
-    await commentary("1", {}, "ko");
+    expect((await commentary("1", { rank: 1 }, "en")).text).toHaveLength(400);
+    await commentary("1", { rank: 1 }, "en");
+    await commentary("1", { rank: 1 }, "ko");
     expect(calls).toBe(2);
-    time = 30_000;
-    await commentary("1", {}, "en");
+    // Two minutes later with the same board: still the same words, and nothing paid.
+    time = 120_000;
+    await commentary("1", { rank: 1 }, "en");
+    expect(calls).toBe(2);
+    // The board moved: one more call.
+    await commentary("1", { rank: 2 }, "en");
     expect(calls).toBe(3);
+  });
+
+  test("stops asking after the day's allowance and serves what it has", async () => {
+    let calls = 0;
+    let time = 0;
+    const commentary = createCommentator({
+      apiKey: "k",
+      baseUrl: "https://kimi.test/v1",
+      model: "m",
+      fetch: () => Promise.resolve(reply(`take ${calls++}`)),
+      now: () => time,
+    });
+    for (let round = 0; round < 400; round++) {
+      time += 120_001;
+      await commentary("1", { round }, "en");
+    }
+    expect(calls).toBe(400);
+    time += 120_001;
+    expect((await commentary("1", { round: 400 }, "en")).text).toBe("take 399");
+    await expect(commentary("2", {}, "en")).rejects.toThrow("budget");
+    // A new day, a new allowance.
+    time += 24 * 60 * 60_000;
+    await commentary("1", { round: 401 }, "en");
+    expect(calls).toBe(401);
   });
 
   test("fails loudly on an error status or an empty answer", async () => {
