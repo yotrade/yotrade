@@ -11,6 +11,7 @@
   },
   "scripts": {
     "generate": "bun run scripts/generate-abi.ts",
+    "liquidate": "bun run scripts/liquidate.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
