@@ -5,6 +5,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import type { Address } from "viem";
 
 import { describeAuthError } from "@/lib/auth-error.ts";
+import { type PasskeySupport, passkeySupport } from "@/lib/browser-support.ts";
 import { shortAddress } from "@/lib/format.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { Avatar } from "./ui/avatar.tsx";
@@ -270,6 +271,37 @@ function IntroScreen({ collapsed, returning, pending, error, onCreate, onSignIn 
   );
 }
 
+/** A browser that cannot do the passkey ceremony gets the way out before it gets a button that fails. */
+function UnsupportedScreen({ reason }: { reason: "webview" | "no-webauthn" }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 pb-10 pt-4 text-center">
+      <Badge />
+      <div className="flex flex-col gap-2">
+        <h1 className="text-xl font-bold leading-[26px] tracking-tight">
+          {reason === "webview" ? "Open this in your browser" : "This browser cannot do passkeys"}
+        </h1>
+        <p className="text-sm font-medium leading-5 text-ink-muted">
+          {reason === "webview"
+            ? "YoTrade signs you in with a passkey, and this in-app browser cannot show the prompt. Copy the link and open it in Safari or Chrome."
+            : "YoTrade signs you in with a passkey. Use a current Safari, Chrome, Edge or Firefox."}
+        </p>
+      </div>
+      <Button
+        variant="secondary"
+        className="max-w-xs"
+        onClick={async () => {
+          await navigator.clipboard.writeText(window.location.href).catch(() => undefined);
+          setCopied(true);
+        }}
+      >
+        {copied ? "Link copied" : "Copy the link"}
+      </Button>
+      <Disclaimer />
+    </main>
+  );
+}
+
 /**
  * Nothing in the app works without an account, so visitors meet the kit's onboarding first:
  * welcome, three slides, passkey, ready. The identity is kept for the tab, so a reload skips all of it.
@@ -281,8 +313,15 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const [returningUser, setReturningUser] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [support, setSupport] = useState<PasskeySupport>({ ok: true });
 
   useEffect(() => {
+    setSupport(
+      passkeySupport({
+        userAgent: navigator.userAgent,
+        hasWebAuthn: typeof window.PublicKeyCredential === "function",
+      }),
+    );
     setReturningUser(hasOnboarded());
     const timer = setTimeout(() => {
       const next: Step = hasOnboarded() ? "returning" : "slides";
@@ -319,6 +358,9 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     ) : (
       children
     );
+  }
+  if (!support.ok && step !== "splash") {
+    return <UnsupportedScreen reason={support.reason} />;
   }
   if (step === "create") {
     return (
