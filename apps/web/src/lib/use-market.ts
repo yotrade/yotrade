@@ -17,6 +17,7 @@ import {
 import { roiBps } from "./ticket.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
+import { useTradingWindow } from "./use-trading-window.ts";
 
 const USDC = 1_000_000;
 /** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
@@ -28,6 +29,7 @@ const MAX_FILLS = 500;
 export function useMarket(id: string, market: MarketSymbol, range: RangeName, needsDepth: boolean) {
   const { kuru, tournament } = useRuntime();
   const { identity } = useIdentity();
+  const window = useTradingWindow(id);
   const wallet = identity?.tournamentWallet(BigInt(id));
   const address = wallet?.account.address;
   const { orderBook, base } = markets[market];
@@ -95,6 +97,12 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     info: info.data ?? null,
     joined: Boolean(wallet && entry.data),
     entryPending: entry.isPending,
+    /** The chain did not answer about my entry: not the same as "not joined". */
+    entryFailed: entry.isError,
+    /** The book or the balance could not be read; the ticket would be guessing. */
+    dataFailed: top.isError || portfolio.isError,
+    phase: window.phase,
+    opensIn: window.opensIn,
     /** A buy needs offers and a sell needs bids. Unknown until the book has loaded. */
     canBuy: top.data?.hasAsk ?? true,
     canSell: top.data?.hasBid ?? true,

@@ -305,6 +305,7 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
         : `Sold ${input} ${TOKEN_LABELS[base]}`;
       setInput("");
       await queryClient.invalidateQueries({ queryKey: ["portfolio", address] });
+      await queryClient.invalidateQueries({ queryKey: ["spot-fills", address] });
       onDone(message);
     } catch (cause) {
       console.error("swap failed", cause);

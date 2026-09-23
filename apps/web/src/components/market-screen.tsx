@@ -7,6 +7,7 @@ import { useState } from "react";
 import { CHART_TYPES, type ChartType, RANGES, type RangeName, type Summary } from "@/lib/chart.ts";
 import { formatBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
+import { tradeGate } from "@/lib/trade-window.ts";
 import { type MarketData, useMarket } from "@/lib/use-market.ts";
 import { DepthChart } from "./depth-chart.tsx";
 import { OrderBook } from "./order-book.tsx";
@@ -35,7 +36,7 @@ function MarketHeader({ base, roi }: { base: TokenSymbol; roi: number | null }) 
   return (
     <header className="flex items-center gap-3">
       <BackButton />
-      <TokenIcon token={base} />
+      <TokenIcon token={base} priority />
       <div className="flex min-w-0 flex-1 flex-col">
         <h1 className="truncate font-semibold leading-[21px]">{TOKEN_NAMES[base]}</h1>
         <p className="flex items-center gap-1.5 text-sm font-medium text-ink-muted">
@@ -159,10 +160,37 @@ function Stats({ data }: { data: MarketData }) {
 export const ACTION =
   "min-h-12 flex-1 rounded-full font-mono text-[15px] font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]";
 
+const BAR_NOTE = "w-full py-3 text-center text-sm font-medium text-ink-muted";
+
+/** What the bar says instead of its buttons, in the order the facts are known. Null means: trade. */
+function barNote(data: MarketData): string | null {
+  // A tournament that is not running takes nobody, so its window comes before the entry.
+  const gate = tradeGate(data.phase, data.opensIn);
+  if (gate && data.phase !== "upcoming") {
+    return gate;
+  }
+  if (data.entryFailed) {
+    return "Your entry could not be read from the chain. Retrying…";
+  }
+  if (!data.joined) {
+    return "Join this tournament to trade in it.";
+  }
+  if (data.dataFailed) {
+    return "The book could not be read from the chain. Retrying…";
+  }
+  return gate;
+}
+
 function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void }) {
+  const note = data.entryPending ? null : barNote(data);
   return (
     <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-md gap-2 bg-surface/90 px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-3 backdrop-blur">
-      {data.joined ? (
+      {note ? (
+        <p role="status" className={BAR_NOTE}>
+          {note}
+        </p>
+      ) : null}
+      {!data.entryPending && note === null ? (
         <>
           <button
             type="button"
@@ -182,17 +210,12 @@ function TradeBar({ data, onPick }: { data: MarketData; onPick(side: Side): void
           </button>
         </>
       ) : null}
-      {!data.joined && data.entryPending ? (
+      {data.entryPending ? (
         <Loading label="Loading your account" className="flex w-full gap-2">
           <Skeleton className="h-12 flex-1 rounded-full" />
           <Skeleton className="h-12 flex-1 rounded-full" />
         </Loading>
       ) : null}
-      {data.joined || data.entryPending ? null : (
-        <p className="w-full py-3 text-center text-sm font-medium text-ink-muted">
-          Join this tournament to trade in it.
-        </p>
-      )}
     </div>
   );
 }

@@ -4,8 +4,10 @@ import { liquidationPrice, pnl } from "@yotrade/plugin-perps/math";
 import { useState } from "react";
 
 import { CHART_TYPES, type ChartType, type RangeName } from "@/lib/chart.ts";
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { leverage, signedUsd, usd } from "@/lib/perps-format.ts";
 import { PERPS_MARKETS, type PerpsSlug } from "@/lib/perps-markets.ts";
+import { tradeGate } from "@/lib/trade-window.ts";
 import { type PerpsPosition, type PerpsSnapshot, usePerpsMarket } from "@/lib/use-perps.ts";
 import type { ReferenceSeries } from "@/lib/use-reference.ts";
 import { FillsList } from "./fills-list.tsx";
@@ -86,13 +88,36 @@ function AccountStats({ snapshot }: { snapshot: PerpsSnapshot | null | undefined
 }
 
 interface BarProps {
-  readonly state: "loading" | "joined" | "out";
+  readonly state: "loading" | "joined" | "out" | "failed";
   /** Price and account are known, so an order can be planned. */
   readonly ready: boolean;
+  /** Why the buttons are not offered, when they are not. */
+  readonly gate: string | null;
+  /** An upcoming tournament still lets people join, so its gate comes after the entry. */
+  readonly upcoming: boolean;
   onPick(side: PerpsSide): void;
 }
 
-function TradeBar({ state, ready, onPick }: BarProps) {
+function barNote({
+  state,
+  gate,
+  upcoming,
+}: Pick<BarProps, "state" | "gate" | "upcoming">): string | null {
+  // A tournament that is not running takes nobody, so its window comes before the entry.
+  if (gate && !upcoming) {
+    return gate;
+  }
+  if (state === "failed") {
+    return "Your entry could not be read from the chain. Retrying…";
+  }
+  if (state === "out") {
+    return "Join this tournament to trade in it.";
+  }
+  return gate;
+}
+
+function TradeBar({ state, ready, gate, upcoming, onPick }: BarProps) {
+  const note = state === "loading" ? null : barNote({ state, gate, upcoming });
   return (
     <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-md gap-2 bg-surface/90 px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-3 backdrop-blur">
       {state === "loading" ? (
@@ -101,7 +126,12 @@ function TradeBar({ state, ready, onPick }: BarProps) {
           <Skeleton className="h-12 flex-1 rounded-full" />
         </Loading>
       ) : null}
-      {state === "joined" ? (
+      {note ? (
+        <p role="status" className="w-full py-3 text-center text-sm font-medium text-ink-muted">
+          {note}
+        </p>
+      ) : null}
+      {state === "joined" && note === null ? (
         <>
           <button
             type="button"
@@ -120,11 +150,6 @@ function TradeBar({ state, ready, onPick }: BarProps) {
             Long
           </button>
         </>
-      ) : null}
-      {state === "out" ? (
-        <p className="w-full py-3 text-center text-sm font-medium text-ink-muted">
-          Join this tournament to trade in it.
-        </p>
       ) : null}
     </div>
   );
@@ -179,7 +204,10 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
       setNotice({ tone: "ok", text: `${label} position closed` });
     } catch (cause) {
       console.error("perps close failed", cause);
-      setNotice({ tone: "error", text: "The position did not close. Try again." });
+      setNotice({
+        tone: "error",
+        text: describeFailure(cause, "The position did not close. Try again."),
+      });
     } finally {
       setClosing(false);
     }
@@ -189,7 +217,7 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
     <main className="flex flex-1 flex-col gap-5 pb-24 pt-4">
       <header className="flex items-center gap-3">
         <BackButton />
-        <PerpsIcon slug={slug} />
+        <PerpsIcon slug={slug} priority />
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate font-semibold leading-[21px]">{name}</h1>
           <p className="text-sm font-medium text-ink-muted">{label}-PERP · Pyth</p>
@@ -227,6 +255,11 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
         <FillsList id={id} trader={wallet.account.address} slug={slug} />
       ) : null}
 
+      {account.isError ? (
+        <p role="alert" className="rounded-2xl bg-down/10 p-3 text-sm font-medium text-down">
+          Futures prices are not available right now, so your account cannot be valued. Retrying…
+        </p>
+      ) : null}
       {account.data?.risk.liquidatable ? (
         <p role="alert" className="rounded-2xl bg-down/10 p-3 text-sm font-medium text-down">
           Your equity is under the maintenance margin. Anyone can liquidate this account: reduce
@@ -235,7 +268,13 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
       ) : null}
       <Notice notice={notice} />
 
-      <TradeBar state={market.state} ready={Boolean(price && account.data)} onPick={setSide} />
+      <TradeBar
+        state={market.state}
+        ready={Boolean(price && account.data)}
+        gate={tradeGate(market.phase, market.opensIn)}
+        upcoming={market.phase === "upcoming"}
+        onPick={setSide}
+      />
 
       {wallet && account.data && price ? (
         <Sheet open={side !== null} onClose={() => setSide(null)} label="Order ticket">
