@@ -115,10 +115,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
   const summary = data.data?.summary ?? null;
   const up = (summary?.changeBps ?? 0) >= 0;
 
-  // A market nobody can trade is noise, unless the viewer still holds its token and needs the way out.
-  if (data.data && !data.data.tradable && heldUsdc === 0n) {
-    return null;
-  }
+  const oneSided = data.data !== undefined && !data.data.tradable;
 
   return (
     <Link
@@ -131,6 +128,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
         <p className="truncate font-semibold leading-[21px]">{TOKEN_LABELS[base]}</p>
         <p className="tabular truncate text-sm font-medium leading-5 text-ink-muted">
           {heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : TOKEN_NAMES[base]}
+          {oneSided ? " · one side of the book is empty" : ""}
         </p>
       </div>
       <Sparkline series={data.data} up={up} />

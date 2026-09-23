@@ -28,9 +28,9 @@ export function midPrice(book: Book): number {
 }
 
 /**
- * Value of `baseAmount` in quote-token units, rounded down. Marked at the mid when the book is two-sided and at
- * the best bid when only bids are left, because that is what the inventory can still be sold for. Worth zero
- * when nobody is bidding.
+ * Value of `baseAmount` in quote-token units, rounded down. Marked at the mid when the book is two-sided, at
+ * the best bid when only bids are left (what the inventory can still be sold for), and at the best ask when
+ * only asks are left: buyers emptied the bids for a moment, not the token's worth. Zero when the book is empty.
  * Integer math throughout: value = amount × price × 10^quoteDecimals / (precision × 10^baseDecimals).
  */
 export function valueInQuote(
@@ -39,11 +39,16 @@ export function valueInQuote(
   quoteDecimals: number,
   book: Book,
 ): bigint {
-  if (!book.hasBid || baseAmount === 0n) {
+  if (!(book.hasBid || book.hasAsk) || baseAmount === 0n) {
     return 0n;
   }
   // Twice the mark, so the mid needs no division before the final one.
-  const twiceMark = book.hasLiquidity ? book.bid + book.ask : 2n * book.bid;
+  let twiceMark = 2n * book.ask;
+  if (book.hasLiquidity) {
+    twiceMark = book.bid + book.ask;
+  } else if (book.hasBid) {
+    twiceMark = 2n * book.bid;
+  }
   const numerator = baseAmount * twiceMark * 10n ** BigInt(quoteDecimals);
   const denominator = 2n * book.pricePrecision * 10n ** BigInt(baseDecimals);
   return numerator / denominator;

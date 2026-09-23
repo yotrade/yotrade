@@ -6,7 +6,12 @@ export type TicketResult =
   | { readonly ok: false; readonly reason: string };
 
 /** Turns what the trader typed into token units, or says why it cannot be traded. */
-export function parseTicket(input: string, decimals: number, available: bigint): TicketResult {
+export function parseTicket(
+  input: string,
+  decimals: number,
+  available: bigint,
+  minimum?: { readonly amount: bigint; readonly label: string },
+): TicketResult {
   const text = input.trim();
   if (!/^\d*\.?\d*$/.test(text) || text === "" || text === ".") {
     return { ok: false, reason: "Enter an amount" };
@@ -20,6 +25,9 @@ export function parseTicket(input: string, decimals: number, available: bigint):
   }
   if (amount > available) {
     return { ok: false, reason: "More than you have available" };
+  }
+  if (minimum && amount < minimum.amount) {
+    return { ok: false, reason: `Minimum order is ${minimum.label}` };
   }
   return { ok: true, amount };
 }
