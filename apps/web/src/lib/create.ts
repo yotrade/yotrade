@@ -16,7 +16,7 @@ export type SplitName = keyof typeof SPLITS;
 export const START_DELAYS = { "In 2 minutes": 120, "In 10 minutes": 600, "In 1 hour": 3_600, Tomorrow: 86_400 } as const;
 export const DURATIONS = { "5 minutes": 300, "1 hour": 3_600, "1 day": 86_400, "3 days": 259_200, "7 days": 604_800 } as const;
 
-/** Enforced onchain at join. The join flow deposits the whole faucet claim, well above this. */
+/** Enforced onchain at join, and exactly what the join flow deposits from the faucet claim. */
 const STARTING_CAPITAL = parseUnits("1000", tokens.usdc.decimals);
 /** One Kuru faucet claim: what a fresh organizer account can escrow without outside funds. */
 const MAX_POOL = parseUnits("10000", tokens.usdc.decimals);

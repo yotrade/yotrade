@@ -44,10 +44,10 @@ describe("runJoin", () => {
     expect(calls.at(-1)).toBe("join");
   });
 
-  test("a fresh account goes through every step and deposits everything it received", async () => {
+  test("a fresh account goes through every step and deposits the starting capital, no more", async () => {
     const { run, calls, steps } = setup({ wallet: 0n, kuru: 0n });
     await run(500_000_000n);
-    expect(calls).toEqual(["gas", "claim", `deposit:${FAUCET}`, "join"]);
+    expect(calls).toEqual(["gas", "claim", "deposit:500000000", "join"]);
     expect(steps).toEqual(["gas", "faucet", "deposit", "join"]);
   });
 
@@ -72,7 +72,7 @@ describe("runJoin", () => {
   test("a free tournament still creates the Kuru account", async () => {
     const { run, calls } = setup({ wallet: 0n, kuru: 0n });
     await run(0n);
-    expect(calls).toEqual(["gas", "claim", `deposit:${FAUCET}`, "join"]);
+    expect(calls).toEqual(["gas", "claim", "deposit:1", "join"]);
   });
 
   test("refuses a tournament the faucet cannot fund", async () => {
