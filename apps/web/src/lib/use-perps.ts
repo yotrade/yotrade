@@ -24,6 +24,8 @@ export interface PerpsSnapshot {
   /** Newest price per requested or open market, USD 1e18. */
   readonly prices: Readonly<Record<Hex, bigint>>;
   readonly risk: Risk;
+  /** The tournament's leverage cap: 5, 20 or 100. */
+  readonly leverageCap: bigint;
 }
 
 /**
@@ -40,7 +42,10 @@ export function usePerps(id: string, trader: Address | undefined, watch: readonl
       if (!trader) {
         return null;
       }
-      const account = await perps.account(BigInt(id), trader);
+      const [account, leverageCap] = await Promise.all([
+        perps.account(BigInt(id), trader),
+        perps.leverageCapOf(BigInt(id)),
+      ]);
       const ids = [...new Set([...watch, ...account.positions.map((p) => p.market)])];
       const latest = ids.length > 0 ? (await perps.latest(ids)).prices : {};
       const prices = Object.fromEntries(
@@ -50,7 +55,13 @@ export function usePerps(id: string, trader: Address | undefined, watch: readonl
         ...p,
         price: prices[p.market.toLowerCase() as Hex] ?? p.entryPrice,
       }));
-      return { balance: account.balance, positions, prices, risk: risk(account.balance, positions) };
+      return {
+        balance: account.balance,
+        positions,
+        prices,
+        risk: risk(account.balance, positions, leverageCap),
+        leverageCap,
+      };
     },
   });
 }

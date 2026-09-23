@@ -11,6 +11,7 @@ import { indexer } from "@/lib/indexer-client.ts";
 import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
+import { useRuntime } from "@/lib/use-runtime.ts";
 import { type Venue, venueOf } from "@/lib/venue.ts";
 import { Commentary } from "./commentary.tsx";
 import { HostPanel } from "./host-panel.tsx";
@@ -81,10 +82,11 @@ interface OverviewProps {
   readonly venue: Venue;
   readonly now: bigint;
   readonly you: Address | undefined;
+  readonly leverageCap: string;
 }
 
 /** Under the card: results or the join, the host's cards, the commentator, then the table itself. */
-function Overview({ id, data, phase, venue, now, you }: OverviewProps) {
+function Overview({ id, data, phase, venue, now, you, leverageCap }: OverviewProps) {
   const running = phase === "upcoming" || phase === "live";
   return (
     <div className="flex flex-col gap-3">
@@ -109,7 +111,7 @@ function Overview({ id, data, phase, venue, now, you }: OverviewProps) {
         </summary>
         <p className="pt-2 text-sm font-medium leading-5 text-ink-muted">
           {venue === "futures"
-            ? "Return on a virtual $10,000, traded long or short at Pyth prices with up to 20x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by "
+            ? `Return on a virtual $10,000, traded long or short at Pyth prices with up to ${leverageCap}x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by `
             : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
           <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
         </p>
@@ -134,6 +136,13 @@ export function TournamentDetail({ id }: { id: string }) {
     queryKey: ["tournament", id],
     queryFn: () => indexer.tournament(BigInt(id)),
     refetchInterval: 5_000,
+  });
+  const { perps } = useRuntime();
+  const leverageCap = useQuery({
+    queryKey: ["leverage-cap", id],
+    queryFn: async () => (await perps.leverageCapOf(BigInt(id))).toString(),
+    enabled: Boolean(data && venueOf(data.venue) === "futures"),
+    staleTime: 60_000,
   });
 
   if (isPending) {
@@ -212,16 +221,26 @@ export function TournamentDetail({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-0.5">
             <dt className="font-medium opacity-80">
-              {venue === "futures" ? "Start balance" : "Min. capital"}
+              {venue === "futures" ? "Leverage" : "Min. capital"}
             </dt>
             <dd className="tabular font-semibold">
-              {venue === "futures" ? "$10,000" : `$${formatUsdc(data.startingCapital)}`}
+              {venue === "futures"
+                ? `Up to ${leverageCap.data ?? "20"}x`
+                : `$${formatUsdc(data.startingCapital)}`}
             </dd>
           </div>
         </dl>
       </section>
 
-      <Overview id={id} data={data} phase={phase} venue={venue} now={now} you={you} />
+      <Overview
+        id={id}
+        data={data}
+        phase={phase}
+        venue={venue}
+        now={now}
+        you={you}
+        leverageCap={leverageCap.data ?? "20"}
+      />
     </main>
   );
 }

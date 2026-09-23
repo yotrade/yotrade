@@ -163,7 +163,9 @@ export function PerpsMarketList({ id }: { id: string }) {
       <section className="flex flex-col gap-3">
         <SectionLabel>Pick a market</SectionLabel>
         <p className="-mt-1 text-[13px] font-medium leading-5 text-ink-muted">
-          Go long or short with up to 20x. Everyone started with a virtual $10,000.
+          Go long or short with up to{" "}
+          {snapshot ? `${snapshot.leverageCap}x` : "the tournament's cap"}. Everyone started with a
+          virtual $10,000.
         </p>
         <ul className="flex flex-col gap-2">
           {PERPS_SLUGS.map((slug, index) => (
