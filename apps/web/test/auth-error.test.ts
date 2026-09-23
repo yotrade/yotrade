@@ -11,6 +11,15 @@ describe("describeAuthError", () => {
     expect(noPrf).not.toBe(dismissed);
   });
 
+  test("names a wrong relying-party domain and a dismissed prompt from the DOM error underneath", () => {
+    const security = Object.assign(new Error("x"), { name: "SecurityError" });
+    expect(describeAuthError({ code: "PASSKEY_OPERATION_FAILED", cause: security })).toContain(
+      "real domain",
+    );
+    const dismissed = Object.assign(new Error("x"), { name: "NotAllowedError" });
+    expect(describeAuthError(dismissed)).toContain("dismissed or timed out");
+  });
+
   test("never leaks raw error text", () => {
     expect(describeAuthError(new Error("secret internals"))).toBe(
       "Something went wrong. Try again.",
