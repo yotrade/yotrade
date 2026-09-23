@@ -1,12 +1,12 @@
 {
   "network": "monad-testnet",
   "chainId": 10143,
-  "deployedAt": "2026-09-22",
+  "deployedAt": "2026-09-23",
   "foundry": "1.8.3",
   "solc": "0.8.37",
   "TournamentManager": {
     "proxy": "0xe60aFf1991d9D93e6093da5c813A63B746159D10",
-    "implementation": "0x92c0969b14078Bc57DaEfEda63e24C22dDa35BDf",
+    "implementation": "0x223967bC78a1A963dB5acD6358A49573AF889992",
     "deployBlock": 64421055,
     "verified": "sourcify (MonadVision)",
     "implementationHistory": [
@@ -28,7 +28,11 @@
       },
       {
         "address": "0x92c0969b14078Bc57DaEfEda63e24C22dDa35BDf",
-        "note": "setMetadata: organizer can change the metadata URI while open (2026-09-22), verified; current"
+        "note": "setMetadata: organizer can change the metadata URI while open (2026-09-22), verified"
+      },
+      {
+        "address": "0x223967bC78a1A963dB5acD6358A49573AF889992",
+        "note": "startNow: the host starts an upcoming tournament now, duration kept (2026-09-23), verified; current"
       }
     ]
   },
@@ -46,7 +50,7 @@
   },
   "PerpsEngine": {
     "proxy": "0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336",
-    "implementation": "0x60C67A03584DB7b17f0c74DFaABD9BDb9Ceb726a",
+    "implementation": "0xd0f1202909805d20419B049A6e0d6C73744c234B",
     "deployBlock": 64494582,
     "pyth": "0x2880aB155794e7179c9eE2e38200202908C17B43",
     "markets": {
@@ -65,7 +69,11 @@
       },
       {
         "address": "0x60C67A03584DB7b17f0c74DFaABD9BDb9Ceb726a",
-        "note": "leverage cap per tournament, maintenance and confidence follow it, 10 s price age (2026-09-23), verified; current"
+        "note": "leverage cap per tournament, maintenance and confidence follow it, 10 s price age (2026-09-23), verified"
+      },
+      {
+        "address": "0xd0f1202909805d20419B049A6e0d6C73744c234B",
+        "note": "100x is the default leverage cap for every futures tournament (2026-09-23), verified; current"
       }
     ]
   },

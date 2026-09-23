@@ -31,10 +31,14 @@ describe("perps math mirrors the contract tests", () => {
   test("the liquidation example from PerpsEngine.t.sol", () => {
     // 3 BTC from 60,000 and 1 ETH at 3,000, BTC now 57,500: equity 2,408.5 against 4,387.5 of maintenance.
     const balance = STARTING_BALANCE - usd(90) - usd(3) / 2n;
-    const account = risk(balance, [
-      { size: 3n * WAD, entryPrice: usd(60_000), price: usd(57_500) },
-      { size: WAD, entryPrice: usd(3000), price: usd(3000) },
-    ]);
+    const account = risk(
+      balance,
+      [
+        { size: 3n * WAD, entryPrice: usd(60_000), price: usd(57_500) },
+        { size: WAD, entryPrice: usd(3000), price: usd(3000) },
+      ],
+      20n,
+    );
     expect(account.equity).toBe(usd(4817) / 2n);
     expect(account.notional).toBe(usd(175_500));
     expect(account.liquidatable).toBe(true);
@@ -47,7 +51,7 @@ describe("perps math mirrors the contract tests", () => {
 
   test("the largest add sits exactly on the cap", () => {
     const flat = risk(STARTING_BALANCE, []);
-    const size = maxAdd(flat, usd(60_000));
+    const size = maxAdd(flat, usd(60_000), 20n);
     const after = (size * usd(60_000)) / WAD;
     expect(after <= (STARTING_BALANCE - fee(size, usd(60_000))) * 20n).toBe(true);
     // One more cent of notional would not fit.
@@ -55,7 +59,7 @@ describe("perps math mirrors the contract tests", () => {
     expect((more * usd(60_000)) / WAD > (STARTING_BALANCE - fee(more, usd(60_000))) * 20n).toBe(
       true,
     );
-    expect(maxAdd(risk(0n, []), usd(60_000))).toBe(0n);
+    expect(maxAdd(risk(0n, []), usd(60_000), 20n)).toBe(0n);
   });
 
   test("a score is floored at a total loss", () => {
@@ -80,6 +84,7 @@ describe("planning an order", () => {
       positions: [],
       market: Btc,
       price,
+      cap: 20n,
       side: "long",
       notionalUsd: price / 2n,
     });
@@ -96,6 +101,7 @@ describe("planning an order", () => {
       positions: [],
       market: Btc,
       price: usd(60_000),
+      cap: 20n,
       side: "long",
     } as const;
     expect(planOrder({ ...order, notionalUsd: usd(240_000) }).withinCap).toBe(false);
@@ -112,6 +118,7 @@ describe("planning an order", () => {
       positions: held,
       market: Btc,
       price: usd(56_000),
+      cap: 20n,
       side: "short",
       notionalUsd: usd(168_000),
     });
@@ -133,11 +140,11 @@ describe("planning an order", () => {
 
   test("liquidation estimates sit on the losing side and vanish for a fully backed long", () => {
     // 3 BTC at 60,000 on 9,910 of equity: maintenance is reached a little under 58,200.
-    const long = liquidationPrice(usd(9910), 3n * WAD, usd(60_000)) ?? 0n;
+    const long = liquidationPrice(usd(9910), 3n * WAD, usd(60_000), 20n) ?? 0n;
     expect(long > usd(58_000) && long < usd(58_300)).toBe(true);
-    const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000)) ?? 0n;
+    const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000), 20n) ?? 0n;
     expect(short > usd(61_700) && short < usd(62_000)).toBe(true);
-    expect(liquidationPrice(usd(10_000), WAD / 10n, usd(60_000))).toBeNull();
+    expect(liquidationPrice(usd(10_000), WAD / 10n, usd(60_000), 20n)).toBeNull();
   });
 });
 
@@ -147,10 +154,10 @@ describe("leverage caps", () => {
     expect(maintenanceBps(20n)).toBe(250n);
     expect(maintenanceBps(100n)).toBe(50n);
     const flat = risk(STARTING_BALANCE, []);
-    expect(maxAdd(flat, usd(60_000), 100n)).toBeGreaterThan(maxAdd(flat, usd(60_000)) * 4n);
+    expect(maxAdd(flat, usd(60_000), 100n)).toBeGreaterThan(maxAdd(flat, usd(60_000), 20n) * 4n);
     // A long at 100x is liquidated far closer to its entry than at 20x.
     const at100 = liquidationPrice(STARTING_BALANCE, 15n * WAD, usd(60_000), 100n) ?? 0n;
-    const at20 = liquidationPrice(STARTING_BALANCE, 3n * WAD, usd(60_000)) ?? 0n;
+    const at20 = liquidationPrice(STARTING_BALANCE, 3n * WAD, usd(60_000), 20n) ?? 0n;
     expect(at100).toBeGreaterThan(at20);
   });
 });

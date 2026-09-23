@@ -182,6 +182,18 @@ indexer.onEvent(
 );
 
 indexer.onEvent(
+  { contract: "TournamentManager", event: "ScheduleUpdated" },
+  async ({ event, context }) => {
+    const tournament = await context.Tournament.getOrThrow(event.params.id.toString());
+    context.Tournament.set({
+      ...tournament,
+      startTime: event.params.startTime,
+      endTime: event.params.endTime,
+    });
+  },
+);
+
+indexer.onEvent(
   { contract: "TournamentManager", event: "MetadataUpdated" },
   async ({ event, context }) => {
     const tournament = await context.Tournament.getOrThrow(event.params.id.toString());

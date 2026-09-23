@@ -17,6 +17,7 @@ contracts:
       - event: TournamentCancelled(uint256 indexed id, uint256 refunded)
       - event: RemainderSwept(uint256 indexed id, uint256 amount)
       - event: MetadataUpdated(uint256 indexed id, string metadataURI)
+      - event: ScheduleUpdated(uint256 indexed id, uint64 startTime, uint64 endTime)
   - name: ProfileRegistry
     events:
       - event: ProfileSet(address indexed account, string name, uint8 avatar)

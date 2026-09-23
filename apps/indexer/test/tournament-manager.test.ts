@@ -209,6 +209,22 @@ describe("tournament lifecycle", () => {
     });
   });
 
+  it("moves the window when the host starts now", async () => {
+    const indexer = createTestIndexer();
+    await run(indexer, [
+      created(1n),
+      {
+        contract: "TournamentManager",
+        event: "ScheduleUpdated",
+        params: { id: 1n, startTime: 900n, endTime: 1_900n },
+      },
+    ]);
+    expect(await indexer.Tournament.getOrThrow("1")).toMatchObject({
+      startTime: 900n,
+      endTime: 1_900n,
+    });
+  });
+
   it("counts a trader once across tournaments and flags allowlisted tournaments", async () => {
     const indexer = createTestIndexer();
     const gated = created(2n);

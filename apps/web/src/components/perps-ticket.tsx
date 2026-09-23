@@ -17,12 +17,8 @@ import { Segmented } from "./ui/segmented.tsx";
 
 export type PerpsSide = "Long" | "Short";
 const SIDES = ["Long", "Short"] as const;
-/** The multiples on offer under each cap. "5x" is in every list, so the default never has to move. */
-const LEVERAGES: Record<string, readonly string[]> = {
-  "5": ["1x", "2x", "5x"],
-  "20": ["1x", "2x", "5x", "10x", "20x"],
-  "100": ["1x", "5x", "10x", "20x", "50x", "100x"],
-};
+/** The multiples on offer; a tournament capped lower shows only the ones under its cap. */
+const MULTIPLES = [1n, 2n, 3n, 5n, 10n, 20n, 30n, 50n, 75n, 100n] as const;
 const SHORTCUTS = [25n, 50n, 100n] as const;
 const CHIP =
   "rounded-lg bg-accent-soft px-2 py-1 font-mono text-[11px] font-bold text-accent transition duration-200 hover:bg-accent/20 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40";
@@ -107,7 +103,7 @@ export function PerpsTicket({
   const multiple = BigInt(times.slice(0, -1));
 
   const cap = snapshot.leverageCap;
-  const leverages = LEVERAGES[cap.toString()] ?? LEVERAGES["20"] ?? [];
+  const leverages = MULTIPLES.filter((m) => m <= cap).map((m) => `${m}x`);
   // Margin not already backing open positions, at the tournament's initial requirement.
   const used = snapshot.risk.notional / cap;
   const free = snapshot.risk.equity > used ? snapshot.risk.equity - used : 0n;
@@ -201,7 +197,24 @@ export function PerpsTicket({
         </div>
       </div>
 
-      <Segmented<string> label="Leverage" options={leverages} value={times} onChange={setTimes} />
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-semibold tracking-tight">Leverage</legend>
+        <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+          {leverages.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={option === times}
+              onClick={() => setTimes(option)}
+              className={`tabular shrink-0 rounded-full px-3.5 py-2 font-mono text-sm font-bold transition duration-200 focus-visible:outline-2 focus-visible:outline-accent active:scale-95 ${
+                option === times ? "bg-ink text-white" : "bg-well text-ink hover:bg-border"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <Details plan={plan} price={price} label={label} />
 

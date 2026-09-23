@@ -24,14 +24,8 @@ const MAX_METADATA_BYTES = 512;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 
-/** What a host may cap futures leverage at. The contract refuses anything else. */
-export const LEVERAGE_CAPS = ["5", "20", "100"] as const;
-export type LeverageCap = (typeof LEVERAGE_CAPS)[number];
-
 export interface CreateForm {
   readonly venue: Venue;
-  /** Futures only. "20" is the contract's default and needs no transaction. */
-  readonly leverage: LeverageCap;
   readonly visibility: "public" | "private";
   /** Optional https link to the host's logo. */
   readonly image: string;

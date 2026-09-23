@@ -3,8 +3,8 @@ export const WAD = 10n ** 18n;
 export const BPS = 10_000n;
 export const STARTING_BALANCE = 10_000n * WAD;
 export const FEE_BPS = 5n;
-/** The cap of a tournament whose host never set one. The contract's `DEFAULT_LEVERAGE`. */
-export const DEFAULT_LEVERAGE = 20n;
+/** The cap of a tournament whose host never set one: 100x everywhere. The contract's `DEFAULT_LEVERAGE`. */
+export const DEFAULT_LEVERAGE = 100n;
 /** Hosts pick one of these; the contract refuses anything else. */
 export const LEVERAGE_CAPS = [5n, 20n, 100n] as const;
 /** Maintenance margin is half the initial margin: the contract's `MAINTENANCE_NUMERATOR / cap`. */
