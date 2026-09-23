@@ -30,6 +30,7 @@
   --animate-pop: pop 0.6s var(--ease-out-soft) both;
   --animate-float: float 4s ease-in-out infinite;
   --animate-glow: glow 2.4s ease-in-out infinite;
+  --animate-confetti: confetti 5s linear infinite;
   --animate-sheet: sheet 0.35s var(--ease-out-soft) both;
 
   @keyframes enter {
@@ -57,6 +58,11 @@
   @keyframes float {
     50% {
       transform: translateY(-4px) rotate(8deg);
+    }
+  }
+  @keyframes confetti {
+    to {
+      transform: translateY(110vh) rotate(720deg);
     }
   }
   @keyframes glow {
@@ -90,6 +96,7 @@ body {
     --animate-pop: none;
     --animate-float: none;
     --animate-glow: none;
+    --animate-confetti: none;
     --animate-sheet: none;
     --animate-pulse: none;
   }

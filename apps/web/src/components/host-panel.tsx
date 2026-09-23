@@ -114,6 +114,14 @@ export function HostPanel({ tournament, phase, now }: Props) {
       </p>
       {editable ? (
         <Link
+          href={`/t/${tournament.id}/screen`}
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+        >
+          Show on a big screen
+        </Link>
+      ) : null}
+      {editable ? (
+        <Link
           href={`/t/${tournament.id}/edit`}
           className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
         >
