@@ -3,8 +3,12 @@ export const WAD = 10n ** 18n;
 export const BPS = 10_000n;
 export const STARTING_BALANCE = 10_000n * WAD;
 export const FEE_BPS = 5n;
-export const MAX_LEVERAGE = 20n;
-export const MAINTENANCE_BPS = 250n;
+/** The cap of a tournament whose host never set one. The contract's `DEFAULT_LEVERAGE`. */
+export const DEFAULT_LEVERAGE = 20n;
+/** Hosts pick one of these; the contract refuses anything else. */
+export const LEVERAGE_CAPS = [5n, 20n, 100n] as const;
+/** Maintenance margin is half the initial margin: the contract's `MAINTENANCE_NUMERATOR / cap`. */
+export const maintenanceBps = (cap: bigint) => 5_000n / cap;
 
 export interface Position {
   /** Signed base units, 1e18. Positive is long. */
@@ -47,28 +51,32 @@ function leverage(equity: bigint, total: bigint): bigint | null {
   return equity > 0n ? (total * 100n) / equity : null;
 }
 
-export function risk(balance: bigint, positions: readonly Valued[]): Risk {
+export function risk(
+  balance: bigint,
+  positions: readonly Valued[],
+  cap: bigint = DEFAULT_LEVERAGE,
+): Risk {
   const equity = positions.reduce((sum, p) => sum + pnl(p, p.price), balance);
   const total = positions.reduce((sum, p) => sum + notional(p.size, p.price), 0n);
   return {
     equity,
     notional: total,
     leverageX100: leverage(equity, total),
-    liquidatable: equity * BPS < total * MAINTENANCE_BPS,
+    liquidatable: equity * BPS < total * maintenanceBps(cap),
   };
 }
 
 /** Largest size (base units, unsigned) that a fill adding risk may add at `price` before the cap rejects it. */
-export function maxAdd(current: Risk, price: bigint): bigint {
+export function maxAdd(current: Risk, price: bigint, cap: bigint = DEFAULT_LEVERAGE): bigint {
   if (current.equity <= 0n || price === 0n) {
     return 0n;
   }
-  // The fee comes out of equity first: n + x <= 20 * (e - x * fee), solved for the added notional x.
-  const room = current.equity * MAX_LEVERAGE - current.notional;
+  // The fee comes out of equity first: n + x <= cap * (e - x * fee), solved for the added notional x.
+  const room = current.equity * cap - current.notional;
   if (room <= 0n) {
     return 0n;
   }
-  const added = (room * BPS) / (BPS + MAX_LEVERAGE * FEE_BPS);
+  const added = (room * BPS) / (BPS + cap * FEE_BPS);
   return (added * WAD) / price;
 }
 
@@ -113,16 +121,22 @@ export function applyFill(
  * Price at which a position alone would take the account under maintenance, other positions standing still.
  * An estimate for the trader, never an input to anything: the contract values the whole account live.
  */
-export function liquidationPrice(equity: bigint, size: bigint, price: bigint): bigint | null {
+export function liquidationPrice(
+  equity: bigint,
+  size: bigint,
+  price: bigint,
+  cap: bigint = DEFAULT_LEVERAGE,
+): bigint | null {
   if (size === 0n) {
     return null;
   }
   const held = notional(size, price);
+  const maintenance = maintenanceBps(cap);
   if (size > 0n) {
     // Fully collateralized longs cannot be liquidated by their own market.
-    return held <= equity ? null : ((held - equity) * WAD * BPS) / (size * (BPS - MAINTENANCE_BPS));
+    return held <= equity ? null : ((held - equity) * WAD * BPS) / (size * (BPS - maintenance));
   }
-  return ((equity + held) * WAD * BPS) / (-size * (BPS + MAINTENANCE_BPS));
+  return ((equity + held) * WAD * BPS) / (-size * (BPS + maintenance));
 }
 
 export interface Held extends Valued {
@@ -148,7 +162,10 @@ export function planOrder(order: {
   readonly price: bigint;
   readonly side: "long" | "short";
   readonly notionalUsd: bigint;
+  /** The tournament's leverage cap. */
+  readonly cap?: bigint;
 }): OrderPlan {
+  const cap = order.cap ?? DEFAULT_LEVERAGE;
   const magnitude = (order.notionalUsd * WAD) / order.price;
   const sizeDelta = order.side === "long" ? magnitude : -magnitude;
   const market = order.market.toLowerCase();
@@ -161,7 +178,7 @@ export function planOrder(order: {
   const paid = fee(sizeDelta, order.price);
   const others = order.positions.filter((p) => p.market.toLowerCase() !== market);
   const held = next.size === 0n ? others : [...others, { ...next, price: order.price }];
-  const after = risk(order.balance + realized - paid, held);
+  const after = risk(order.balance + realized - paid, held, cap);
   const addsRisk = abs(next.size) > abs(current?.size ?? 0n);
   return {
     sizeDelta,
@@ -169,7 +186,7 @@ export function planOrder(order: {
     realized,
     position: next,
     after,
-    withinCap: !addsRisk || (after.equity > 0n && after.notional <= after.equity * MAX_LEVERAGE),
-    liquidationPrice: liquidationPrice(after.equity, next.size, order.price),
+    withinCap: !addsRisk || (after.equity > 0n && after.notional <= after.equity * cap),
+    liquidationPrice: liquidationPrice(after.equity, next.size, order.price, cap),
   };
 }

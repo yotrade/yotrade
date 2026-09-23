@@ -4,6 +4,7 @@ import {
   applyFill,
   fee,
   liquidationPrice,
+  maintenanceBps,
   maxAdd,
   planOrder,
   pnl,
@@ -99,6 +100,9 @@ describe("planning an order", () => {
     } as const;
     expect(planOrder({ ...order, notionalUsd: usd(240_000) }).withinCap).toBe(false);
     expect(planOrder({ ...order, notionalUsd: usd(180_000) }).withinCap).toBe(true);
+    // The same order at a 100x cap is nowhere near the limit; at 5x it is far over.
+    expect(planOrder({ ...order, notionalUsd: usd(240_000), cap: 100n }).withinCap).toBe(true);
+    expect(planOrder({ ...order, notionalUsd: usd(60_000), cap: 5n }).withinCap).toBe(false);
   });
 
   test("closing realizes the move and is never capped, even under water", () => {
@@ -134,5 +138,19 @@ describe("planning an order", () => {
     const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000)) ?? 0n;
     expect(short > usd(61_700) && short < usd(62_000)).toBe(true);
     expect(liquidationPrice(usd(10_000), WAD / 10n, usd(60_000))).toBeNull();
+  });
+});
+
+describe("leverage caps", () => {
+  test("maintenance is half the initial margin and the room to add scales with the cap", () => {
+    expect(maintenanceBps(5n)).toBe(1_000n);
+    expect(maintenanceBps(20n)).toBe(250n);
+    expect(maintenanceBps(100n)).toBe(50n);
+    const flat = risk(STARTING_BALANCE, []);
+    expect(maxAdd(flat, usd(60_000), 100n)).toBeGreaterThan(maxAdd(flat, usd(60_000)) * 4n);
+    // A long at 100x is liquidated far closer to its entry than at 20x.
+    const at100 = liquidationPrice(STARTING_BALANCE, 15n * WAD, usd(60_000), 100n) ?? 0n;
+    const at20 = liquidationPrice(STARTING_BALANCE, 3n * WAD, usd(60_000)) ?? 0n;
+    expect(at100).toBeGreaterThan(at20);
   });
 });

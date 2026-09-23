@@ -76,6 +76,22 @@ export function perps(options: PerpsOptions) {
 
     return {
       account,
+      /** The tournament's leverage cap: 5, 20 or 100. */
+      leverageCapOf: (tournamentId: bigint) =>
+        publicClient.readContract({
+          ...contract,
+          functionName: "leverageCapOf",
+          args: [tournamentId],
+        }),
+      /** Sets the cap. Only the organizer, only before the start, only 5, 20 or 100. */
+      setLeverageCap: (wallet: Wallet, tournamentId: bigint, cap: bigint) =>
+        confirm(
+          wallet.writeContract({
+            ...contract,
+            functionName: "setLeverageCap",
+            args: [tournamentId, cap],
+          }),
+        ),
 
       /** Newest prices (USD 1e18) and the signed update that proves them. */
       latest: options.hermes.latest,
