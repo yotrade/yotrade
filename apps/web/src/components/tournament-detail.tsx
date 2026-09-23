@@ -111,7 +111,7 @@ function Overview({ id, data, phase, venue, now, you, leverageCap }: OverviewPro
         </summary>
         <p className="pt-2 text-sm font-medium leading-5 text-ink-muted">
           {venue === "futures"
-            ? `Return on a virtual $10,000, traded long or short at Pyth prices with up to ${leverageCap}x. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by `
+            ? `Return on a virtual $10,000, traded long or short at Pyth prices with up to ${leverageCap}${/^\d+$/.test(leverageCap) ? "x" : ""}. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by `
             : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
           <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
         </p>
@@ -178,6 +178,11 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const phase = phaseAt(data, now);
   const venue = venueOf(data.venue);
+  // Futures show the cap once the chain has answered; a default number would lie for a moment.
+  let thirdFact = `$${formatUsdc(data.startingCapital)}`;
+  if (venue === "futures") {
+    thirdFact = leverageCap.data ? `Up to ${leverageCap.data}x` : "…";
+  }
   const meta = tournamentMeta(data.id, data.metadataURI);
 
   return (
@@ -223,11 +228,7 @@ export function TournamentDetail({ id }: { id: string }) {
             <dt className="font-medium opacity-80">
               {venue === "futures" ? "Leverage" : "Min. capital"}
             </dt>
-            <dd className="tabular font-semibold">
-              {venue === "futures"
-                ? `Up to ${leverageCap.data ?? "20"}x`
-                : `$${formatUsdc(data.startingCapital)}`}
-            </dd>
+            <dd className="tabular font-semibold">{thirdFact}</dd>
           </div>
         </dl>
       </section>
@@ -239,7 +240,7 @@ export function TournamentDetail({ id }: { id: string }) {
         venue={venue}
         now={now}
         you={you}
-        leverageCap={leverageCap.data ?? "20"}
+        leverageCap={leverageCap.data ?? "the tournament's cap"}
       />
     </main>
   );
