@@ -173,9 +173,10 @@ contract PerpsEngine is
         if (cap != 5 && cap != DEFAULT_LEVERAGE && cap != 100) revert InvalidLeverage(cap);
         Layout storage $ = _layout();
         // Only the organizer matters here; the rest of the state is the manager's business.
-        // slither-disable-next-line unused-return
+        // slither-disable-start unused-return
         // forge-lint: disable-next-line(unused-return)
         (address organizer,,,,) = $.manager.getState(tournamentId);
+        // slither-disable-end unused-return
         if (msg.sender != organizer) revert NotOrganizer();
         ITournamentManager.Config memory config = $.manager.getConfig(tournamentId);
         if (config.venue != $.adapter) revert WrongVenue(config.venue);
