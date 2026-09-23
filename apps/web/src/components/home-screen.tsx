@@ -4,55 +4,24 @@ import Link from "next/link";
 
 import { shortAddress } from "@/lib/format.ts";
 import { hostedBy } from "@/lib/host.ts";
-import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { useMyTournaments } from "@/lib/use-my-tournaments.ts";
 import { useNow } from "@/lib/use-now.ts";
+import { CodeEntry } from "./code-entry.tsx";
 import { EntryCard } from "./entry-card.tsx";
-import { TournamentBrowser } from "./tournament-browser.tsx";
 import { TournamentRow } from "./tournament-row.tsx";
-import { Amount } from "./ui/amount.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Icon, type IconName } from "./ui/icon.tsx";
 import { SectionLabel } from "./ui/section-label.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 const ACTIONS = [
-  { href: "/arena", icon: "stars", label: "Join" },
-  { href: "/new", icon: "plus", label: "Host" },
-  { href: "/activity", icon: "gift", label: "Results" },
-] as const satisfies readonly { href: string; icon: IconName; label: string }[];
+  { href: "/new", icon: "plus", label: "Host a game", hint: "Your room, your rules" },
+  { href: "/arena", icon: "stars", label: "Browse", hint: "Open games right now" },
+] as const satisfies readonly { href: string; icon: IconName; label: string; hint: string }[];
 
-function Headline({
-  value,
-  roi,
-  accounts,
-}: {
-  value: bigint;
-  roi: number | null;
-  accounts: number;
-}) {
-  return (
-    <div className="flex animate-fade flex-col gap-1">
-      <p className="text-[13px] font-medium text-ink-muted">Across your live tournaments</p>
-      <Amount value={value} size="xl" />
-      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted">
-        <Icon name="arrow" size={16} />
-        {roi === null ? (
-          "Join a tournament to start trading"
-        ) : (
-          <>
-            <span className={roi >= 0 ? "text-up" : "text-down"}>{formatBps(roi)}</span>
-            {` · in ${accounts} live ${accounts === 1 ? "tournament" : "tournaments"}`}
-          </>
-        )}
-      </p>
-    </div>
-  );
-}
-
-/** The kit's wallet home: account chip, balance, action tiles, cards, tabbed list. */
+/** A game lobby first: the code box, then host or browse, then the games you are in or run. */
 export function HomeScreen() {
   const now = useNow();
   const { identity } = useIdentity();
@@ -63,10 +32,6 @@ export function HomeScreen() {
     return null;
   }
   const { address } = identity.wallet.account;
-  const open = (mine.data ?? []).filter((item) => item.value !== null);
-  const value = open.reduce((sum, item) => sum + (item.value ?? 0n), 0n);
-  const capital = open.reduce((sum, item) => sum + item.entry.capitalAtJoin, 0n);
-  const roi = roiBps(value, capital);
   const hosted = hostedBy(tournaments.data ?? [], address, now);
   // Until the accounts are known, zero is not an answer. A failed load falls through to the real states.
   const loading = !(mine.data || mine.isError || tournaments.isError);
@@ -92,24 +57,20 @@ export function HomeScreen() {
         </Link>
       </header>
 
-      {loading ? (
-        <Loading label="Loading your accounts" className="flex flex-col gap-2">
-          <Skeleton className="h-12 w-44" />
-          <Skeleton className="h-4 w-56" />
-        </Loading>
-      ) : (
-        <Headline value={value} roi={roi} accounts={open.length} />
-      )}
+      <CodeEntry />
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {ACTIONS.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className="flex flex-col items-start gap-3 rounded-2xl border border-border p-3 transition duration-200 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.98]"
+            className="flex flex-col items-start gap-3 rounded-2xl border border-border p-4 transition duration-200 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.98]"
           >
             <Icon name={action.icon} />
-            <span className="font-semibold leading-tight">{action.label}</span>
+            <span className="flex flex-col">
+              <span className="font-semibold leading-tight">{action.label}</span>
+              <span className="text-[13px] font-medium text-ink-muted">{action.hint}</span>
+            </span>
           </Link>
         ))}
       </div>
@@ -126,7 +87,7 @@ export function HomeScreen() {
 
       {mine.data && mine.data.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <SectionLabel>Your tournaments</SectionLabel>
+          <SectionLabel>Your games</SectionLabel>
           <ul className="-mx-5 flex snap-x gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
             {mine.data.map((item, index) => (
               <li
@@ -143,7 +104,7 @@ export function HomeScreen() {
 
       {hosted.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <SectionLabel>You host</SectionLabel>
+          <SectionLabel>Games you host</SectionLabel>
           <ul className="flex flex-col gap-2">
             {hosted.map(({ tournament, phase }) => (
               <li key={tournament.id.toString()} className="animate-enter">
@@ -153,8 +114,6 @@ export function HomeScreen() {
           </ul>
         </section>
       ) : null}
-
-      <TournamentBrowser tournaments={tournaments.data} failed={tournaments.isError} />
     </main>
   );
 }
