@@ -26,7 +26,7 @@ bun run dev
 |---|---|
 | `DRIP_PRIVATE_KEY` | New accounts get no gas: `/api/drip` answers 503 |
 | `SCORER_PRIVATE_KEY` (holds `SCORER_ROLE` only) | Results cannot be posted: finalize answers 503 |
-| `KIMI_API_KEY` | The commentary card stays hidden |
+| `KIMI_API_KEY` (with `KIMI_BASE_URL` and `KIMI_MODEL` for OpenRouter: `https://openrouter.ai/api/v1`, `moonshotai/kimi-k2.5`) | The commentary card stays hidden. With a key, Kimi is asked only when the board moved, at most every two minutes per tournament and language, and at most 400 times a day per instance |
 | `PYTH_API_KEY` | Futures cannot be traded or scored: `/api/pyth` answers 503 |
 | `BLOB_READ_WRITE_TOKEN` (Vercel Blob) | Hosts cannot upload a logo; the create flow shows the link field instead |
 | `LOGO_BLOCKLIST` (optional, comma-separated substrings) | Every tournament logo is served; set it to hide a logo that must go, since metadata onchain cannot be changed |
