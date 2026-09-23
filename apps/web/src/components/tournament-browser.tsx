@@ -37,7 +37,13 @@ interface Props {
 /** The kit's tabbed asset panel, holding tournaments instead of tokens. */
 export function TournamentBrowser({ tournaments, failed }: Props) {
   const now = useNow();
-  const [tab, setTab] = useState<Tab>("Live");
+  const [picked, setPicked] = useState<Tab | null>(null);
+  // Until the visitor picks, open on the first tab that has something in it: an empty "Live" is no welcome.
+  const phases = (tournaments ?? [])
+    .filter((tournament) => !isPrivate(tournament.metadataURI))
+    .map((tournament) => TAB_OF[phaseAt(tournament, now)]);
+  const tab = picked ?? TABS.find((candidate) => phases.includes(candidate)) ?? "Live";
+  const setTab = setPicked;
 
   let body = <RowsSkeleton label="Loading tournaments" />;
   if (failed) {

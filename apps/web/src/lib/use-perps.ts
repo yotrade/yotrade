@@ -11,6 +11,7 @@ import { feedOf, type PerpsSlug } from "./perps-markets.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useReference } from "./use-reference.ts";
 import { useRuntime } from "./use-runtime.ts";
+import { useTradingWindow } from "./use-trading-window.ts";
 
 export interface PerpsPosition extends Valued {
   readonly market: Hex;
@@ -59,6 +60,7 @@ export function usePerpsMarket(id: string, slug: PerpsSlug, range: RangeName) {
   const { publicClient, perps, tournament } = useRuntime();
   const { identity } = useIdentity();
   const queryClient = useQueryClient();
+  const window = useTradingWindow(id);
   const wallet = identity?.tournamentWallet(BigInt(id));
   const trader = wallet?.account.address;
   const feed = feedOf(slug);
@@ -75,14 +77,18 @@ export function usePerpsMarket(id: string, slug: PerpsSlug, range: RangeName) {
   const position = account.data?.positions.find((p) => p.market.toLowerCase() === feed.toLowerCase());
   // The headline describes the default view; the rest of the series is there for zooming out.
   const summary = summarize((reference.data?.bars ?? []).slice(-CANDLES));
-  let state: "loading" | "joined" | "out" = entry.data ? "joined" : "out";
+  let state: "loading" | "joined" | "out" | "failed" = entry.data ? "joined" : "out";
   if (entry.isPending) {
     state = "loading";
+  } else if (entry.isError) {
+    state = "failed";
   }
 
   return {
     wallet,
     state,
+    phase: window.phase,
+    opensIn: window.opensIn,
     account,
     reference,
     price,

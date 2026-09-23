@@ -181,7 +181,9 @@ export function PerpsTicket({
             ))}
           </div>
           <p className="tabular text-[13px] font-semibold text-ink-muted">
-            Order ${plan ? usd(typed * multiple) : "0.00"}
+            {free === 0n
+              ? "No free margin: reduce a position first"
+              : `Order $${plan ? usd(typed * multiple) : "0.00"}`}
           </p>
         </div>
       </div>

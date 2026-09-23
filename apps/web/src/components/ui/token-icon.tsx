@@ -10,7 +10,16 @@ const MARKS: Partial<Record<TokenSymbol, string>> = {
   xaut0: "/brands/xaut0.png",
 };
 
-export function TokenIcon({ token, size = 40 }: { token: TokenSymbol; size?: number }) {
+export function TokenIcon({
+  token,
+  size = 40,
+  priority = false,
+}: {
+  token: TokenSymbol;
+  size?: number;
+  /** Above the fold as the page's largest image: load it first. */
+  priority?: boolean;
+}) {
   const mark = MARKS[token];
   if (mark) {
     return (
@@ -18,6 +27,7 @@ export function TokenIcon({ token, size = 40 }: { token: TokenSymbol; size?: num
         src={mark}
         alt=""
         aria-hidden
+        priority={priority}
         width={size}
         height={size}
         className="shrink-0 rounded-full bg-surface"
