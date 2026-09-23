@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 import { useState } from "react";
 
+import { ActionError, describeFailure, isSettled } from "@/lib/describe-failure.ts";
 import { formatUsdc, timeUntil } from "@/lib/format.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
@@ -27,21 +28,28 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [done, setDone] = useState(false);
   const profileOf = useProfiles(tournament.entries.map((entry) => entry.participant_id));
 
   if (phase !== "scoring" && phase !== "dispute" && phase !== "claimable") {
     return null;
   }
 
+  // The indexer trails the chain by seconds. Once an action went through, its button stays gone until then.
   async function run(action: () => Promise<void>, failure: string) {
     setPending(true);
     setError(undefined);
     try {
       await action();
+      setDone(true);
       await queryClient.invalidateQueries({ queryKey: ["tournament"] });
     } catch (cause) {
       console.error(failure, cause);
-      setError(failure);
+      if (isSettled(cause)) {
+        setDone(true);
+      } else {
+        setError(describeFailure(cause, failure));
+      }
     } finally {
       setPending(false);
     }
@@ -54,7 +62,8 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
       });
       // 409 means someone else finalized first, which is the outcome we wanted.
       if (!response.ok && response.status !== 409) {
-        throw new Error(`Finalize answered ${response.status}`);
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new ActionError(body?.error ?? `Finalize answered ${response.status}`);
       }
     };
     return (
@@ -69,12 +78,16 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
             {error}
           </p>
         ) : null}
-        <Button
-          pending={pending}
-          onClick={() => run(finalize, "Results could not be posted. Try again shortly.")}
-        >
-          Finalize results
-        </Button>
+        {done ? (
+          <p className="text-sm font-medium text-ink-muted">Results posted. Updating…</p>
+        ) : (
+          <Button
+            pending={pending}
+            onClick={() => run(finalize, "Results could not be posted. Try again shortly.")}
+          >
+            Finalize results
+          </Button>
+        )}
       </Card>
     );
   }
@@ -84,6 +97,7 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
     .filter((entry) => entry.rank !== null)
     .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
   const mine = standings.find((entry) => entry.participant_id === wallet?.account.address);
+  const claimable = phase === "claimable" && mine !== undefined && !mine.claimed && mine.prize > 0n;
   const claim = async () => {
     if (wallet) {
       await fundGas(publicClient, wallet.account.address);
@@ -147,7 +161,10 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
           {error}
         </p>
       ) : null}
-      {phase === "claimable" && mine && !mine.claimed && mine.prize > 0n ? (
+      {claimable && done ? (
+        <p className="text-sm font-medium text-ink-muted">Claimed. Updating…</p>
+      ) : null}
+      {claimable && !done ? (
         <Button
           pending={pending}
           onClick={() => run(claim, "The prize was not claimed. Try again.")}

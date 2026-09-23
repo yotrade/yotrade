@@ -6,7 +6,8 @@ import { MAX_LEVERAGE, type OrderPlan, planOrder } from "@yotrade/plugin-perps/m
 import { type FormEvent, useState } from "react";
 import { parseUnits } from "viem";
 
-import { fundGas, GasError } from "@/lib/fund-gas.ts";
+import { describeFailure } from "@/lib/describe-failure.ts";
+import { fundGas } from "@/lib/fund-gas.ts";
 import { leverage, size, usd } from "@/lib/perps-format.ts";
 import { feedOf, PERPS_MARKETS, type PerpsSlug } from "@/lib/perps-markets.ts";
 import type { PerpsSnapshot } from "@/lib/use-perps.ts";
@@ -138,11 +139,7 @@ export function PerpsTicket({
       onDone(`${side} ${size(plan.sizeDelta)} ${label} filled`);
     } catch (cause) {
       console.error("perps trade failed", cause);
-      setError(
-        cause instanceof GasError
-          ? cause.message
-          : "The order did not fill. Nothing changed: check the size and try again.",
-      );
+      setError(describeFailure(cause, "The order did not fill. Nothing changed. Try again."));
     } finally {
       setPending(false);
     }

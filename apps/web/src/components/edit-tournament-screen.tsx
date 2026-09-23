@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { buildMetadata } from "@/lib/create.ts";
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { tournamentMeta } from "@/lib/format.ts";
-import { fundGas, GasError } from "@/lib/fund-gas.ts";
+import { fundGas } from "@/lib/fund-gas.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
@@ -103,9 +104,7 @@ function Editor({ id, organizer, current }: EditorProps) {
       router.push(`/t/${id}`);
     } catch (cause) {
       console.error("setMetadata failed", cause);
-      setFailure(
-        cause instanceof GasError ? cause.message : "The change was not saved. Try again.",
-      );
+      setFailure(describeFailure(cause, "The change was not saved. Try again."));
       setPending(false);
     }
   }

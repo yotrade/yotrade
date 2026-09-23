@@ -15,6 +15,7 @@ import {
   SPLITS,
   START_DELAYS,
 } from "@/lib/create.ts";
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
 import { saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
@@ -319,11 +320,7 @@ export function CreateForm() {
       router.push((await create(built.config)) as Route);
     } catch (cause) {
       console.error("create failed", cause);
-      setFailure(
-        cause instanceof GasError
-          ? cause.message
-          : "The tournament was not created. Nothing was escrowed.",
-      );
+      setFailure(describeFailure(cause, "The tournament was not created. Nothing was escrowed."));
       setPending(false);
     }
   }

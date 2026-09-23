@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { describeFailure } from "@/lib/describe-failure.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { hostInvite, inviteLink } from "@/lib/invite.ts";
@@ -46,8 +47,8 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
       await manager.setInvite(identity.wallet, tournament.id, next.address);
       await queryClient.invalidateQueries({ queryKey: ["invite-signer"] });
       setCopied(false);
-    } catch {
-      setError("The code was not changed. Try again.");
+    } catch (cause) {
+      setError(describeFailure(cause, "The code was not changed. Try again."));
     } finally {
       setPending(false);
     }
