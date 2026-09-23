@@ -31,18 +31,26 @@ Always deploy from a clean build. `forge coverage` compiles with different setti
 
 ```
 src/
-  TournamentManager.sol          entry point: initializer, administration, views, upgrade authorisation
-  TournamentBase.sol             roles, pause, reentrancy guard, shared status checks
-  TournamentStorage.sol          the single ERC-7201 namespace (append only)
-  libraries/PrizeSplit.sol       split validation and prize arithmetic
-  modules/EscrowModule.sol       create, cancel, reclaim, sweep
-  modules/RegistrationModule.sol join, allowlist, trading-account checks
-  modules/ResultsModule.sol      postResults, voidResults, claim
-  venues/KuruVenueAdapter.sol    proves a participant owns a Kuru trading account
-  interfaces/                    ITournamentManager, IVenueAdapter, IAccountCore
+  TournamentManager.sol                  entry point: initializer and upgrade authorisation only
+  TournamentBase.sol                     roles, pause, reentrancy guard, status and organizer guards
+  TournamentStorage.sol                  the single ERC-7201 namespace (append only)
+  libraries/PrizeSplit.sol               split validation and prize arithmetic
+  modules/EscrowModule.sol               the pool in and out: create, cancel, reclaim, sweep
+  modules/HostModule.sol                 what a host changes later: metadata, start now, invite
+  modules/RegistrationModule.sol         join, allowlist, invite signature, trading-account checks
+  modules/ResultsModule.sol              postResults, voidResults, claim
+  modules/AdminModule.sol                venues, dispute window, pause, rescue
+  modules/LensModule.sol                 every read
+  perps/PerpsEngine.sol                  entry point: initializer, markets, pause, reads, upgrades
+  perps/PerpsBase.sol                    roles, risk constants, pricing, valuing, filling, closing
+  perps/modules/PerpsTradingModule.sol   trade, setLeverageCap
+  perps/modules/PerpsSettlementModule.sol liquidate, settle
+  perps/PerpsMath.sol, PerpsStorage.sol  pure arithmetic, the engine's ERC-7201 namespace
+  venues/                                KuruVenueAdapter, PerpsVenueAdapter
+  interfaces/                            ITournamentManager, IPerpsEngine, IVenueAdapter, IPyth, ...
 test/                            unit, guard, regression, invariant and fork suites
 script/                          deployment and upgrade
 lib/                             forge-std, OpenZeppelin (git submodules)
 ```
 
-Modules are abstract contracts over one shared storage namespace, compiled into a single implementation behind one UUPS proxy.
+Modules are abstract contracts over one shared storage namespace, compiled into a single implementation behind one UUPS proxy. One concern per module, one entry point per proxy that only wires them. A refactor that moves code between modules must leave the ABI, the selectors and the storage layout byte-identical; compare `forge inspect <Contract> abi|methodIdentifiers|storageLayout` before and after.
