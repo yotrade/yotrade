@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MarketSymbol, markets, type TokenSymbol, tokens } from "@yotrade/core/addresses";
+import type { MarketInfo } from "@yotrade/plugin-kuru/data";
 import { EmptyBookError, PriceImpactError } from "@yotrade/plugin-kuru/errors";
 import { DEFAULT_MAX_IMPACT_BPS, type SwapQuote } from "@yotrade/plugin-kuru/plugin";
 import { type Book, midPrice } from "@yotrade/plugin-kuru/pricing";
@@ -16,7 +17,7 @@ import {
   orderDetails,
   SLIPPAGE_BPS,
 } from "@/lib/order-details.ts";
-import { parseTicket, shortcutAmount } from "@/lib/ticket.ts";
+import { amountText, fillableWithin, parseTicket, shortcutAmount } from "@/lib/ticket.ts";
 import { TOKEN_LABELS } from "@/lib/tokens.ts";
 import { useDebounced } from "@/lib/use-debounced.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
@@ -54,13 +55,25 @@ interface InfoProps {
   readonly base: TokenSymbol;
   readonly tokenOut: TokenSymbol;
   readonly takerFeeBps: number | undefined;
+  /** What the book fills within the impact cap right now, as amount-field text; undefined until depth is known. */
+  readonly fillable: string | undefined;
+  onUseFillable(): void;
 }
 
 const price = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
 
 /** Everything a venue tells you before you confirm. Rows read "—" until there is an amount to quote. */
-function InfoCard({ book, quote, details, base, tokenOut, takerFeeBps }: InfoProps) {
+function InfoCard({
+  book,
+  quote,
+  details,
+  base,
+  tokenOut,
+  takerFeeBps,
+  fillable,
+  onUseFillable,
+}: InfoProps) {
   const tooMuch = (quote?.impactBps ?? 0) > DEFAULT_MAX_IMPACT_BPS;
   const rows: { label: string; value: string; alert?: boolean }[] = [
     { label: "Order type", value: "Market" },
@@ -103,8 +116,19 @@ function InfoCard({ book, quote, details, base, tokenOut, takerFeeBps }: InfoPro
         ))}
       </dl>
       {tooMuch ? (
-        <p className="text-[13px] leading-5 text-down">
-          Too high for this size: try a smaller amount.
+        <p className="flex flex-wrap items-center gap-x-2 text-[13px] leading-5 text-down">
+          {fillable === undefined || fillable === "0"
+            ? "The book cannot fill this size right now: try a smaller amount."
+            : `The book fills about ${fillable} within ${DEFAULT_MAX_IMPACT_BPS / 100}% right now.`}
+          {fillable !== undefined && fillable !== "0" ? (
+            <button
+              type="button"
+              onClick={onUseFillable}
+              className="rounded-lg bg-accent-soft px-2 py-0.5 font-mono text-[11px] font-bold text-accent focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Use {fillable}
+            </button>
+          ) : null}
         </p>
       ) : null}
     </Card>
@@ -174,6 +198,35 @@ interface Props {
   onDone(message: string): void;
 }
 
+/**
+ * What the book fills within the impact cap, from the same depth the market screen shows. A thin testnet book
+ * must cap the shortcuts, not refuse them later. Fees ride inside the quoted impact, so the cap leaves them room.
+ */
+function useFillable(
+  info: MarketInfo | undefined,
+  isBuy: boolean,
+  base: TokenSymbol,
+  decimalsIn: number,
+): { fillable: bigint | undefined; fillableText: string | undefined } {
+  const { kuru } = useRuntime();
+  const depth = useQuery({
+    queryKey: ["depth", info?.symbol],
+    queryFn: () => (info ? kuru.data.depth(info.symbol, 12) : null),
+    enabled: info !== undefined,
+    refetchInterval: 5_000,
+  });
+  if (!(info && depth.data)) {
+    return { fillable: undefined, fillableText: undefined };
+  }
+  const fillable = fillableWithin(depth.data, isBuy, DEFAULT_MAX_IMPACT_BPS - 50, {
+    pricePrecision: info.pricePrecision,
+    sizePrecision: info.sizePrecision,
+    baseDecimals: tokens[base].decimals,
+    quoteDecimals: tokens.usdc.decimals,
+  });
+  return { fillable, fillableText: amountText(fillable, decimalsIn, isBuy) };
+}
+
 /** A balance that has not loaded is not a balance of zero. */
 function BalanceLine({ loaded, text }: { loaded: boolean; text: string }) {
   return loaded ? `Balance: ${text}` : <Skeleton className="mt-1 h-3 w-20" />;
@@ -211,6 +264,7 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
   const tokenOut: TokenSymbol = isBuy ? base : "usdc";
   const decimals = tokens[tokenIn].decimals;
   const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
+  const { fillable, fillableText } = useFillable(info.data, isBuy, base, decimals);
 
   const settledInput = useDebounced(input, 300);
   const settled = parseTicket(settledInput, decimals, available);
@@ -289,7 +343,9 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
                   className={CHIP}
                   disabled={available === 0n}
                   onClick={() =>
-                    setInput(shortcutAmount(available, percent, decimals, tokenIn === "usdc"))
+                    setInput(
+                      shortcutAmount(available, percent, decimals, tokenIn === "usdc", fillable),
+                    )
                   }
                 >
                   {percent === 100n ? "MAX" : `${percent}%`}
@@ -345,6 +401,8 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
         base={base}
         tokenOut={tokenOut}
         takerFeeBps={info.data?.takerFeeBps}
+        fillable={fillableText}
+        onUseFillable={() => setInput(fillableText ?? "")}
       />
 
       <Button type="submit" pending={pending} disabled={!canFill || tooMuchImpact}>

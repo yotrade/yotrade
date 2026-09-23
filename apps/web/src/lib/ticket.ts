@@ -1,3 +1,4 @@
+import type { Depth } from "@yotrade/plugin-kuru/data";
 import { parseUnits } from "viem";
 
 export type TicketResult =
@@ -44,10 +45,52 @@ export function shortcutAmount(
   percent: bigint,
   decimals: number,
   isDollar: boolean,
+  cap?: bigint,
 ): string {
+  const share = (available * percent) / 100n;
+  return amountText(cap !== undefined && cap < share ? cap : share, decimals, isDollar);
+}
+
+/** An amount as text for the amount field, rounded **down** and without trailing zeros. */
+export function amountText(value: bigint, decimals: number, isDollar: boolean): string {
   const step = 10n ** BigInt(decimals - inputDecimals(decimals, isDollar));
-  const amount = (((available * percent) / 100n) / step) * step;
+  const amount = (value / step) * step;
   const whole = amount / 10n ** BigInt(decimals);
   const fraction = (amount % 10n ** BigInt(decimals)).toString().padStart(decimals, "0").replace(/0+$/, "");
   return fraction === "" ? whole.toString() : `${whole}.${fraction}`;
+}
+
+/**
+ * How much of the paid token the book absorbs within `maxImpactBps` of the top: every level priced inside that
+ * band, summed. A buy pays quote and walks the asks; a sell pays base and walks the bids. Zero when the side is
+ * empty. Prices are in price precision and sizes in size precision, as the depth feed gives them.
+ */
+export function fillableWithin(
+  depth: Depth,
+  isBuy: boolean,
+  maxImpactBps: number,
+  units: {
+    readonly pricePrecision: bigint;
+    readonly sizePrecision: bigint;
+    readonly baseDecimals: number;
+    readonly quoteDecimals: number;
+  },
+): bigint {
+  const levels = isBuy ? depth.asks : depth.bids;
+  const top = levels[0]?.price;
+  if (top === undefined) {
+    return 0n;
+  }
+  const limit = (top * BigInt(isBuy ? 10_000 + maxImpactBps : 10_000 - maxImpactBps)) / 10_000n;
+  let total = 0n;
+  for (const level of levels) {
+    if (isBuy ? level.price > limit : level.price < limit) {
+      break;
+    }
+    total += isBuy
+      ? (level.price * level.size * 10n ** BigInt(units.quoteDecimals)) /
+        (units.pricePrecision * units.sizePrecision)
+      : (level.size * 10n ** BigInt(units.baseDecimals)) / units.sizePrecision;
+  }
+  return total;
 }
