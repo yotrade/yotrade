@@ -108,9 +108,8 @@ function MyStatus({
   return (
     <Card className="flex flex-col gap-4 py-4">
       <div className="flex items-center gap-3">
-        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft">
           <Icon name="check" size={20} />
-          <Icon name="sparkle" size={16} className="absolute -right-1.5 -top-1.5 animate-float" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="font-semibold leading-[21px]">You&apos;re in</p>

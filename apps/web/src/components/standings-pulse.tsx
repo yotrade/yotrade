@@ -34,7 +34,7 @@ export function StandingsPulse({ id, you, onSeeAll }: Props) {
   if (isPending) {
     return (
       <Loading label="Loading standings">
-        <Skeleton className="h-[132px] rounded-2xl" />
+        <Skeleton className="h-[164px] rounded-2xl" />
       </Loading>
     );
   }
@@ -57,39 +57,34 @@ export function StandingsPulse({ id, you, onSeeAll }: Props) {
           Full table
         </button>
       </div>
-      <ol className="flex gap-2">
+      <ol className="flex flex-col gap-2">
         {rows.slice(0, 3).map((row: LeaderboardRow, index) => (
-          <li
-            key={row.participant}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-2xl bg-surface px-1.5 py-3 shadow-row"
-          >
-            <span className="relative">
-              <Avatar
-                address={row.participant}
-                size={40}
-                avatar={profileOf(row.participant)?.avatar}
-              />
-              <span
-                className={`absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full font-mono text-[10px] font-bold ${MEDALS[index]}`}
-              >
-                {index + 1}
-              </span>
+          <li key={row.participant} className="flex items-center gap-3">
+            <span
+              className={`grid size-6 shrink-0 place-items-center rounded-full font-mono text-[11px] font-bold ${MEDALS[index]}`}
+            >
+              {index + 1}
             </span>
-            <p className="w-full truncate text-center text-[11px] font-semibold">
+            <Avatar
+              address={row.participant}
+              size={28}
+              avatar={profileOf(row.participant)?.avatar}
+            />
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold">
               {traderName(row.participant, profileOf(row.participant), row.participant === you)}
             </p>
             <p
-              className={`tabular font-mono text-[11px] font-bold ${row.roiPpm >= 0 ? "text-up" : "text-down"}`}
+              className={`tabular font-mono text-[13px] font-bold ${row.roiPpm >= 0 ? "text-up" : "text-down"}`}
             >
               {roi(row.roiPpm)}
             </p>
           </li>
         ))}
       </ol>
-      {mine ? (
+      {mine && mine.rank > 3 ? (
         <p className="text-sm font-medium text-ink-muted">
           You are <span className="font-semibold text-ink">#{mine.rank}</span> of {rows.length}
-          {mine.fills === 0 ? " · make a trade to get on the board" : ""}
+          {mine.fills === 0 ? ". Trade once to get on the board." : "."}
         </p>
       ) : (
         <p className="text-sm font-medium text-ink-muted">
