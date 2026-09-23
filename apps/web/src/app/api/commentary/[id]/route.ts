@@ -43,7 +43,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     const now = BigInt(Math.floor(Date.now() / 1000));
     const facts = factsOf(board, phaseAt(board.tournament, now), now);
-    return NextResponse.json(await commentator(id, facts, language));
+    const { text, generatedAt } = await commentator(id, facts, language);
+    return NextResponse.json({ text, generatedAt });
   } catch {
     return NextResponse.json(
       { error: "The commentator is catching their breath" },
