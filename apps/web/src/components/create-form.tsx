@@ -1,6 +1,6 @@
 "use client";
 
-import { tokens, yotrade } from "@yotrade/core/addresses";
+import { tokens } from "@yotrade/core/addresses";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
 import { tournamentManagerAbi } from "@yotrade/plugin-tournament/abi";
 import type { Route } from "next";
@@ -29,14 +29,12 @@ import { Segmented } from "./ui/segmented.tsx";
 import { Select } from "./ui/select.tsx";
 
 const VENUES = ["Spot", "Futures"] as const;
-const LEVERAGES = ["5x", "20x", "100x"] as const;
 const VISIBILITIES = ["Public", "Private"] as const;
 
 const keys = <T extends object>(value: T) => Object.keys(value) as (keyof T & string)[];
 
 const INITIAL: Form = {
   venue: "spot",
-  leverage: "20",
   visibility: "public",
   name: "",
   image: "",
@@ -95,9 +93,7 @@ function Review({ form }: { form: Form }) {
     ["Logo", form.image.trim() ? "Custom" : "Default"],
     ["Market", form.venue === "futures" ? "Futures · Pyth" : "Spot · Kuru"],
     ["Who can join", form.visibility === "private" ? "Invite link only" : "Anyone"],
-    ...(form.venue === "futures"
-      ? [["Leverage", `Up to ${form.leverage}x`] satisfies [string, string]]
-      : []),
+    ...(form.venue === "futures" ? [["Leverage", "Up to 100x"] satisfies [string, string]] : []),
     ["Prize", `${form.prizePool || "0"} USDC · ${form.split}`],
     ["Runs", `${form.startDelay.toLowerCase()} for ${form.duration}`],
     ["Traders", `Up to ${form.maxParticipants || "—"}`],
@@ -151,26 +147,10 @@ function StepFields({ step, form, set, errorFor, onLogoStatus, wallet }: StepPro
             onChange={(v) => set("venue", v === "Futures" ? "futures" : "spot")}
             hint={
               form.venue === "futures"
-                ? "Long or short BTC, ETH and SOL at Pyth prices. Everyone starts with a virtual $10,000."
+                ? "Long or short BTC, ETH and SOL with up to 100x, at Pyth prices. Everyone starts with a virtual $10,000."
                 : "Buy and sell real tokens on Kuru's order books with test funds."
             }
           />
-          {form.venue === "futures" ? (
-            <Choice
-              label="Leverage cap"
-              options={LEVERAGES}
-              value={`${form.leverage}x`}
-              onChange={(v) => set("leverage", v.slice(0, -1) as Form["leverage"])}
-              hint={
-                {
-                  "5": "For newcomers: a 10% move against a full position is what it takes to be liquidated.",
-                  "20": "The default: 2.5% maintenance margin, liquidation at a 2.5% move against a full position.",
-                  "100":
-                    "For the bold: 0.5% maintenance margin. One bad candle and the position is gone.",
-                }[form.leverage]
-              }
-            />
-          ) : null}
           <Choice
             label="Who can join"
             options={VISIBILITIES}
@@ -235,7 +215,7 @@ function StepFields({ step, form, set, errorFor, onLogoStatus, wallet }: StepPro
 
 export function CreateForm() {
   const router = useRouter();
-  const { publicClient, kuru, tournament, perps } = useRuntime();
+  const { publicClient, kuru, tournament } = useRuntime();
   const { identity } = useIdentity();
   const [form, setForm] = useState(INITIAL);
   const [invalid, setInvalid] = useState<{ field: keyof Form; reason: string }>();
@@ -279,10 +259,6 @@ export function CreateForm() {
       logs: receipt.logs,
     });
     const id = created?.args.id;
-    // The default cap costs nothing; any other one is a second transaction while it is still allowed.
-    if (id !== undefined && config.venue === yotrade.perpsVenueAdapter && form.leverage !== "20") {
-      await perps.setLeverageCap(wallet, id, BigInt(form.leverage));
-    }
     if (id === undefined || form.visibility !== "private" || !identity) {
       return id === undefined ? "/" : `/t/${id}`;
     }
@@ -298,7 +274,6 @@ export function CreateForm() {
     name: 0,
     image: 0,
     venue: 0,
-    leverage: 0,
     visibility: 0,
     prizePool: 1,
     split: 1,

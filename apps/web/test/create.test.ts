@@ -4,7 +4,6 @@ import { buildConfig, buildMetadata, type CreateForm } from "../src/lib/create.t
 import { isPrivate, tournamentMeta, tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
-  leverage: "20",
   venue: "spot",
   visibility: "public",
   image: "",
