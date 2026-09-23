@@ -15,10 +15,11 @@ import type { IndexedTournament } from "@/lib/indexer.ts";
 import { loadInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
 import { JOIN_STEPS, type JoinDeps, type JoinStep, runJoin } from "@/lib/join.ts";
 import { toUsdc } from "@/lib/perps-markets.ts";
-import { isEmpty, loadProfile, publishProfile } from "@/lib/profile.ts";
+import { isEmpty, loadProfile, parseProfile, publishProfile } from "@/lib/profile.ts";
 import type { AppRuntime } from "@/lib/runtime.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { usePerps } from "@/lib/use-perps.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { type Venue, venueOf } from "@/lib/venue.ts";
@@ -143,6 +144,9 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   const queryClient = useQueryClient();
   const [step, setStep] = useState<JoinStep | null>(null);
   const [error, setError] = useState<string>();
+  const [localProfile, setLocalProfile] = useLocalProfile();
+  const named = localProfile.name !== "";
+  const [nickname, setNickname] = useState("");
 
   const wallet = identity?.tournamentWallet(tournament.id);
   const venue = venueOf(tournament.venue);
@@ -213,7 +217,12 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
         setStep,
         venue,
       );
-      const profile = loadProfile();
+      let profile = loadProfile();
+      const picked = parseProfile(nickname, profile.avatar);
+      if (!(named || "error" in picked) && picked.name !== "") {
+        profile = picked;
+        setLocalProfile(profile);
+      }
       if (!isEmpty(profile)) {
         // Cosmetic: a trader who joined must never see "joining failed" because a name did not save.
         await publishProfile(runtime.publicClient, wallet, profile).catch(() => undefined);
@@ -254,6 +263,17 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
           {error}
         </p>
       ) : null}
+      {named ? null : (
+        <Field
+          label="Your name on the board"
+          placeholder="Ayu"
+          maxLength={24}
+          autoComplete="nickname"
+          value={nickname}
+          onChange={(event) => setNickname(event.target.value)}
+          hint="Optional. You can change it later in Account."
+        />
+      )}
       <Button pending={step !== null} onClick={join}>
         Join tournament
       </Button>

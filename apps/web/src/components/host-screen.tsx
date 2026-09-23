@@ -19,6 +19,7 @@ import { useLeaderboard } from "@/lib/use-leaderboard.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
+import { useChainSchedule, withChainSchedule } from "@/lib/use-schedule.ts";
 import { Avatar } from "./ui/avatar.tsx";
 import { QrCode } from "./ui/qr-code.tsx";
 
@@ -323,11 +324,13 @@ function Stage({
 /** The projector view: join instructions on one side, the game on the other. Built to be read across a room. */
 export function HostScreen({ id }: { id: string }) {
   const now = useNow();
-  const { data } = useQuery({
+  const indexed = useQuery({
     queryKey: ["tournament", id],
     queryFn: () => indexer.tournament(BigInt(id)),
     refetchInterval: 3_000,
   });
+  const schedule = useChainSchedule(id);
+  const data = indexed.data ? withChainSchedule(indexed.data, schedule.data) : indexed.data;
   const commentary = useQuery({
     queryKey: ["commentary", id, "en"],
     queryFn: async () => {
