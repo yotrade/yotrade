@@ -2,13 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { Address } from "viem";
 
 import { formatUsdc, isPrivate, shortAddress, timeLeft, tournamentMeta } from "@/lib/format.ts";
 import type { IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { indexer } from "@/lib/indexer-client.ts";
 import { inviteFromUrl, saveInvite } from "@/lib/invite.ts";
+import { roomCode, spaced } from "@/lib/room-code.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useNow } from "@/lib/use-now.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
@@ -45,6 +46,28 @@ function Shell({ title, children }: { title: string | null; children: ReactNode 
       </header>
       {children}
     </main>
+  );
+}
+
+/** The game code, big enough to read out, one tap to copy. */
+function RoomCodeChip({ id }: { id: bigint }) {
+  const [copied, setCopied] = useState(false);
+  const code = roomCode(id);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(code).catch(() => undefined);
+        setCopied(true);
+      }}
+      aria-label={`Game code ${code}, copy`}
+      className="flex shrink-0 flex-col items-end rounded-2xl bg-white/15 px-3 py-2 transition duration-200 hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-white active:scale-[0.97]"
+    >
+      <span className="text-[11px] font-semibold opacity-80">
+        {copied ? "Copied" : "Game code"}
+      </span>
+      <span className="tabular font-mono text-lg font-bold tracking-[0.12em]">{spaced(code)}</span>
+    </button>
   );
 }
 
@@ -203,12 +226,15 @@ export function TournamentDetail({ id }: { id: string }) {
 
       {/* Kit wallet card, full width: the one number that matters, then the facts around it. */}
       <section className="flex flex-col gap-5 rounded-[28px] bg-accent p-5 text-accent-ink shadow-button">
-        <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium opacity-80">Prize pool</p>
-          <p className="tabular text-[40px] font-bold leading-none tracking-tight">
-            <span className="mr-0.5 align-top text-lg font-semibold opacity-70">$</span>
-            {formatUsdc(data.prizePool)}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <p className="text-[13px] font-medium opacity-80">Prize pool</p>
+            <p className="tabular text-[40px] font-bold leading-none tracking-tight">
+              <span className="mr-0.5 align-top text-lg font-semibold opacity-70">$</span>
+              {formatUsdc(data.prizePool)}
+            </p>
+          </div>
+          <RoomCodeChip id={data.id} />
         </div>
         <PrizeSplit pool={data.prizePool} splitBps={data.prizeSplitBps} />
         <dl className="grid grid-cols-3 gap-2 border-t border-white/20 pt-4 text-[13px]">
