@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
-import { MAX_LEVERAGE, type OrderPlan, planOrder } from "@yotrade/plugin-perps/math";
+import { type OrderPlan, planOrder } from "@yotrade/plugin-perps/math";
 import { type FormEvent, useState } from "react";
 import { parseUnits } from "viem";
 
@@ -17,7 +17,12 @@ import { Segmented } from "./ui/segmented.tsx";
 
 export type PerpsSide = "Long" | "Short";
 const SIDES = ["Long", "Short"] as const;
-const LEVERAGES = ["1x", "2x", "5x", "10x", "20x"] as const;
+/** The multiples on offer under each cap. "5x" is in every list, so the default never has to move. */
+const LEVERAGES: Record<string, readonly string[]> = {
+  "5": ["1x", "2x", "5x"],
+  "20": ["1x", "2x", "5x", "10x", "20x"],
+  "100": ["1x", "5x", "10x", "20x", "50x", "100x"],
+};
 const SHORTCUTS = [25n, 50n, 100n] as const;
 const CHIP =
   "rounded-lg bg-accent-soft px-2 py-1 font-mono text-[11px] font-bold text-accent transition duration-200 hover:bg-accent/20 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40";
@@ -69,11 +74,16 @@ function Details({ plan, price, label }: { plan: OrderPlan | null; price: bigint
   );
 }
 
-function problemOf(margin: string, typed: bigint, plan: OrderPlan | null): string | undefined {
+function problemOf(
+  margin: string,
+  typed: bigint,
+  plan: OrderPlan | null,
+  cap: bigint,
+): string | undefined {
   if (margin.trim() !== "" && typed === 0n) {
     return "Enter dollars, with cents at most";
   }
-  return plan && !plan.withinCap ? "That is more than 20x of your equity" : undefined;
+  return plan && !plan.withinCap ? `That is more than ${cap}x of your equity` : undefined;
 }
 
 /** Margin times leverage is the order. Everything shown is what the contract will compute at this price. */
@@ -90,14 +100,16 @@ export function PerpsTicket({
   const { publicClient, perps } = useRuntime();
   const queryClient = useQueryClient();
   const [margin, setMargin] = useState("");
-  const [times, setTimes] = useState<(typeof LEVERAGES)[number]>("5x");
+  const [times, setTimes] = useState("5x");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const { label } = PERPS_MARKETS[slug];
   const multiple = BigInt(times.slice(0, -1));
 
-  // Margin not already backing open positions, at the venue's 20x initial requirement.
-  const used = snapshot.risk.notional / MAX_LEVERAGE;
+  const cap = snapshot.leverageCap;
+  const leverages = LEVERAGES[cap.toString()] ?? LEVERAGES["20"] ?? [];
+  // Margin not already backing open positions, at the tournament's initial requirement.
+  const used = snapshot.risk.notional / cap;
   const free = snapshot.risk.equity > used ? snapshot.risk.equity - used : 0n;
 
   const typed = /^\d+(\.\d{1,2})?$/.test(margin.trim()) ? parseUnits(margin.trim(), 18) : 0n;
@@ -110,10 +122,11 @@ export function PerpsTicket({
           price,
           side: side === "Long" ? "long" : "short",
           notionalUsd: typed * multiple,
+          cap,
         })
       : null;
 
-  const problem = problemOf(margin, typed, plan);
+  const problem = problemOf(margin, typed, plan, cap);
 
   function shortcut(percent: bigint) {
     // A hair under the cap: the fee comes out of equity in the same fill.
@@ -188,12 +201,7 @@ export function PerpsTicket({
         </div>
       </div>
 
-      <Segmented<(typeof LEVERAGES)[number]>
-        label="Leverage"
-        options={LEVERAGES}
-        value={times}
-        onChange={setTimes}
-      />
+      <Segmented<string> label="Leverage" options={leverages} value={times} onChange={setTimes} />
 
       <Details plan={plan} price={price} label={label} />
 

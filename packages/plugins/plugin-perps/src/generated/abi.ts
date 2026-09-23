@@ -7,6 +7,19 @@ export const perpsEngineAbi = [
   },
   {
     "type": "function",
+    "name": "CONF_DIVISOR",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "DEFAULT_ADMIN_ROLE",
     "inputs": [],
     "outputs": [
@@ -14,6 +27,19 @@ export const perpsEngineAbi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "DEFAULT_LEVERAGE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -33,33 +59,7 @@ export const perpsEngineAbi = [
   },
   {
     "type": "function",
-    "name": "MAINTENANCE_BPS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MAX_CONF_BPS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MAX_LEVERAGE",
+    "name": "MAINTENANCE_NUMERATOR",
     "inputs": [],
     "outputs": [
       {
@@ -371,6 +371,25 @@ export const perpsEngineAbi = [
   },
   {
     "type": "function",
+    "name": "leverageCapOf",
+    "inputs": [
+      {
+        "name": "tournamentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "liquidate",
     "inputs": [
       {
@@ -560,6 +579,24 @@ export const perpsEngineAbi = [
   },
   {
     "type": "function",
+    "name": "setLeverageCap",
+    "inputs": [
+      {
+        "name": "tournamentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setMarket",
     "inputs": [
       {
@@ -730,6 +767,25 @@ export const perpsEngineAbi = [
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LeverageCapUpdated",
+    "inputs": [
+      {
+        "name": "tournamentId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1108,6 +1164,17 @@ export const perpsEngineAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidLeverage",
+    "inputs": [
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InvalidPrice",
     "inputs": []
   },
@@ -1141,6 +1208,11 @@ export const perpsEngineAbi = [
   {
     "type": "error",
     "name": "NotLiquidatable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOrganizer",
     "inputs": []
   },
   {
@@ -1212,6 +1284,11 @@ export const perpsEngineAbi = [
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "TournamentStarted",
+    "inputs": []
   },
   {
     "type": "error",

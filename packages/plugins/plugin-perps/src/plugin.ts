@@ -76,6 +76,22 @@ export function perps(options: PerpsOptions) {
 
     return {
       account,
+      /** The tournament's leverage cap: 5, 20 or 100. */
+      leverageCapOf: (tournamentId: bigint) =>
+        publicClient.readContract({
+          ...contract,
+          functionName: "leverageCapOf",
+          args: [tournamentId],
+        }),
+      /** Sets the cap. Only the organizer, only before the start, only 5, 20 or 100. */
+      setLeverageCap: (wallet: Wallet, tournamentId: bigint, cap: bigint) =>
+        confirm(
+          wallet.writeContract({
+            ...contract,
+            functionName: "setLeverageCap",
+            args: [tournamentId, cap],
+          }),
+        ),
 
       /** Newest prices (USD 1e18) and the signed update that proves them. */
       latest: options.hermes.latest,
@@ -103,6 +119,22 @@ export function perps(options: PerpsOptions) {
         );
       },
 
+      /** Closes every position of `trader` at the newest Pyth price when the account is under maintenance. */
+      async liquidate(
+        wallet: Wallet,
+        target: { tournamentId: bigint; trader: Address },
+      ): Promise<Hash> {
+        const { positions } = await account(target.tournamentId, target.trader);
+        const { updates } = await options.hermes.latest(positions.map((p) => p.market));
+        return confirm(
+          wallet.writeContract({
+            ...contract,
+            functionName: "liquidate",
+            args: [target.tournamentId, target.trader, updates],
+            value: await feeOf(updates),
+          }),
+        );
+      },
       /** Closes every position of `trader` at the first Pyth price at or after `endTime`. Anyone may call. */
       async settle(
         wallet: Wallet,

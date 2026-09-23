@@ -30,7 +30,7 @@ const REVERTS: Record<string, string> = {
   NotAParticipant: "This account is not in the tournament.",
   MarketDisabled: "This market is switched off.",
   PriceTooUncertain: "The oracle price is too uncertain right now. Try again in a moment.",
-  ExceedsLeverage: "That would exceed 20x. Reduce the size.",
+  ExceedsLeverage: "That would exceed this tournament's leverage cap. Reduce the size.",
   IncorrectFee: "The price update fee changed. Try again.",
   NothingToSettle: "There is nothing to settle.",
   NotLiquidatable: "That position is not liquidatable.",

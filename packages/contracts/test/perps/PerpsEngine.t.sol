@@ -280,7 +280,7 @@ contract PerpsEngineTest is PerpsFixture {
         engine.trade{value: 1}(id, BTC, 1e18, wide);
 
         // An update older than the limit leaves the stored price stale.
-        bytes[] memory old = _one(_encode(ETH, 3000e8, 0, time - 31, time - 32));
+        bytes[] memory old = _one(_encode(ETH, 3000e8, 0, time - 11, time - 12));
         vm.expectRevert(MockPyth.StalePrice.selector);
         vm.prank(alice);
         engine.trade{value: 1}(id, ETH, 1e18, old);
@@ -422,6 +422,80 @@ contract PerpsEngineTest is PerpsFixture {
     // ---------------------------------------------------------------------------------------------------------
 
     /// @dev A round trip pays the price move minus two fees, and never leaves less than zero.
+    // ---------------------------------------------------------------------------------------------------------
+    // Leverage cap per tournament
+    // ---------------------------------------------------------------------------------------------------------
+
+    function test_setLeverageCap_onlyTheOrganizerBeforeTheStartWithAnAllowedValue() public {
+        uint256 next = _create(address(adapter), end + 1 hours, end + 2 hours);
+        assertEq(engine.leverageCapOf(next), 20);
+
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.InvalidLeverage.selector, 50));
+        vm.prank(organizer);
+        engine.setLeverageCap(next, 50);
+
+        vm.expectRevert(IPerpsEngine.NotOrganizer.selector);
+        vm.prank(alice);
+        engine.setLeverageCap(next, 100);
+
+        vm.expectEmit();
+        emit IPerpsEngine.LeverageCapUpdated(next, 100);
+        vm.prank(organizer);
+        engine.setLeverageCap(next, 100);
+        assertEq(engine.leverageCapOf(next), 100);
+
+        // The running tournament of the fixture has started: its cap is fixed.
+        vm.expectRevert(IPerpsEngine.TournamentStarted.selector);
+        vm.prank(organizer);
+        engine.setLeverageCap(id, 5);
+
+        // A tournament on another venue has no cap here.
+        address other = makeAddr("other-venue");
+        vm.prank(admin);
+        manager.setVenueApproval(other, true);
+        uint256 spot = _create(other, end + 1 hours, end + 2 hours);
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.WrongVenue.selector, other));
+        vm.prank(organizer);
+        engine.setLeverageCap(spot, 5);
+    }
+
+    /// @dev Two tournaments over the same window: one at 100x, one left at the default.
+    function _hundredX() internal returns (uint256 next, uint256 plain) {
+        next = _create(address(adapter), end + 1 hours, end + 2 hours);
+        plain = _create(address(adapter), end + 1 hours, end + 2 hours);
+        vm.prank(organizer);
+        engine.setLeverageCap(next, 100);
+        _join(next, alice);
+        _join(next, bob);
+        _join(plain, bob);
+        vm.warp(end + 1 hours);
+    }
+
+    function test_trade_atAHundredXTheCapMarginAndConfidenceFollow() public {
+        (uint256 next, uint256 plain) = _hundredX();
+        uint64 time = uint64(vm.getBlockTimestamp());
+
+        // 15 BTC is 900,000 of notional against 100 x (10,000 - 450): fine at 100x, four times over at 20x.
+        vm.prank(alice);
+        engine.trade{value: 1}(next, BTC, 15e18, _one(_quote(BTC, 60_000)));
+        assertEq(engine.positionOf(next, alice, BTC).size, 15e18);
+
+        // Confidence of 0.3% is inside 20x's 62 bps and outside 100x's 12 bps.
+        bytes[] memory noisy = _one(_encode(ETH, 3000e8, 9e8, time, time - 1));
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.PriceTooUncertain.selector, ETH));
+        vm.prank(bob);
+        engine.trade{value: 1}(next, ETH, 1e18, noisy);
+        vm.prank(bob);
+        engine.trade{value: 1}(plain, ETH, 1e18, _one(_encode(ETH, 3000e8, 9e8, time, time - 1)));
+
+        // BTC at 59,500: equity 10,000 - 450 - 7,500 = 2,050 against 0.5% of 892,500 = 4,462.5.
+        vm.warp(time + 1);
+        vm.expectEmit();
+        emit IPerpsEngine.Liquidated(next, alice, bob, 2050e18);
+        vm.prank(bob);
+        engine.liquidate{value: 1}(next, alice, _one(_quote(BTC, 59_500)));
+    }
+
     function testFuzz_roundTrip(int256 size, uint256 exit) public {
         size = bound(size, -3e18, 3e18);
         vm.assume(size != 0);
@@ -447,7 +521,7 @@ contract PerpsEngineTest is PerpsFixture {
         vm.prank(alice);
         try engine.trade{value: 1}(id, BTC, size, updates) {
             uint256 notional = uint256(size < 0 ? -size : size) * usd;
-            assertLe(notional, uint256(_balance(alice)) * engine.MAX_LEVERAGE());
+            assertLe(notional, uint256(_balance(alice)) * engine.leverageCapOf(id));
         } catch (bytes memory reason) {
             assertEq(bytes4(reason), IPerpsEngine.ExceedsLeverage.selector);
         }

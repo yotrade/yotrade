@@ -90,10 +90,10 @@ The futures venue: cross-margin paper perpetuals priced by Pyth. It holds no val
 
 | Threat | Mitigation |
 |---|---|
-| Choosing a convenient price for a fill | The fill uses the price stored in Pyth after the caller's update, at most 30 seconds old. Pyth ignores updates older than the one it holds, so any fresher price pushed by anyone wins |
+| Choosing a convenient price for a fill | The fill uses the price stored in Pyth after the caller's update, at most 10 seconds old: at 100x a wider window would let a stored update be cashed in for a third of the account. Pyth ignores updates older than the one it holds, so any fresher price pushed by anyone wins |
 | Choosing a convenient settlement price | `settle` accepts only the first Pyth update at or after the end time (`parsePriceFeedUpdatesUnique`). Whoever settles, the price is the same |
 | Trading on a wide or broken price | Fills revert when the confidence interval exceeds 2% of the price, and on non-positive prices or exponents outside `[-18, 0]` |
-| Unlimited leverage as a free option, since losses are floored at zero | Fills that add risk must keep total notional within 20x equity across all markets. Anyone can liquidate an account under 2.5% maintenance margin, which rivals are motivated to do |
+| Unlimited leverage as a free option, since losses are floored at zero | Fills that add risk must keep total notional within the tournament's cap (5x, 20x or 100x, chosen by the organizer before the start, 20x by default) across all markets. Anyone can liquidate an account under the maintenance margin, half the initial margin (10%, 2.5% or 0.5%), which rivals are motivated to do; a liquidator in CI does it when nobody else does. Pyth's confidence must stay under a quarter of that margin or the fill is refused |
 | Trading outside the tournament, or by a non-participant | Schedule, venue and roster are read from the TournamentManager on every call; the engine keeps no copy |
 | Locking a trader into a position | Fills that reduce risk skip the leverage and market checks. Pausing never blocks `settle` |
 | Unbounded loops over positions | An account only lists markets the admin enabled and its owner opened |

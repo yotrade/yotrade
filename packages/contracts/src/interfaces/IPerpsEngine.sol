@@ -27,6 +27,7 @@ interface IPerpsEngine {
     );
     event Liquidated(uint256 indexed tournamentId, address indexed trader, address indexed liquidator, int256 balance);
     event Settled(uint256 indexed tournamentId, address indexed trader, int256 balance);
+    event LeverageCapUpdated(uint256 indexed tournamentId, uint256 cap);
 
     error ZeroAddress();
     error ZeroSize();
@@ -40,6 +41,9 @@ interface IPerpsEngine {
     error NotLiquidatable();
     error NothingToSettle();
     error IncorrectFee(uint256 required);
+    error InvalidLeverage(uint256 cap);
+    error NotOrganizer();
+    error TournamentStarted();
 
     /// @notice Fills `sizeDelta` of `market` for the caller at the Pyth price carried by `priceUpdate`.
     /// @dev `priceUpdate` must cover `market` and, when the fill adds risk, every market the caller already has a
@@ -66,4 +70,10 @@ interface IPerpsEngine {
     function positionOf(uint256 tournamentId, address trader, bytes32 market) external view returns (Position memory);
 
     function isMarketEnabled(bytes32 market) external view returns (bool);
+
+    /// @notice Sets the leverage cap of a tournament: 5, 20 or 100. Only its organizer, only before it starts.
+    function setLeverageCap(uint256 tournamentId, uint256 cap) external;
+
+    /// @notice The leverage cap of a tournament; the default when the organizer never set one.
+    function leverageCapOf(uint256 tournamentId) external view returns (uint256);
 }

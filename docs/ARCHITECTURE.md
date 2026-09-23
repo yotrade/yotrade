@@ -26,7 +26,7 @@ flowchart LR
 
 | Part | Role |
 |---|---|
-| `packages/contracts` | `TournamentManager`: registry, prize escrow, results, dispute window, claims. Venue adapters prove a trading account belongs to the participant. `PerpsEngine`: cross-margin paper perpetuals, 20x cap, permissionless liquidation, settlement at the first Pyth price after the end. |
+| `packages/contracts` | `TournamentManager`: registry, prize escrow, results, dispute window, claims. Venue adapters prove a trading account belongs to the participant. `PerpsEngine`: cross-margin paper perpetuals, a leverage cap per tournament (5x, 20x or 100x, set by the host before the start) with maintenance margin and price confidence that follow it, permissionless liquidation, settlement at the first Pyth price after the end. |
 | `apps/indexer` | Envio HyperIndex: tournaments, entries, results and trader stats as GraphQL. |
 | `packages/core` | Plugin runtime: `definePlugin` and `createRuntime` give every integration the same client and chain. |
 | `packages/plugins/*` | `plugin-mera` (passkey accounts), `plugin-kuru` (faucet, deposits, quotes, swaps, PnL), `plugin-tournament` (typed contract client), `plugin-perps` (futures client, the engine's math in `bigint`, Hermes), `plugin-alchemy` (RPC). |

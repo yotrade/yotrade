@@ -36,15 +36,17 @@ contract PerpsEngine is
     int256 public constant STARTING_BALANCE = 10_000e18;
     /// @notice Taker fee on every fill.
     uint256 public constant FEE_BPS = 5;
-    /// @notice A fill that adds risk must leave total notional within this multiple of equity.
-    uint256 public constant MAX_LEVERAGE = 20;
-    /// @notice An account is liquidatable once equity is under this share of its total notional.
-    uint256 public constant MAINTENANCE_BPS = 250;
-    /// @notice Fills use a price at most this old, which bounds how far back a trader can pick a price. Wide
-    /// enough for Hermes plans that refresh every ten seconds; any newer price someone pushed wins regardless.
-    uint256 public constant MAX_PRICE_AGE = 30;
-    /// @notice Fills are refused while Pyth's confidence interval is wider than this share of the price.
-    uint256 public constant MAX_CONF_BPS = 200;
+    /// @notice Leverage cap of a tournament whose organizer never set one.
+    uint256 public constant DEFAULT_LEVERAGE = 20;
+    /// @notice Maintenance margin is half the initial margin: `MAINTENANCE_NUMERATOR / cap` basis points, so
+    /// 1,000 at 5x, 250 at 20x and 50 at 100x. An account is liquidatable under that share of its notional.
+    uint256 public constant MAINTENANCE_NUMERATOR = 5000;
+    /// @notice Pyth's confidence interval must stay under a quarter of the maintenance margin, or a fill at the
+    /// cap could be inside the noise: 250 bps at 5x, 62 at 20x, 12 at 100x.
+    uint256 public constant CONF_DIVISOR = 4;
+    /// @notice Fills use a price at most this old. The trader brings the update, so this is how far back they
+    /// can shop for a price; at 100x a thirty-second window would be worth a third of the account.
+    uint256 public constant MAX_PRICE_AGE = 10;
     /// @notice Settlement accepts the first price published within this many seconds after the end.
     uint64 public constant SETTLE_WINDOW = 60;
 
@@ -103,12 +105,13 @@ contract PerpsEngine is
         _pushPrices($, priceUpdate);
 
         Account storage a = $.accounts[tournamentId][msg.sender];
-        Fill memory f = _fill(a, market, sizeDelta, _price($, market));
+        uint256 cap = _cap($, tournamentId);
+        Fill memory f = _fill(a, market, sizeDelta, _price($, market, cap));
         if (f.addsRisk) {
             // Only fills that add risk are checked, so a trader can always reduce, even in a disabled market.
             if (!$.markets[market]) revert MarketDisabled(market);
-            (int256 equity, uint256 notional) = _risk(a, _prices($, a));
-            uint256 allowed = equity > 0 ? equity.toUint256() * MAX_LEVERAGE : 0;
+            (int256 equity, uint256 notional) = _risk(a, _prices($, a, cap));
+            uint256 allowed = equity > 0 ? equity.toUint256() * cap : 0;
             if (notional > allowed) revert ExceedsLeverage(notional, allowed);
         }
         emit Traded(tournamentId, msg.sender, market, sizeDelta, f.price, f.realized, f.fee, f.newSize, f.balance);
@@ -128,9 +131,12 @@ contract PerpsEngine is
         _pushPrices($, priceUpdate);
 
         Account storage a = $.accounts[tournamentId][trader];
-        uint256[] memory prices = _prices($, a);
+        uint256 cap = _cap($, tournamentId);
+        uint256[] memory prices = _prices($, a, cap);
         (int256 equity, uint256 notional) = _risk(a, prices);
-        if (equity * PerpsMath.BPS.toInt256() >= (notional * MAINTENANCE_BPS).toInt256()) revert NotLiquidatable();
+        if (equity * PerpsMath.BPS.toInt256() >= (notional * _maintenanceBps(cap)).toInt256()) {
+            revert NotLiquidatable();
+        }
 
         _closeAll(a, prices);
         emit Liquidated(tournamentId, trader, msg.sender, STARTING_BALANCE + a.realized);
@@ -160,6 +166,23 @@ contract PerpsEngine is
 
         _closeAll(a, prices);
         emit Settled(tournamentId, trader, STARTING_BALANCE + a.realized);
+    }
+
+    /// @inheritdoc IPerpsEngine
+    function setLeverageCap(uint256 tournamentId, uint256 cap) external {
+        if (cap != 5 && cap != DEFAULT_LEVERAGE && cap != 100) revert InvalidLeverage(cap);
+        Layout storage $ = _layout();
+        // Only the organizer matters here; the rest of the state is the manager's business.
+        // slither-disable-next-line unused-return
+        // forge-lint: disable-next-line(unused-return)
+        (address organizer,,,,) = $.manager.getState(tournamentId);
+        if (msg.sender != organizer) revert NotOrganizer();
+        ITournamentManager.Config memory config = $.manager.getConfig(tournamentId);
+        if (config.venue != $.adapter) revert WrongVenue(config.venue);
+        // Traders size their positions to the cap they joined under; it cannot move once trading is possible.
+        if (block.timestamp >= config.startTime) revert TournamentStarted();
+        $.leverageCaps[tournamentId] = cap;
+        emit LeverageCapUpdated(tournamentId, cap);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -203,6 +226,11 @@ contract PerpsEngine is
     /// @inheritdoc IPerpsEngine
     function isMarketEnabled(bytes32 market) external view returns (bool) {
         return _layout().markets[market];
+    }
+
+    /// @inheritdoc IPerpsEngine
+    function leverageCapOf(uint256 tournamentId) external view returns (uint256) {
+        return _cap(_layout(), tournamentId);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -257,24 +285,34 @@ contract PerpsEngine is
     /// @dev Fresh, confident price of `market` in USD 1e18. Called once per open market: an account is valued
     /// whole or not at all, so one unusable price must fail the call. The loop is over the account's own
     /// markets, which only its owner can grow.
-    function _price(Layout storage $, bytes32 market) private view returns (uint256 price) {
+    function _cap(Layout storage $, uint256 tournamentId) private view returns (uint256 cap) {
+        cap = $.leverageCaps[tournamentId];
+        if (cap == 0) cap = DEFAULT_LEVERAGE;
+    }
+
+    function _maintenanceBps(uint256 cap) private pure returns (uint256) {
+        return MAINTENANCE_NUMERATOR / cap;
+    }
+
+    function _price(Layout storage $, bytes32 market, uint256 cap) private view returns (uint256 price) {
         // forge-lint: disable-next-line(calls-loop)
         IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
         price = PerpsMath.toWad(quote.price, quote.expo);
-        // `toWad` rejected non-positive prices, and `conf` shares the price's exponent.
+        // conf / price > (maintenance / CONF_DIVISOR) with maintenance = NUMERATOR / cap, cross-multiplied so
+        // nothing is divided. `toWad` rejected non-positive prices, and `conf` shares the price's exponent.
         // forge-lint: disable-next-line(unsafe-typecast)
-        if (quote.conf > uint256(uint64(quote.price)) * MAX_CONF_BPS / PerpsMath.BPS) {
+        if (quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap > uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR) {
             // forge-lint: disable-next-line(require-revert-in-loop)
             revert PriceTooUncertain(market);
         }
     }
 
     /// @dev Current price of every open market, in `openMarkets` order.
-    function _prices(Layout storage $, Account storage a) private view returns (uint256[] memory prices) {
+    function _prices(Layout storage $, Account storage a, uint256 cap) private view returns (uint256[] memory prices) {
         uint256 count = a.openMarkets.length;
         prices = new uint256[](count);
         for (uint256 i; i < count; ++i) {
-            prices[i] = _price($, a.openMarkets[i]);
+            prices[i] = _price($, a.openMarkets[i], cap);
         }
     }
 
