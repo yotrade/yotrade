@@ -31,9 +31,10 @@ const TARGETS: { market: MarketSymbol; binance: string }[] = [
   { market: "XAUt0/USDC", binance: "PAXGUSDT" },
   { market: "cbBTC/USDC", binance: "BTCUSDT" },
 ];
-const LEVELS = 5;
+const LEVELS = 8;
 const STEP_BPS = 15n;
-const QUOTE_PER_MARKET = 3_000_000_000n;
+/** Half of one faucet claim per market, so a day of inventory rests on both books. */
+const QUOTE_PER_MARKET = 5_000_000_000n;
 const MIN_GAS = parseEther("0.3");
 
 const execute = process.argv.includes("--execute");
@@ -97,10 +98,17 @@ for (const symbol of ["usdc", "cbBtc", "xaut0"] as const) {
 }
 
 const userId = await runtime.kuru.account.id(account.address);
-const { holdings } = await runtime.kuru.portfolio(account.address);
 
 for (const target of TARGETS) {
   const market = markets[target.market];
+  // Yesterday's ladder still holds the inventory. Free it first, or the plan sees no base to sell.
+  if (execute && userId !== 0n) {
+    await confirm(
+      "cancel old orders",
+      client.spot.cancelAllOrders({ market: market.orderBook, userId }),
+    );
+  }
+  const { holdings } = await runtime.kuru.portfolio(account.address);
   const [info, book] = await Promise.all([
     runtime.kuru.data.market(market.orderBook),
     runtime.kuru.market.book(target.market),
@@ -135,10 +143,6 @@ for (const target of TARGETS) {
   if (!execute || orders.length === 0 || userId === 0n) {
     continue;
   }
-  await confirm(
-    "cancel old orders",
-    client.spot.cancelAllOrders({ market: market.orderBook, userId }),
-  );
   await confirm(
     "place ladder",
     client.spot.batch({

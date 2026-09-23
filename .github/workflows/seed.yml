@@ -1,10 +1,11 @@
 name: seed
 
 # Rests the maker's two-sided ladder on the Kuru testnet books, so spot tournaments always have something to
-# trade against. Daily, because the faucet that funds the inventory can be claimed once a day, and on demand.
+# trade against. Every six hours, so a ladder eaten by a busy afternoon is back before the evening; the faucet
+# that funds the inventory can be claimed once a day. Also on demand.
 on:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "0 1,7,13,19 * * *"
   workflow_dispatch:
 
 concurrency: seed
