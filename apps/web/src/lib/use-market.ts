@@ -14,7 +14,7 @@ import {
   summarize,
   toBars,
 } from "./chart.ts";
-import { roiBps } from "./ticket.ts";
+import { useMyReturn } from "./use-leaderboard.ts";
 import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
 import { useTradingWindow } from "./use-trading-window.ts";
@@ -79,6 +79,7 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
 
   const chartFailed = info.isError || (candles.isError && !candles.data);
   const bookFailed = info.isError || (depth.isError && !depth.data);
+  const roi = useMyReturn(id, identity?.wallet.account.address);
   const bars =
     info.data && candles.data
       ? fillGaps(
@@ -121,7 +122,7 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     // The headline and the stats describe the default view, not everything kept for zooming out.
     summary: summarize(bars.slice(-CANDLES)),
     book,
-    roi: portfolio.data && entry.data ? roiBps(portfolio.data.totalUsdc, entry.data.capitalAtJoin) : null,
+    roi,
     /** What I hold of the base token and its value at the book. Null until the balance has loaded. */
     holding: portfolio.data?.holdings[base] ?? null,
   };
