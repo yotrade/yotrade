@@ -47,7 +47,7 @@ function MarketRow({
   if (reference.isPending || price === undefined) {
     return (
       <Loading label={`Loading ${name}`}>
-        <Skeleton className="h-[196px] rounded-3xl" />
+        <Skeleton className="h-[144px] rounded-3xl" />
       </Loading>
     );
   }
@@ -64,10 +64,6 @@ function MarketRow({
       price={`$${usd(price)}`}
       series={series}
       window="24h"
-      actions={[
-        { label: "Short", side: "Short" },
-        { label: "Long", side: "Long" },
-      ]}
     />
   );
 }

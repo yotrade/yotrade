@@ -23,11 +23,9 @@ export interface MarketCardProps {
   /** What the change covers, for example "24h". */
   readonly window: string;
   readonly note?: string | undefined;
-  /** Left and right buttons: Sell/Buy or Short/Long. Each opens the ticket on its side. */
-  readonly actions: readonly [{ label: string; side: string }, { label: string; side: string }];
 }
 
-/** A market as a card you can act on: colour, price, an honest chart, and the two sides one tap away. */
+/** A market as one big tap target: colour, price and an honest chart. A quiet market draws its flat line. */
 export function MarketCard({
   href,
   icon,
@@ -38,7 +36,6 @@ export function MarketCard({
   series,
   window,
   note,
-  actions,
 }: MarketCardProps) {
   const bars = series?.bars ?? [];
   const quiet = isQuiet(bars);
@@ -51,16 +48,14 @@ export function MarketCard({
   const up = (change ?? 0) >= 0;
   const plot = series && bars.length > 0 ? plotOf(bars, series.from, series.to, CHART) : null;
   return (
-    <article
-      className="flex flex-col gap-3 overflow-hidden rounded-3xl p-4"
+    <Link
+      href={href as Route}
+      className="flex flex-col gap-3 overflow-hidden rounded-3xl p-4 transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
       style={{
         background: `linear-gradient(160deg, ${color}26 0%, ${color}0d 55%, var(--color-surface-raised) 100%)`,
       }}
     >
-      <Link
-        href={href as Route}
-        className="flex items-center gap-3 rounded-2xl focus-visible:outline-2 focus-visible:outline-accent"
-      >
+      <div className="flex items-center gap-3">
         {icon}
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="truncate text-lg font-bold leading-6">{ticker}</p>
@@ -80,8 +75,8 @@ export function MarketCard({
             </span>
           )}
         </div>
-      </Link>
-      {plot && series && !quiet ? (
+      </div>
+      {plot && series ? (
         <svg
           viewBox={`0 0 ${CHART.width} ${CHART.height}`}
           aria-hidden
@@ -100,21 +95,6 @@ export function MarketCard({
           />
         </svg>
       ) : null}
-      <div className="grid grid-cols-2 gap-2">
-        {actions.map((action, index) => (
-          <Link
-            key={action.side}
-            href={`${href}?side=${action.side}` as Route}
-            className={`flex min-h-11 items-center justify-center rounded-full font-mono text-[15px] font-bold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98] ${
-              index === 0
-                ? "bg-ink text-white hover:bg-ink/90"
-                : "bg-accent text-accent-ink shadow-button hover:bg-accent-strong"
-            }`}
-          >
-            {action.label}
-          </Link>
-        ))}
-      </div>
-    </article>
+    </Link>
   );
 }

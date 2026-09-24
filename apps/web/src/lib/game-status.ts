@@ -9,10 +9,10 @@ export function rankText(mine: Mine): string {
   return mine && mine.fills > 0 ? `#${mine.rank}` : "—";
 }
 
-/** The label over the rank: the field size, or the nudge to get on the board. */
+/** The label over the rank: the field size, or that you are not on it until you trade. */
 export function rankLabel(mine: Mine, players: number): string {
   if (mine && mine.fills === 0) {
-    return "Trade to rank";
+    return "Unranked";
   }
   return players > 0 ? `Rank of ${players}` : "Rank";
 }

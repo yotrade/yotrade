@@ -7,7 +7,7 @@ describe("game status", () => {
     expect(rankText(undefined)).toBe("—");
     expect(rankText({ rank: 9, fills: 0 })).toBe("—");
     expect(rankText({ rank: 3, fills: 2 })).toBe("#3");
-    expect(rankLabel({ rank: 9, fills: 0 }, 15)).toBe("Trade to rank");
+    expect(rankLabel({ rank: 9, fills: 0 }, 15)).toBe("Unranked");
     expect(rankLabel({ rank: 3, fills: 2 }, 15)).toBe("Rank of 15");
     expect(rankLabel(undefined, 0)).toBe("Rank");
   });
