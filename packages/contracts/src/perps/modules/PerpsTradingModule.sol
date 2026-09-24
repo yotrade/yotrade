@@ -4,6 +4,7 @@ pragma solidity 0.8.37;
 import {IPerpsEngine} from "../../interfaces/IPerpsEngine.sol";
 import {ITournamentManager} from "../../interfaces/ITournamentManager.sol";
 import {PerpsBase} from "../PerpsBase.sol";
+import {PerpsMath} from "../PerpsMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title PerpsTradingModule
@@ -25,10 +26,14 @@ abstract contract PerpsTradingModule is PerpsBase {
 
         Account storage a = $.accounts[tournamentId][msg.sender];
         uint256 cap = _cap($, tournamentId);
-        Fill memory f = _fill(a, market, sizeDelta, _price($, market, cap));
+        int256 size = a.positions[market].size;
+        // Taking on risk needs a confident price; getting out never waits for one. See `_exitPrice`.
+        uint256 price =
+            PerpsMath.addsRisk(size, size + sizeDelta) ? _price($, market, cap) : _exitPrice($, market, cap, sizeDelta);
+        Fill memory f = _fill(a, market, sizeDelta, price);
         if (f.addsRisk) {
-            // Only fills that add risk are checked, so a trader can reduce or close even in a disabled market or
-            // over the cap. A flip adds risk. Every fill still needs a fresh, confident price: see `_price`.
+            // Only fills that add risk are checked, so a trader can reduce or close even in a disabled market, over
+            // the cap, or while the oracle is unsure. A flip adds risk.
             if (!$.markets[market]) revert MarketDisabled(market);
             (int256 equity, uint256 notional) = _risk(a, _prices($, a, cap));
             uint256 allowed = equity > 0 ? equity.toUint256() * cap : 0;

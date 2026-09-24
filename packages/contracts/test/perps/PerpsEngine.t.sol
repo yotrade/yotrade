@@ -321,6 +321,42 @@ contract PerpsEngineTest is PerpsFixture {
         assertEq(engine.positionOf(id, alice, BTC).size, 0);
     }
 
+    function test_trade_exitsAtTheWorseEdgeWhileTheOracleIsUnsure() public {
+        _trade(alice, BTC, 1e18, 60_000);
+        _trade(bob, BTC, -1e18, 60_000);
+        vm.warp(vm.getBlockTimestamp() + 1);
+        uint64 time = uint64(vm.getBlockTimestamp());
+        // Confidence of 3% of the price, far past 20x's 62 bps: nothing new may open, but both may leave.
+        bytes[] memory wide = _one(_encode(BTC, 60_000e8, 1800e8, time, time - 1));
+
+        vm.prank(alice);
+        engine.trade{value: 1}(id, BTC, -1e18, wide);
+        // The long sells at 58,200: -1,800, fees 30 on the open and 29.1 on the close.
+        assertEq(engine.positionOf(id, alice, BTC).size, 0);
+        assertEq(_balance(alice), START - 1800e18 - 30e18 - 29.1e18);
+
+        vm.prank(bob);
+        engine.trade{value: 1}(id, BTC, 1e18, wide);
+        // The short buys back at 61,800: -1,800, fees 30 and 30.9.
+        assertEq(_balance(bob), START - 1800e18 - 30e18 - 30.9e18);
+    }
+
+    function test_trade_anUnsureOracleStillBlocksWhatAddsRisk() public {
+        _trade(alice, BTC, 1e18, 60_000);
+        vm.warp(vm.getBlockTimestamp() + 1);
+        uint64 time = uint64(vm.getBlockTimestamp());
+        bytes[] memory wide = _one(_encode(BTC, 60_000e8, 1800e8, time, time - 1));
+        // A flip is a new position on the other side.
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.PriceTooUncertain.selector, BTC));
+        vm.prank(alice);
+        engine.trade{value: 1}(id, BTC, -2e18, wide);
+        // A band as wide as the price leaves nothing to sell at.
+        bytes[] memory absurd = _one(_encode(BTC, 60_000e8, 60_000e8, time, time - 1));
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.PriceTooUncertain.selector, BTC));
+        vm.prank(alice);
+        engine.trade{value: 1}(id, BTC, -1e18, absurd);
+    }
+
     function test_trade_enforcesTheLeverageCap() public {
         // 4 BTC is 240,000 of notional against 20 x (10,000 - 120).
         vm.expectRevert(

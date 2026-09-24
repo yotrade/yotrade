@@ -119,13 +119,35 @@ abstract contract PerpsBase is
         // forge-lint: disable-next-line(calls-loop)
         IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
         price = PerpsMath.toWad(quote.price, quote.expo);
-        // conf / price > (maintenance / CONF_DIVISOR) with maintenance = NUMERATOR / cap, cross-multiplied so
-        // nothing is divided. `toWad` rejected non-positive prices, and `conf` shares the price's exponent.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        if (quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap > uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR) {
+        if (!_confident(quote, cap)) {
             // forge-lint: disable-next-line(require-revert-in-loop)
             revert PriceTooUncertain(market);
         }
+    }
+
+    /// @dev Price for a fill that only reduces or closes. A trader can always get out: with a confident price at
+    /// the price, and with an uncertain one at the edge of its band that is worse for them, so the oracle's doubt
+    /// is never theirs to profit from. Selling (`sizeDelta < 0`) takes price minus confidence, buying plus.
+    function _exitPrice(Layout storage $, bytes32 market, uint256 cap, int256 sizeDelta)
+        internal
+        view
+        returns (uint256 price)
+    {
+        IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
+        price = PerpsMath.toWad(quote.price, quote.expo);
+        if (_confident(quote, cap)) return price;
+        uint256 band = PerpsMath.scale(quote.conf, quote.expo);
+        if (sizeDelta > 0) return price + band;
+        // A band as wide as the price leaves nothing to sell at.
+        if (band >= price) revert PriceTooUncertain(market);
+        return price - band;
+    }
+
+    /// @dev conf / price <= (maintenance / CONF_DIVISOR) with maintenance = NUMERATOR / cap, cross-multiplied so
+    /// nothing is divided. Callers checked the price is positive with `toWad`, and `conf` shares its exponent.
+    function _confident(IPyth.Price memory quote, uint256 cap) internal pure returns (bool) {
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap <= uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR;
     }
 
     /// @dev Current price of every open market, in `openMarkets` order.
