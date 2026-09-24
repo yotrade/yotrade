@@ -12,6 +12,10 @@ concurrency:
 env:
   FOUNDRY_PROFILE: ci
 
+# Least privilege: nothing here writes to the repository.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
