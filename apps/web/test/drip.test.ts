@@ -28,7 +28,7 @@ function setup(balance = 0n) {
 }
 
 describe("createDripper", () => {
-  test("funds an account that ran dry whenever it is dry, within the hourly caps", async () => {
+  test("funds an account that ran dry whenever it is dry, within the caps", async () => {
     const { drip, sent } = setup();
     expect(await drip(ALICE, "ip")).toEqual({ status: "funded", hash: HASH });
     // Still dry a minute later: a join and a few orders spent it. That is what the drip is for.
@@ -39,13 +39,39 @@ describe("createDripper", () => {
     ]);
   });
 
-  test("an account that can still trade waits out the cooldown before the next top-up", async () => {
-    const { drip, credit, advance } = setup();
-    expect((await drip(ALICE, "ip")).status).toBe("funded");
-    credit(ALICE, parseEther("0.2"));
+  test("an address gets five top-ups a day, whatever IP asks", async () => {
+    const { drip, advance } = setup();
+    for (let index = 0; index < 5; index++) {
+      expect((await drip(ALICE, `ip-${index}`)).status).toBe("funded");
+    }
+    const limited = await drip(ALICE, "fresh-ip");
+    expect(limited.status).toBe("limited");
+    advance(24 * 60 * 60_000);
+    expect((await drip(ALICE, "fresh-ip")).status).toBe("funded");
+  });
+
+  test("a request over a cap never reaches the RPC", async () => {
+    let reads = 0;
+    const drip = createDripper({
+      getBalance: () => {
+        reads += 1;
+        return Promise.resolve(0n);
+      },
+      send: () => Promise.resolve(HASH),
+      now: () => 0,
+    });
+    for (let index = 0; index < 5; index++) {
+      await drip(ALICE, "ip");
+    }
     expect((await drip(ALICE, "ip")).status).toBe("limited");
-    advance(10 * 60_000);
-    expect((await drip(ALICE, "ip")).status).toBe("sufficient");
+    expect(reads).toBe(5);
+  });
+
+  test("requests that pass together are still capped at the send", async () => {
+    const { drip, sent } = setup();
+    const results = await Promise.all(Array.from({ length: 8 }, () => drip(ALICE, "ip")));
+    expect(results.filter((result) => result.status === "funded")).toHaveLength(5);
+    expect(sent).toHaveLength(5);
   });
 
   test("never pays an account that can already trade", async () => {
@@ -71,9 +97,10 @@ describe("createDripper", () => {
       send: () => Promise.reject(new Error("rpc down")),
       now: () => time++,
     });
-    for (let attempt = 0; attempt < 20; attempt++) {
-      await expect(drip(ALICE, "ip")).rejects.toThrow("rpc down");
+    const address = (index: number) => `0x${index.toString(16).padStart(40, "0")}` as const;
+    for (let attempt = 1; attempt <= 20; attempt++) {
+      await expect(drip(address(attempt), "ip")).rejects.toThrow("rpc down");
     }
-    expect((await drip(ALICE, "ip")).status).toBe("limited");
+    expect((await drip(address(21), "ip")).status).toBe("limited");
   });
 });
