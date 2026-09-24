@@ -4,11 +4,11 @@ import { useState } from "react";
 
 import { Icon } from "./ui/icon.tsx";
 
-/** Native share where it exists, the clipboard elsewhere. The link is the page itself. */
-export function ShareButton({ title }: { title: string }) {
+/** Native share where it exists, the clipboard elsewhere. `copied` flips for two seconds after a copy. */
+export function useShare() {
   const [copied, setCopied] = useState(false);
-  async function share() {
-    const url = `${window.location.origin}${window.location.pathname}`;
+  async function share(title: string, path: string) {
+    const url = `${window.location.origin}${path}`;
     if (navigator.share && (navigator.canShare?.({ url }) ?? true)) {
       try {
         await navigator.share({ title, url });
@@ -24,14 +24,49 @@ export function ShareButton({ title }: { title: string }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2_000);
   }
+  return { share, copied };
+}
+
+/** The page itself, as a link. */
+export function ShareButton({ title }: { title: string }) {
+  const { share, copied } = useShare();
   return (
     <button
       type="button"
       aria-label={copied ? "Link copied" : "Share tournament"}
-      onClick={share}
+      onClick={() => share(title, window.location.pathname)}
       className="grid size-10 shrink-0 place-items-center rounded-full bg-well transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
     >
       <Icon name={copied ? "check" : "share"} size={18} />
+    </button>
+  );
+}
+
+/** One trader's place, as a link whose card shows it: the brag that brings the next player. */
+export function ShareResultButton({
+  id,
+  participant,
+  onAccent,
+}: {
+  id: bigint;
+  participant: string;
+  /** On the purple podium card: white on translucent white. Elsewhere: ink on the well. */
+  onAccent: boolean;
+}) {
+  const { share, copied } = useShare();
+  const tone = onAccent ? "bg-white/20 hover:bg-white/30" : "bg-well hover:bg-border";
+  return (
+    <button
+      type="button"
+      onClick={() => share("My YoTrade result", `/t/${id}/result/${participant}`)}
+      className={`mt-2 inline-flex min-h-10 items-center gap-2 rounded-full px-4 font-mono text-[13px] font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98] ${tone}`}
+    >
+      <Icon
+        name={copied ? "check" : "share"}
+        size={16}
+        className={onAccent ? "brightness-0 invert" : ""}
+      />
+      {copied ? "Link copied" : "Share my result"}
     </button>
   );
 }

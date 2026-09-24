@@ -12,6 +12,7 @@ import { useIdentity } from "@/lib/use-identity.tsx";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Podium } from "./podium.tsx";
+import { ShareResultButton } from "./share-button.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Confetti } from "./ui/confetti.tsx";
@@ -123,7 +124,7 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
           ? `Results in review · prizes unlock in ${timeUntil(tournament.claimableAt, now)}`
           : "Final results"}
       </p>
-      <YourPlace entry={mine} of={standings.length} />
+      <YourPlace id={tournament.id} entry={mine} of={standings.length} />
       {standings.length === 0 ? (
         <p className="text-sm text-ink-muted">
           Nobody traded, so the prize pool returns to the organizer.
@@ -190,10 +191,14 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
 
 /** The one line a player came back for, with a burst of confetti when it is a podium place. */
 function YourPlace({
+  id,
   entry,
   of,
 }: {
-  entry: { readonly rank: number | null; readonly prize: bigint } | undefined;
+  id: bigint;
+  entry:
+    | { readonly rank: number | null; readonly prize: bigint; readonly participant_id: string }
+    | undefined;
   of: number;
 }) {
   if (!entry?.rank) {
@@ -214,6 +219,7 @@ function YourPlace({
         <span className="text-xl font-semibold opacity-60"> of {of}</span>
       </p>
       {prize > 0n ? <p className="text-sm font-semibold">${formatUsdc(prize)} is yours</p> : null}
+      <ShareResultButton id={id} participant={entry.participant_id} onAccent={podium} />
     </div>
   );
 }
