@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildConfig, buildMetadata, type CreateForm } from "../src/lib/create.ts";
+import {
+  buildConfig,
+  buildMetadata,
+  type CreateForm,
+  nextName,
+  rematchForm,
+} from "../src/lib/create.ts";
 import { isPrivate, tournamentMeta, tournamentName } from "../src/lib/format.ts";
 
 const FORM: CreateForm = {
@@ -88,6 +94,47 @@ describe("buildMetadata", () => {
     });
     expect(buildMetadata({ name: "  ", visibility: "public", image: "" })).toMatchObject({
       field: "name",
+    });
+  });
+});
+
+describe("rematch", () => {
+  test("numbers the next game", () => {
+    expect(nextName("Game Night")).toBe("Game Night #2");
+    expect(nextName("Game Night #2")).toBe("Game Night #3");
+    expect(nextName("Cup #9 finals")).toBe("Cup #9 finals #2");
+  });
+
+  test("fills the form from the tournament that was played", () => {
+    const meta = buildMetadata({
+      name: "Jogja Futures #4",
+      visibility: "private",
+      image: "https://x.test/a.png",
+    });
+    if (!meta.ok) {
+      throw new Error("metadata");
+    }
+    const form = rematchForm({
+      id: 7n,
+      venue: "0x97167B3126E2dEE1FE8920C129bD118Eb91e9881",
+      metadataURI: meta.metadataURI,
+      prizePool: 250_000_000n,
+      prizeSplitBps: [10_000],
+      startTime: 1_000n,
+      // Four minutes after a Start now: closest to the five-minute option.
+      endTime: 1_240n,
+      maxParticipants: 30,
+    });
+    expect(form).toEqual({
+      venue: "futures",
+      visibility: "private",
+      image: "https://x.test/a.png",
+      name: "Jogja Futures #5",
+      prizePool: "250",
+      startDelay: "In 10 minutes",
+      duration: "5 minutes",
+      maxParticipants: "30",
+      split: "Winner takes all",
     });
   });
 });

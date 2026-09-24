@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
 
@@ -277,7 +278,24 @@ function Podium({ id, tournament }: { id: string; tournament: IndexedTournamentD
           ${formatUsdc(tournament.prizePool)} paid by the contract
         </p>
       ) : null}
+      <RunItBack tournament={tournament} />
     </section>
+  );
+}
+
+/** For the host at the end of the night: the next game of the series, filled in from this one. */
+function RunItBack({ tournament }: { tournament: IndexedTournamentDetail }) {
+  const { identity } = useIdentity();
+  if (identity?.wallet.account.address !== tournament.organizer) {
+    return null;
+  }
+  return (
+    <Link
+      href={`/new?from=${tournament.id}`}
+      className="inline-flex min-h-14 items-center justify-center rounded-full bg-accent px-8 font-mono text-xl font-semibold text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+    >
+      Run it back
+    </Link>
   );
 }
 
