@@ -2,7 +2,7 @@
 
 import type { MarketSymbol, TokenSymbol } from "@yotrade/core/addresses";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CHART_TYPES, type ChartType, RANGES, type RangeName, type Summary } from "@/lib/chart.ts";
 import { formatBps } from "@/lib/ticket.ts";
@@ -226,6 +226,14 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
   const [range, setRange] = useState<RangeName>("15m");
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
+  // A card's Buy or Sell lands here with `?side=`: open the ticket once, then drop the parameter.
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("side");
+    if (v === "Buy" || v === "Sell") {
+      setSide(v);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
   const [done, setDone] = useState<string>();
   const data = useMarket(id, market, range, view !== "Chart");
   const chart = view === "Chart";

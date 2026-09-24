@@ -4,74 +4,29 @@ import { useQuery } from "@tanstack/react-query";
 import { markets } from "@yotrade/core/addresses";
 import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import Image from "next/image";
-import Link from "next/link";
 
-import {
-  type Bar,
-  CANDLES,
-  fillGaps,
-  linePath,
-  plotOf,
-  RANGES,
-  summarize,
-  toBars,
-} from "@/lib/chart.ts";
+import { CANDLES, fillGaps, RANGES, summarize, toBars } from "@/lib/chart.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
-import { formatBps, roiBps } from "@/lib/ticket.ts";
+import { roiBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
-import { Amount } from "./ui/amount.tsx";
+import { GameStatus } from "./game-status.tsx";
 import { BackButton } from "./ui/back-button.tsx";
-import { SectionLabel } from "./ui/section-label.tsx";
-import { Loading, RowSkeleton, Skeleton } from "./ui/skeleton.tsx";
+import { MarketCard } from "./ui/market-card.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TokenIcon } from "./ui/token-icon.tsx";
 
-const SPARK = { width: 56, height: 28, padY: 3 };
 const SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
 /** The newest hourly candles, from whenever a thin testnet market last traded. */
 const RANGE = RANGES["1h"];
 const LOOKBACK_SECONDS = 30 * 86_400;
+/** Each market's own colour: gold, Monad purple, Coinbase blue. */
+const COLORS: Record<MarketSlug, string> = { xaut0: "#c9a227", mon: "#6e54ff", cbbtc: "#0052ff" };
 
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
-
-interface Series {
-  readonly from: number;
-  readonly to: number;
-  readonly bars: readonly Bar[];
-}
-
-function Sparkline({ series, up }: { series: Series | undefined; up: boolean }) {
-  return (
-    <svg
-      viewBox={`0 0 ${SPARK.width} ${SPARK.height}`}
-      aria-hidden
-      className="h-7 w-14 shrink-0 overflow-visible"
-    >
-      {series && series.bars.length > 0 ? (
-        <path
-          d={linePath(series.bars, plotOf(series.bars, series.from, series.to, SPARK), series.to)}
-          fill="none"
-          className={up ? "stroke-up" : "stroke-down"}
-          strokeWidth={1.75}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ) : (
-        <line
-          x1={0}
-          x2={SPARK.width}
-          y1={14}
-          y2={14}
-          className="stroke-border"
-          strokeDasharray="2 3"
-        />
-      )}
-    </svg>
-  );
-}
 
 function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldUsdc: bigint }) {
   const { kuru } = useRuntime();
@@ -107,40 +62,34 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
   if (data.isPending) {
     return (
       <Loading label={`Loading ${TOKEN_NAMES[base]}`}>
-        <RowSkeleton />
+        <Skeleton className="h-[196px] rounded-3xl" />
       </Loading>
     );
   }
   const price = data.data?.mid ?? data.data?.summary?.close ?? null;
-  const summary = data.data?.summary ?? null;
-  const up = (summary?.changeBps ?? 0) >= 0;
-
   const oneSided = data.data !== undefined && !data.data.tradable;
-
+  let note: string | undefined;
+  if (oneSided) {
+    note = "One side of the book is empty";
+  } else if (heldUsdc > 0n) {
+    note = `You hold $${formatUsdc(heldUsdc)}`;
+  }
   return (
-    <Link
+    <MarketCard
       href={`/t/${id}/trade/${slug}`}
-      className="flex items-center gap-3 rounded-2xl bg-surface-raised p-4 transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.99]"
-    >
-      <TokenIcon token={base} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Ticker first: it always fits, and it is what traders scan for. */}
-        <p className="truncate font-semibold leading-[21px]">{TOKEN_LABELS[base]}</p>
-        <p className="tabular truncate text-sm font-medium leading-5 text-ink-muted">
-          {heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : TOKEN_NAMES[base]}
-          {oneSided ? " · one side of the book is empty" : ""}
-        </p>
-      </div>
-      <Sparkline series={data.data} up={up} />
-      <div className="flex shrink-0 flex-col items-end">
-        <p className="tabular font-semibold leading-[21px]">
-          {price === null ? "—" : `$${money(price)}`}
-        </p>
-        <p className={`tabular text-sm font-medium leading-5 ${up ? "text-up" : "text-down"}`}>
-          {summary ? `${formatBps(summary.changeBps)} recent` : "No trades"}
-        </p>
-      </div>
-    </Link>
+      icon={<TokenIcon token={base} size={44} />}
+      ticker={TOKEN_LABELS[base]}
+      name={TOKEN_NAMES[base]}
+      color={COLORS[slug]}
+      price={price === null ? "—" : `$${money(price)}`}
+      series={data.data ?? null}
+      window="recent"
+      note={note}
+      actions={[
+        { label: "Sell", side: "Sell" },
+        { label: "Buy", side: "Buy" },
+      ]}
+    />
   );
 }
 
@@ -177,46 +126,28 @@ export function MarketList({ id }: { id: string }) {
         </span>
       </header>
 
-      <div className="flex flex-col gap-1">
-        <p className="text-[13px] font-medium text-ink-muted">Account value</p>
-        {portfolio.data ? (
-          <Amount value={portfolio.data.totalUsdc} size="xl" />
-        ) : (
-          <Loading label="Loading your account value">
-            <Skeleton className="h-12 w-44" />
-          </Loading>
-        )}
-        {roi === null ? null : (
-          <p className={`tabular text-sm font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
-            {formatBps(roi)} since joining
-          </p>
-        )}
-      </div>
+      <GameStatus id={id} you={address} returnBps={roi} />
 
-      <section className="flex flex-col gap-3">
-        <SectionLabel>Pick a market</SectionLabel>
-        <p className="-mt-1 text-[13px] font-medium leading-5 text-ink-muted">
-          Prices and charts are Kuru testnet fills: what you see is what you trade at.
-        </p>
-        <ul className="flex flex-col gap-2">
-          {SLUGS.map((slug, index) => (
-            // A market hidden for lack of liquidity renders nothing: its slot must not leave a gap.
-            <li
-              key={slug}
-              className="animate-enter empty:hidden"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <MarketRow
-                id={id}
-                slug={slug}
-                heldUsdc={
-                  portfolio.data?.holdings[markets[MARKET_SLUGS[slug]].base]?.valueUsdc ?? 0n
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ul className="flex flex-col gap-3">
+        {SLUGS.map((slug, index) => (
+          // A market that is not configured renders nothing: its slot must not leave a gap.
+          <li
+            key={slug}
+            className="animate-enter empty:hidden"
+            style={{ animationDelay: `${index * 60}ms` }}
+          >
+            <MarketRow
+              id={id}
+              slug={slug}
+              heldUsdc={portfolio.data?.holdings[markets[MARKET_SLUGS[slug]].base]?.valueUsdc ?? 0n}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <p className="text-[12px] font-medium leading-5 text-ink-muted">
+        Prices and charts are Kuru testnet fills: what you see is what you trade at.
+      </p>
     </main>
   );
 }
