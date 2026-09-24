@@ -27,6 +27,12 @@ library PerpsMath {
         return uint256(uint64(price)) * 10 ** uint256(uint32(18 + expo));
     }
 
+    /// @notice An unsigned Pyth value, such as a confidence, in 1e18 at `expo`, which `toWad` already checked.
+    function scale(uint64 value, int32 expo) internal pure returns (uint256) {
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint256(value) * 10 ** uint256(uint32(18 + expo));
+    }
+
     /// @notice Absolute value of a size.
     function abs(int256 value) internal pure returns (uint256) {
         return value < 0 ? (-value).toUint256() : value.toUint256();
