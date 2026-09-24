@@ -43,7 +43,10 @@ contracts:
             - hash
 chains:
   - id: 10143 # Monad testnet
-    start_block: 64421055 # TournamentManager proxy deployment
+    # Kuru's AccountCore deployment: every account id must be known to match a later deposit to its address.
+    # Our own contracts have nothing before 64421055 (the TournamentManager proxy); scanning from here costs
+    # HyperSync a moment. Per-contract start blocks are avoided: Envio rejects them on a resume from saved state.
+    start_block: 58777830
     contracts:
       - name: TournamentManager
         address: "0xe60aFf1991d9D93e6093da5c813A63B746159D10"

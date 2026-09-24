@@ -12,8 +12,20 @@ const PERPS_VENUE = "0x97167b3126e2dee1fe8920c129bd118eb91e9881";
 const ZERO_ROOT = `0x${"0".repeat(64)}`;
 
 type Indexer = ReturnType<typeof createTestIndexer>;
+/** Simulated blocks start at our contracts' deployment, as the real ones do, and only ever move forward. */
+let nextBlock = 64_421_055;
 const run = (indexer: Indexer, simulate: unknown[]) =>
-  indexer.process({ chains: { [CHAIN]: { simulate } } } as Parameters<Indexer["process"]>[0]);
+  indexer.process({
+    chains: {
+      [CHAIN]: {
+        simulate: simulate.map((item) => {
+          const given = item as { block?: object };
+          nextBlock += 1;
+          return { ...given, block: { number: nextBlock, ...given.block } };
+        }),
+      },
+    },
+  } as Parameters<Indexer["process"]>[0]);
 
 /** Starts at 1,000 and ends at 2,000. */
 const created = (id: bigint, venue: string, capitalToken: string) => ({
