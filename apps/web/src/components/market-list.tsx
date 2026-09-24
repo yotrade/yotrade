@@ -26,6 +26,14 @@ const LOOKBACK_SECONDS = 30 * 86_400;
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
 
+/** Kuru not answering is not a quiet market; an empty side is not either. */
+function marketWarning(failed: boolean, oneSided: boolean): string | undefined {
+  if (failed) {
+    return "Data unavailable";
+  }
+  return oneSided ? "One side empty" : undefined;
+}
+
 function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldUsdc: bigint }) {
   const { kuru } = useRuntime();
   const symbol = MARKET_SLUGS[slug];
@@ -74,7 +82,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
       name={TOKEN_NAMES[base]}
       price={price === null ? "—" : `$${money(price)}`}
       series={data.data ?? null}
-      warning={oneSided ? "One side empty" : undefined}
+      warning={marketWarning(data.isError, oneSided)}
       aside={heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : undefined}
     />
   );

@@ -92,6 +92,13 @@ export function Headline({ summary, range, loading }: HeadlineProps) {
 }
 
 function MarketView({ view, type, data }: { view: View; type: ChartType; data: MarketData }) {
+  if (view === "Chart" ? data.chartFailed : data.bookFailed) {
+    return (
+      <p role="status" className="rounded-2xl bg-well p-4 text-sm font-medium text-ink-muted">
+        Kuru's market data is not answering right now. Retrying…
+      </p>
+    );
+  }
   if (view === "Chart" ? data.chartLoading : data.bookLoading) {
     return (
       <Loading label={`Loading ${view.toLowerCase()}`}>
