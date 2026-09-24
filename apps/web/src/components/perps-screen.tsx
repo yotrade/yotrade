@@ -1,6 +1,6 @@
 "use client";
 
-import { liquidationPrice, pnl } from "@yotrade/plugin-perps/math";
+import { liquidationPrice, notional, pnl } from "@yotrade/plugin-perps/math";
 import { useState } from "react";
 
 import { CHART_TYPES, type ChartType, type RangeName } from "@/lib/chart.ts";
@@ -24,15 +24,24 @@ import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
 interface PositionProps {
   readonly position: PerpsPosition;
-  readonly equity: bigint;
+  readonly snapshot: PerpsSnapshot | undefined;
   readonly label: string;
   readonly pending: boolean;
+  /** False once trading has closed: open positions then settle at the end price, nobody closes them. */
+  readonly open: boolean;
   onClose(): void;
 }
 
-function PositionCard({ position, equity, label, pending, onClose }: PositionProps) {
+function PositionCard({ position, snapshot, label, pending, open, onClose }: PositionProps) {
   const profit = pnl(position, position.price);
-  const liquidation = liquidationPrice(equity, position.size, position.price);
+  const others = (snapshot?.risk.notional ?? 0n) - notional(position.size, position.price);
+  const liquidation = liquidationPrice(
+    snapshot?.risk.equity ?? 0n,
+    position.size,
+    position.price,
+    snapshot?.leverageCap,
+    others > 0n ? others : 0n,
+  );
   return (
     <Card className="flex flex-col gap-3 py-4">
       <div className="flex items-center justify-between gap-3">
@@ -55,9 +64,15 @@ function PositionCard({ position, equity, label, pending, onClose }: PositionPro
           </div>
         ))}
       </dl>
-      <Button variant="secondary" className="min-h-10" pending={pending} onClick={onClose}>
-        Close position
-      </Button>
+      {open ? (
+        <Button variant="secondary" className="min-h-10" pending={pending} onClick={onClose}>
+          Close position
+        </Button>
+      ) : (
+        <p className="text-[13px] font-medium text-ink-muted">
+          Trading has closed. This position settles at the end price.
+        </p>
+      )}
     </Card>
   );
 }
@@ -243,9 +258,10 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
       {position ? (
         <PositionCard
           position={position}
-          equity={account.data?.risk.equity ?? 0n}
+          snapshot={account.data ?? undefined}
           label={label}
           pending={closing}
+          open={tradeGate(market.phase, "") === null}
           onClose={close}
         />
       ) : null}

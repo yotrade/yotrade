@@ -35,6 +35,22 @@ describe("describeFailure", () => {
     );
   });
 
+  test("recognises Pyth's own errors by selector, since our ABI does not list them", () => {
+    const stale = new ContractFunctionRevertedError({
+      abi: tournamentManagerAbi,
+      functionName: "join",
+      data: "0x19abf40e",
+    });
+    expect(revertName(stale)).toBe("StalePrice");
+    expect(describeFailure(stale, "fallback")).toMatch(/stale/);
+    const unknown = new ContractFunctionRevertedError({
+      abi: tournamentManagerAbi,
+      functionName: "join",
+      data: "0xdeadbeef",
+    });
+    expect(describeFailure(unknown, "fallback")).toBe("fallback");
+  });
+
   test("keeps the app's own diagnosis, and falls back for anything else", () => {
     expect(describeFailure(new GasError("no gas"), "fallback")).toBe("no gas");
     expect(describeFailure(new ActionError("scoring is off"), "fallback")).toBe("scoring is off");
