@@ -123,7 +123,10 @@ export interface Performance {
   /** Realized PnL of fills inside the window, net of fees, in raw USDC units. */
   readonly realizedUsdc: bigint;
   readonly fills: number;
+  /** Open inventory after the last fill in the window, or before it when there was none. */
   readonly positions: readonly DataPosition[];
+  /** Open inventory when the window opened: what was bought before it and is still held. */
+  readonly opening: readonly DataPosition[];
 }
 
 /** Kuru reports PnL in quote units scaled by 1e18; USDC has six decimals. */
@@ -135,8 +138,8 @@ const MAX_PAGES = 20;
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 /**
- * Folds fills, newest first as Kuru pages them, into realized PnL since `from` and the inventory after the
- * newest fill of each market. One order that walks several levels arrives as several records of which only one
+ * Folds fills, newest first as Kuru pages them, into realized PnL since `from`, the inventory after the newest
+ * fill of each market, and the inventory held when `from` came. One order that walks several levels arrives as several records of which only one
  * carries the running inventory, so records without it are skipped.
  */
 export function summarizeTrades(
@@ -146,21 +149,35 @@ export function summarizeTrades(
   let realized = 0n;
   let fills = 0;
   const inventory = new Map<string, DataPosition>();
+  const opening = new Map<string, DataPosition>();
   for (const trade of newestFirst) {
-    if (BigInt(trade.blockTimestamp) >= from) {
+    const inside = BigInt(trade.blockTimestamp) >= from;
+    if (inside) {
       realized += BigInt(trade.pnl.realizedPnl);
       fills += 1;
     }
+    if (trade.pnl.openSize === null || trade.pnl.openCost === null) {
+      continue;
+    }
     const market = trade.marketAddress.toLowerCase();
-    if (!inventory.has(market) && trade.pnl.openSize !== null && trade.pnl.openCost !== null) {
-      inventory.set(market, {
-        market: trade.marketAddress,
-        openSize: BigInt(trade.pnl.openSize),
-        openCost: BigInt(trade.pnl.openCost),
-      });
+    const position = {
+      market: trade.marketAddress,
+      openSize: BigInt(trade.pnl.openSize),
+      openCost: BigInt(trade.pnl.openCost),
+    };
+    if (!inventory.has(market)) {
+      inventory.set(market, position);
+    }
+    if (!(inside || opening.has(market))) {
+      opening.set(market, position);
     }
   }
-  return { realizedUsdc: realized / PNL_TO_USDC, fills, positions: [...inventory.values()] };
+  return {
+    realizedUsdc: realized / PNL_TO_USDC,
+    fills,
+    positions: [...inventory.values()],
+    opening: [...opening.values()],
+  };
 }
 
 /** Kuru's public Data Source API. Finalized data, no key required. */
