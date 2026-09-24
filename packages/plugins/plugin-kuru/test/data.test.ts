@@ -28,6 +28,23 @@ describe("data client", () => {
     expect(calls.at(-1)).toBe("https://kuru.test/api/v1/users/80/balances");
   });
 
+  test("reads current positions from one page of trades", async () => {
+    const client = createDataClient(
+      "https://kuru.test/api/v1",
+      respond({
+        data: {
+          trades: [],
+          positions: [{ marketAddress: "0x5bde", openSize: "97955", openCost: "99999951" }],
+        },
+      }),
+    );
+
+    expect(await client.positions(80n)).toEqual([
+      { market: "0x5bde", openSize: 97_955n, openCost: 99_999_951n },
+    ]);
+    expect(calls.at(-1)).toBe("https://kuru.test/api/v1/users/80/trades?limit=1");
+  });
+
   test("decodes trades with their running PnL", async () => {
     const client = createDataClient(
       "https://kuru.test/api/v1",
