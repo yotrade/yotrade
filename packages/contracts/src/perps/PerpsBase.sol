@@ -152,9 +152,10 @@ abstract contract PerpsBase is
         IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
         price = PerpsMath.toWad(quote.price, quote.expo);
         band = PerpsMath.scale(quote.conf, quote.expo);
+        // `toWad` has just rejected a non-positive price, so it fits uint64 as is.
         // forge-lint: disable-next-line(unsafe-typecast)
-        confident =
-            quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap <= uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR;
+        uint256 positive = uint256(uint64(quote.price));
+        confident = quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap <= positive * MAINTENANCE_NUMERATOR;
     }
 
     /// @dev Current price of every open market, in `openMarkets` order.
