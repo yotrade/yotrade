@@ -20,6 +20,10 @@ interface Props {
     readonly reserved: bigint;
     readonly valueUsdc: bigint;
   };
+  /** Below this value (raw USDC) a holding is dust no order can sell: it is not shown as a position. */
+  readonly minimumUsdc: bigint;
+  /** False outside the trading window: the position is shown, the way out is not offered. */
+  readonly open: boolean;
   /** Opens the Sell ticket filled with the whole holding. */
   onClose(): void;
 }
@@ -34,7 +38,14 @@ const price = (value: number) =>
   });
 
 /** What I hold on this market, what it cost, what it is worth, and the way out. */
-export function SpotPositionCard({ trader, market, holding, onClose }: Props) {
+export function SpotPositionCard({
+  trader,
+  market,
+  holding,
+  minimumUsdc,
+  open: trading,
+  onClose,
+}: Props) {
   const { kuru } = useRuntime();
   const { orderBook, base } = markets[market];
   const decimals = tokens[base].decimals;
@@ -47,7 +58,7 @@ export function SpotPositionCard({ trader, market, holding, onClose }: Props) {
     },
   });
   const held = holding.free + holding.reserved;
-  if (held === 0n) {
+  if (held === 0n || holding.valueUsdc < minimumUsdc) {
     return null;
   }
   const open = positions.data?.find((row) => row.market.toLowerCase() === orderBook.toLowerCase());
@@ -82,9 +93,11 @@ export function SpotPositionCard({ trader, market, holding, onClose }: Props) {
             </div>
           ))}
         </dl>
-        <Button variant="secondary" className="min-h-10" onClick={onClose}>
-          Close position
-        </Button>
+        {trading ? (
+          <Button variant="secondary" className="min-h-10" onClick={onClose}>
+            Close position
+          </Button>
+        ) : null}
       </Card>
     </section>
   );
