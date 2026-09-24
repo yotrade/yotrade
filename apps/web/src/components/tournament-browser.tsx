@@ -3,6 +3,7 @@
 import { type Phase, phaseAt } from "@yotrade/plugin-tournament/phase";
 import { useState } from "react";
 
+import { arenaOrder } from "@/lib/arena.ts";
 import { isPrivate } from "@/lib/format.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { useNow } from "@/lib/use-now.ts";
@@ -54,10 +55,12 @@ export function TournamentBrowser({ tournaments, failed }: Props) {
     );
   } else if (tournaments) {
     // Private tournaments are reached by their link. Joined ones still show on Home and in Activity.
-    const rows = tournaments
-      .filter((tournament) => !isPrivate(tournament.metadataURI))
-      .map((tournament) => ({ tournament, phase: phaseAt(tournament, now) }))
-      .filter((row) => TAB_OF[row.phase] === tab);
+    const rows = arenaOrder(
+      tournaments
+        .filter((tournament) => !isPrivate(tournament.metadataURI))
+        .map((tournament) => ({ tournament, phase: phaseAt(tournament, now) }))
+        .filter((row) => TAB_OF[row.phase] === tab),
+    );
     body =
       rows.length === 0 ? (
         <p className="text-sm font-medium text-ink-muted">{EMPTY[tab]}</p>
