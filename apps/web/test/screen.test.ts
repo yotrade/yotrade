@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { clock, joinUrl } from "@/lib/screen.ts";
+import { clock, joinUrl, podiumOf } from "@/lib/screen.ts";
 
 describe("host screen", () => {
   test("the countdown reads from the back of the room", () => {
@@ -18,5 +18,26 @@ describe("host screen", () => {
     expect(
       joinUrl("https://app.yotrade.xyz", "KHB5UF", "https://app.yotrade.xyz/t/9#invite=0xab"),
     ).toBe("https://app.yotrade.xyz/t/9#invite=0xab");
+  });
+});
+
+describe("podiumOf", () => {
+  const a = "0x00000000000000000000000000000000000000aa" as const;
+  const b = "0x00000000000000000000000000000000000000bb" as const;
+  const c = "0x00000000000000000000000000000000000000cc" as const;
+  const rows = [
+    { participant: a, roiPpm: 500 },
+    { participant: b, roiPpm: 100 },
+  ];
+
+  test("the top of the board until results are posted", () => {
+    expect(podiumOf(rows, [])).toEqual(rows);
+  });
+
+  test("the posted winners after, in their order, with a return when the board has one", () => {
+    expect(podiumOf(rows, [b, c])).toEqual([
+      { participant: b, roiPpm: 100 },
+      { participant: c, roiPpm: null },
+    ]);
   });
 });

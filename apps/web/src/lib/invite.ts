@@ -1,5 +1,6 @@
 import type { Identity } from "@yotrade/plugin-mera/plugin";
 import { type Address, type Hex, isHex } from "viem";
+import { privateKeyToAddress } from "viem/accounts";
 
 /** The link fragment never reaches a server: `/t/7#invite=0x…`. */
 const PARAM = "invite";
@@ -27,6 +28,24 @@ export function parseInviteCode(input: string): Hex | null {
 export function inviteFromUrl(hash: string): Hex | null {
   const value = new URLSearchParams(hash.replace(/^#/, "")).get(PARAM) ?? "";
   return isInviteCode(value) ? value : null;
+}
+
+/**
+ * Whether a code is the key of the tournament's current invite signer. Checked before a join, so a code from
+ * before the host rotated the invite asks for the new one instead of paying for a join that must revert.
+ */
+export function inviteMatches(code: Hex, signer: Address): boolean {
+  try {
+    return privateKeyToAddress(code).toLowerCase() === signer.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+/** True when the tournament is private and this device holds no code that opens it. */
+export function needsInvite(signer: Address | undefined, code: Hex | null): boolean {
+  const privateRoom = signer !== undefined && BigInt(signer) !== 0n;
+  return privateRoom && !(code !== null && inviteMatches(code, signer));
 }
 
 export function loadInvite(id: bigint): Hex | null {
@@ -64,4 +83,30 @@ export function hostInvite(identity: Identity, id: bigint, signer: Address): Hos
     }
   }
   return null;
+}
+
+const PENDING_PREFIX = "yotrade.private-pending.";
+
+/**
+ * A room created as private whose invite did not reach the chain: the second transaction of the create failed.
+ * Kept on the host's device so the tournament page can finish the job instead of leaving the room open.
+ */
+export function markPrivatePending(id: bigint, pending: boolean): void {
+  try {
+    if (pending) {
+      localStorage.setItem(PENDING_PREFIX + id, "1");
+    } else {
+      localStorage.removeItem(PENDING_PREFIX + id);
+    }
+  } catch {
+    // Without storage the host can still make the room private from the tournament page.
+  }
+}
+
+export function isPrivatePending(id: bigint): boolean {
+  try {
+    return localStorage.getItem(PENDING_PREFIX + id) === "1";
+  } catch {
+    return false;
+  }
 }

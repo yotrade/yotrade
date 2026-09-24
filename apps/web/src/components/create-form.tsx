@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { erc20Abi, parseEventLogs } from "viem";
 
+import { chainNow } from "@/lib/chain-clock.ts";
 import {
   buildConfig,
   DURATIONS,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/create.ts";
 import { describeFailure } from "@/lib/describe-failure.ts";
 import { fundGas, GasError } from "@/lib/fund-gas.ts";
-import { saveInvite } from "@/lib/invite.ts";
+import { markPrivatePending, saveInvite } from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { LogoPicker } from "./logo-picker.tsx";
@@ -264,7 +265,17 @@ export function CreateForm() {
     }
     // The invite key comes from the host's passkey: nothing to store, and any device can share or rotate it.
     const invite = identity.inviteKey(id, 0);
-    await tournament.setInvite(wallet, id, invite.address);
+    try {
+      await tournament
+        .setInvite(wallet, id, invite.address)
+        .catch(() => tournament.setInvite(wallet, id, invite.address));
+    } catch (cause) {
+      // The tournament exists and its pool is escrowed; only the invite is missing. The page it opens offers
+      // to finish making it private, and says so, rather than a create error that would invite a second pool.
+      console.error("setInvite failed after create", cause);
+      markPrivatePending(id, true);
+      return `/t/${id}`;
+    }
     saveInvite(id, invite.privateKey);
     return `/t/${id}#invite=${invite.privateKey}`;
   }
@@ -283,7 +294,7 @@ export function CreateForm() {
   };
 
   function next() {
-    const built = buildConfig(form, BigInt(Math.floor(Date.now() / 1000)));
+    const built = buildConfig(form, chainNow());
     if (!built.ok && stepOf[built.field] <= step) {
       setInvalid(built);
       setStep(stepOf[built.field]);
@@ -308,7 +319,7 @@ export function CreateForm() {
       return;
     }
     setFailure(undefined);
-    const built = buildConfig(form, BigInt(Math.floor(Date.now() / 1000)));
+    const built = buildConfig(form, chainNow());
     if (!built.ok) {
       setInvalid(built);
       setStep(stepOf[built.field]);

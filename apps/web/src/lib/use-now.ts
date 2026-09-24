@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-/** Current time in whole seconds, ticking. Drives countdowns and phase changes without a refetch. */
+import { chainNow, syncChainClock } from "./chain-clock.ts";
+import { useRuntime } from "./use-runtime.ts";
+
+/**
+ * Current time in whole seconds on the chain's clock, ticking. Drives countdowns and phase changes without a
+ * refetch; the first one mounted reads the device's offset from the chain.
+ */
 export function useNow(): bigint {
-  const [now, setNow] = useState(() => BigInt(Math.floor(Date.now() / 1000)));
+  const { publicClient } = useRuntime();
+  const [now, setNow] = useState(chainNow);
   useEffect(() => {
-    const timer = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1_000);
+    syncChainClock(async () => (await publicClient.getBlock()).timestamp).then(() => setNow(chainNow()));
+    const timer = setInterval(() => setNow(chainNow()), 1_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [publicClient]);
   return now;
 }

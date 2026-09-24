@@ -5,6 +5,7 @@ import type { Address, Hex } from "viem";
 import { publicEnv } from "@/lib/env.ts";
 import { createIndexer, type IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { createAppRuntime } from "@/lib/runtime.ts";
+import { withChainSchedule } from "@/lib/schedule.ts";
 import { venueOf } from "@/lib/venue.ts";
 import { serverHermes } from "./hermes-options.ts";
 import { scorePerps } from "./perps-scoring.ts";
@@ -78,10 +79,16 @@ function createLeaderboards() {
   }
 
   async function compute(id: bigint): Promise<Leaderboard | null> {
-    const tournament = await indexer.tournament(id);
-    if (!tournament) {
+    const [indexed, chain] = await Promise.all([
+      indexer.tournament(id),
+      // The window is the chain's: after a host's Start now the indexer's copy trails by seconds or minutes,
+      // and fills in that gap would fall outside it.
+      runtime.tournament.get(id).catch(() => null),
+    ]);
+    if (!indexed) {
       return null;
     }
+    const tournament = withChainSchedule(indexed, chain?.config);
     if (venueOf(tournament.venue) === "futures") {
       return computePerps(tournament);
     }

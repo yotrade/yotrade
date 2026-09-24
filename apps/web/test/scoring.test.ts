@@ -75,6 +75,15 @@ describe("scoring", () => {
     expect(ranked.map((r) => r.participant)).toEqual(["0xa", "0xb", "0xc"]);
   });
 
+  test("everyone who traded ranks above everyone who did not, as prizes do", () => {
+    const ranked = rank([
+      row("0xidle", 0, 1n, 0),
+      row("0xloser", -900, 2n),
+      row("0xwinner", 40, 3n),
+    ]);
+    expect(ranked.map((r) => r.participant)).toEqual(["0xwinner", "0xloser", "0xidle"]);
+  });
+
   test("only traders with fills can take a prize rank", () => {
     const ranked = rank([
       row("0xidle", 0, 1n, 0),
