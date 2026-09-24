@@ -19,7 +19,6 @@ import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
 import { useTradingWindow } from "./use-trading-window.ts";
 
-const USDC = 1_000_000;
 /** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
 const LOOKBACK_SECONDS = 30 * 86_400;
 /** Kuru serves at most 500 candles per call. */
@@ -116,7 +115,8 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     summary: summarize(bars.slice(-CANDLES)),
     book,
     roi: portfolio.data && entry.data ? roiBps(portfolio.data.totalUsdc, entry.data.capitalAtJoin) : null,
-    positionUsd: portfolio.data ? Number(portfolio.data.holdings[base]?.valueUsdc ?? 0n) / USDC : null,
+    /** What I hold of the base token and its value at the book. Null until the balance has loaded. */
+    holding: portfolio.data?.holdings[base] ?? null,
   };
 }
 
