@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createFinalizer } from "../src/server/finalize.ts";
+import { createFinalizer, IndexerBehindError } from "../src/server/finalize.ts";
 import type { Leaderboard } from "../src/server/leaderboard.ts";
 
 const HASH = "0x01" as const;
@@ -82,5 +82,38 @@ describe("createFinalizer", () => {
     const { finalize, posted } = setup(board("open", 900n));
     await Promise.all([finalize(7n), finalize(7n), finalize(7n)]);
     expect(posted).toHaveLength(1);
+  });
+
+  test("two tournaments never send at once from the scorer wallet", async () => {
+    let sending = 0;
+    let overlapped = false;
+    const finalize = createFinalizer({
+      leaderboard: () => Promise.resolve(board("open", 900n)),
+      async postResults() {
+        sending += 1;
+        overlapped ||= sending > 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        sending -= 1;
+        return HASH;
+      },
+      now: () => 1_000_000,
+    });
+    await Promise.all([finalize(7n), finalize(8n)]);
+    expect(overlapped).toBe(false);
+  });
+
+  test("waits for the indexer to list every entrant the chain has", async () => {
+    const posted: bigint[] = [];
+    const finalize = createFinalizer({
+      leaderboard: () => Promise.resolve(board("open", 900n)),
+      postResults: (id) => {
+        posted.push(id);
+        return Promise.resolve(HASH);
+      },
+      participants: () => Promise.resolve(5),
+      now: () => 1_000_000,
+    });
+    await expect(finalize(7n)).rejects.toBeInstanceOf(IndexerBehindError);
+    expect(posted).toHaveLength(0);
   });
 });

@@ -36,6 +36,7 @@ function createFinalize() {
     leaderboard: getLeaderboard,
     // Simulated before it is sent, so a tournament that was finalized a moment ago costs no gas.
     postResults: (id, winners) => runtime.tournament.postResults(wallet, id, winners),
+    participants: async (id) => (await runtime.tournament.get(id)).participantCount,
     async settle({ tournament }) {
       if (venueOf(tournament.venue) !== "futures") {
         return;
