@@ -59,10 +59,16 @@ export function roiPpm(pnl: bigint, capitalAtJoin: bigint): number {
   return capitalAtJoin === 0n ? 0 : Number((pnl * PPM) / capitalAtJoin);
 }
 
-/** Best first. Equal returns go to whoever joined first, so the order is total and reproducible. */
+/**
+ * Best first, and everyone who traded before everyone who did not: a trader who sat still can take no prize,
+ * so the board must not show them above a loss that can. Equal returns go to whoever joined first, so the
+ * order is total and reproducible.
+ */
 export function rank(rows: readonly Scored[]): Scored[] {
+  const idle = (row: Scored) => (row.fills > 0 ? 0 : 1);
   return [...rows].sort(
     (a, b) =>
+      idle(a) - idle(b) ||
       b.roiPpm - a.roiPpm ||
       Number(a.joinedAt - b.joinedAt) ||
       a.participant.localeCompare(b.participant),
