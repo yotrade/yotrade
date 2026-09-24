@@ -1,0 +1,27 @@
+name: watch
+
+# Fails, and so emails the repository owner, when production is down or a hot wallet the app spends from
+# (drip, scorer, liquidator) is below its floor. Judges arrive in bursts; an empty drip stops every join.
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Production health and hot wallets
+        run: |
+          body=$(curl -sS --max-time 30 --retry 3 --retry-delay 10 https://app.yotrade.xyz/api/health)
+          echo "$body" | jq .
+          echo "$body" | jq -e '.status == "ok"' > /dev/null || { echo "::error::production is not healthy"; exit 1; }
+          low=$(echo "$body" | jq -r '.attention | join(", ")')
+          if [ -n "$low" ]; then
+            echo "::error::top up: $low"
+            exit 1
+          fi
