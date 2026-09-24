@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { indexerHealth, indexerProgress } from "@/server/indexer-health.ts";
 import { serverRuntime } from "@/server/runtime.ts";
 import { hotWallets, walletHealth } from "@/server/wallet-health.ts";
 
@@ -16,7 +17,8 @@ const withTimeout = <T>(work: Promise<T>) =>
   ]);
 
 /**
- * Liveness, the one dependency nothing works without (the chain RPC), and the hot wallets the app spends from.
+ * Liveness, the one dependency nothing works without (the chain RPC), the indexer every list and board reads,
+ * and the hot wallets the app spends from.
  * `attention` names the wallets below their floor: still up, but about to stop topping up, scoring or
  * liquidating. Wallet addresses and balances are public onchain anyway.
  */
@@ -33,12 +35,14 @@ export async function GET() {
       ),
     );
     const { wallets, attention } = walletHealth(balances);
+    const indexer = indexerHealth(await indexerProgress(), block);
     return NextResponse.json({
       status: "ok",
       chainId: runtime.chain.id,
       block: block.toString(),
+      indexer,
       wallets,
-      attention,
+      attention: indexer.ok ? attention : [...attention, "indexer"],
     });
   } catch {
     return NextResponse.json({ status: "degraded", chainId: runtime.chain.id }, { status: 503 });
