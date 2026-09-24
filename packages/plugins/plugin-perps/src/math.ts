@@ -179,7 +179,10 @@ export function planOrder(order: {
   const others = order.positions.filter((p) => p.market.toLowerCase() !== market);
   const held = next.size === 0n ? others : [...others, { ...next, price: order.price }];
   const after = risk(order.balance + realized - paid, held, cap);
-  const addsRisk = abs(next.size) > abs(current?.size ?? 0n);
+  const was = current?.size ?? 0n;
+  // Mirrors PerpsMath.addsRisk: bigger, or on the other side. A flip must pass the checks an open does.
+  const addsRisk =
+    abs(next.size) > abs(was) || (was > 0n && next.size < 0n) || (was < 0n && next.size > 0n);
   return {
     sizeDelta,
     fee: paid,

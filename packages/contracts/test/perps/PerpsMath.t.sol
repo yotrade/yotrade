@@ -10,6 +10,10 @@ contract PerpsMathHarness {
         return PerpsMath.toWad(price, expo);
     }
 
+    function addsRisk(int256 was, int256 becomes) external pure returns (bool) {
+        return PerpsMath.addsRisk(was, becomes);
+    }
+
     function applyFill(int256 size, uint256 entry, int256 delta, uint256 price)
         external
         pure
@@ -24,6 +28,19 @@ contract PerpsMathTest is Test {
 
     int256 internal constant ONE = 1e18;
     uint256 internal constant P100 = 100e18;
+
+    function test_AddsRisk_GrowingOrFlippingDoesReducingDoesNot() public view {
+        assertTrue(math.addsRisk(0, ONE));
+        assertTrue(math.addsRisk(ONE, 2 * ONE));
+        assertTrue(math.addsRisk(-ONE, -2 * ONE));
+        // A flip adds risk even when the new side is smaller.
+        assertTrue(math.addsRisk(10 * ONE, -ONE));
+        assertTrue(math.addsRisk(-10 * ONE, ONE));
+        assertFalse(math.addsRisk(2 * ONE, ONE));
+        assertFalse(math.addsRisk(-2 * ONE, -ONE));
+        assertFalse(math.addsRisk(ONE, 0));
+        assertFalse(math.addsRisk(ONE, ONE));
+    }
 
     function test_ToWad_ScalesPythExponents() public view {
         // BTC at 85,466.34 with Pyth's usual exponent of -8.

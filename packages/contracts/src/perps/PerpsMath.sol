@@ -32,6 +32,12 @@ library PerpsMath {
         return value < 0 ? (-value).toUint256() : value.toUint256();
     }
 
+    /// @notice Whether going from size `was` to size `becomes` takes on risk: a bigger position, or one on the other side.
+    /// A flip is a close and a new position in one fill, and the new one must pass every check an open does.
+    function addsRisk(int256 was, int256 becomes) internal pure returns (bool) {
+        return abs(becomes) > abs(was) || (was > 0 && becomes < 0) || (was < 0 && becomes > 0);
+    }
+
     /// @notice USD value of a position at `price`.
     function notional(int256 size, uint256 price) internal pure returns (uint256) {
         return (abs(size) * price) / WAD;

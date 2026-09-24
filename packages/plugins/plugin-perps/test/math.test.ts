@@ -111,6 +111,21 @@ describe("planning an order", () => {
     expect(planOrder({ ...order, notionalUsd: usd(60_000), cap: 5n }).withinCap).toBe(false);
   });
 
+  test("a flip under water is refused like an open, as PerpsEngine.t.sol has it", () => {
+    const held = [{ market: Btc, size: 3n * WAD, entryPrice: usd(60_000), price: usd(56_000) }];
+    const plan = planOrder({
+      balance: STARTING_BALANCE - usd(90),
+      positions: held,
+      market: Btc,
+      price: usd(56_000),
+      cap: 20n,
+      side: "short",
+      notionalUsd: usd(224_000),
+    });
+    expect(plan.position.size).toBe(-WAD);
+    expect(plan.withinCap).toBe(false);
+  });
+
   test("closing realizes the move and is never capped, even under water", () => {
     const held = [{ market: Btc, size: 3n * WAD, entryPrice: usd(60_000), price: usd(56_000) }];
     const plan = planOrder({
