@@ -254,3 +254,11 @@ export function bookRows(depth: Depth, pricePrecision: bigint, sizePrecision: bi
     rows.map((row) => ({ ...row, share: row.cumulative / deepest }));
   return { bids: share(bids), asks: share(asks) };
 }
+
+/** Fewer trades than this in the window and a percentage says more about one fill than about the market. */
+export const QUIET_TRADES = 4;
+
+/** True when too few slots actually traded for the line or its change to mean anything. */
+export function isQuiet(bars: readonly Bar[]): boolean {
+  return bars.filter((bar) => bar.volume > 0).length < QUIET_TRADES;
+}

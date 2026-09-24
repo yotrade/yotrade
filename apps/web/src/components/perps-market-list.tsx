@@ -3,7 +3,7 @@
 import { pnl, STARTING_BALANCE } from "@yotrade/plugin-perps/math";
 import Link from "next/link";
 
-import { CANDLES, linePath, plotOf, summarize } from "@/lib/chart.ts";
+import { CANDLES } from "@/lib/chart.ts";
 import { leverage, signedUsd, usd } from "@/lib/perps-format.ts";
 import {
   feedOf,
@@ -13,21 +13,24 @@ import {
   slugOfFeed,
   toUsdc,
 } from "@/lib/perps-markets.ts";
-import { formatBps, roiBps } from "@/lib/ticket.ts";
+import { roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { type PerpsPosition, usePerps } from "@/lib/use-perps.ts";
 import { useReference } from "@/lib/use-reference.ts";
+import { GameStatus } from "./game-status.tsx";
 import { describe } from "./perps-ticket.tsx";
-import { Amount } from "./ui/amount.tsx";
 import { BackButton } from "./ui/back-button.tsx";
+import { MarketCard } from "./ui/market-card.tsx";
 import { PerpsIcon } from "./ui/perps-icon.tsx";
 import { SectionLabel } from "./ui/section-label.tsx";
-import { Loading, RowSkeleton, Skeleton } from "./ui/skeleton.tsx";
+import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
-const SPARK = { width: 56, height: 28, padY: 3 };
 const FEEDS = PERPS_SLUGS.map(feedOf);
 const ROW =
   "flex items-center gap-3 rounded-2xl bg-surface-raised p-4 transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.99]";
+
+/** Each market's own colour: Bitcoin orange, Ethereum blue, Solana purple. */
+const COLORS: Record<PerpsSlug, string> = { btc: "#f7931a", eth: "#627eea", sol: "#9945ff" };
 
 function MarketRow({
   id,
@@ -44,46 +47,28 @@ function MarketRow({
   if (reference.isPending || price === undefined) {
     return (
       <Loading label={`Loading ${name}`}>
-        <RowSkeleton />
+        <Skeleton className="h-[196px] rounded-3xl" />
       </Loading>
     );
   }
-  // Ninety-six 15-minute candles are the last 24 hours; the series holds more for the chart's zoom.
   const bars = (reference.data?.bars ?? []).slice(-CANDLES);
   const series =
-    reference.data && bars[0] ? { ...reference.data, bars, from: bars[0].time } : undefined;
-  const summary = summarize(bars);
-  const up = (summary?.changeBps ?? 0) >= 0;
+    reference.data && bars[0] ? { bars, from: bars[0].time, to: reference.data.to } : null;
   return (
-    <Link href={`/t/${id}/trade/${slug}`} className={ROW}>
-      <PerpsIcon slug={slug} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <p className="truncate font-semibold leading-[21px]">{label}-PERP</p>
-        <p className="truncate text-sm font-medium leading-5 text-ink-muted">{name}</p>
-      </div>
-      <svg
-        viewBox={`0 0 ${SPARK.width} ${SPARK.height}`}
-        aria-hidden
-        className="h-7 w-14 shrink-0 overflow-visible"
-      >
-        {series && series.bars.length > 0 ? (
-          <path
-            d={linePath(series.bars, plotOf(series.bars, series.from, series.to, SPARK), series.to)}
-            fill="none"
-            className={up ? "stroke-up" : "stroke-down"}
-            strokeWidth={1.75}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        ) : null}
-      </svg>
-      <div className="flex shrink-0 flex-col items-end">
-        <p className="tabular font-semibold leading-[21px]">${usd(price)}</p>
-        <p className={`tabular text-sm font-medium leading-5 ${up ? "text-up" : "text-down"}`}>
-          {summary ? `${formatBps(summary.changeBps)} 24h` : "—"}
-        </p>
-      </div>
-    </Link>
+    <MarketCard
+      href={`/t/${id}/trade/${slug}`}
+      icon={<PerpsIcon slug={slug} size={44} />}
+      ticker={`${label}-PERP`}
+      name={name}
+      color={COLORS[slug]}
+      price={`$${usd(price)}`}
+      series={series}
+      window="24h"
+      actions={[
+        { label: "Short", side: "Short" },
+        { label: "Long", side: "Long" },
+      ]}
+    />
   );
 }
 
@@ -131,21 +116,13 @@ export function PerpsMarketList({ id }: { id: string }) {
         </span>
       </header>
 
-      <div className="flex flex-col gap-1">
-        <p className="text-[13px] font-medium text-ink-muted">Account equity</p>
-        {snapshot ? (
-          <Amount value={toUsdc(snapshot.risk.equity < 0n ? 0n : snapshot.risk.equity)} size="xl" />
-        ) : (
-          <Loading label="Loading your account">
-            <Skeleton className="h-12 w-44" />
-          </Loading>
-        )}
-        {snapshot && roi !== null ? (
-          <p className={`tabular text-sm font-semibold ${roi >= 0 ? "text-up" : "text-down"}`}>
-            {formatBps(roi)} since the start · {leverage(snapshot.risk.leverageX100)} leverage
-          </p>
-        ) : null}
-      </div>
+      <GameStatus id={id} you={trader} returnBps={roi} />
+      {snapshot ? (
+        <p className="tabular -mt-3 text-center text-[13px] font-semibold text-ink-muted">
+          Equity ${usd(snapshot.risk.equity < 0n ? 0n : snapshot.risk.equity)} ·{" "}
+          {leverage(snapshot.risk.leverageX100)} leverage · up to {snapshot.leverageCap.toString()}x
+        </p>
+      ) : null}
 
       {snapshot && snapshot.positions.length > 0 ? (
         <section className="flex flex-col gap-3">
@@ -160,25 +137,22 @@ export function PerpsMarketList({ id }: { id: string }) {
         </section>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <SectionLabel>Pick a market</SectionLabel>
-        <p className="-mt-1 text-[13px] font-medium leading-5 text-ink-muted">
-          Go long or short with up to{" "}
-          {snapshot ? `${snapshot.leverageCap}x` : "the tournament's cap"}. Everyone started with a
-          virtual $10,000.
-        </p>
-        <ul className="flex flex-col gap-2">
-          {PERPS_SLUGS.map((slug, index) => (
-            <li key={slug} className="animate-enter" style={{ animationDelay: `${index * 50}ms` }}>
-              <MarketRow
-                id={id}
-                slug={slug}
-                price={snapshot?.prices[feedOf(slug).toLowerCase() as `0x${string}`]}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ul className="flex flex-col gap-3">
+        {PERPS_SLUGS.map((slug, index) => (
+          <li key={slug} className="animate-enter" style={{ animationDelay: `${index * 60}ms` }}>
+            <MarketRow
+              id={id}
+              slug={slug}
+              price={snapshot?.prices[feedOf(slug).toLowerCase() as `0x${string}`]}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <p className="text-[12px] font-medium leading-5 text-ink-muted">
+        Charts show the global market. Orders fill at the signed Pyth price. Everyone started with a
+        virtual $10,000.
+      </p>
     </main>
   );
 }

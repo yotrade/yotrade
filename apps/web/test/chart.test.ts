@@ -5,6 +5,7 @@ import {
   bookRows,
   candleShapes,
   fillGaps,
+  isQuiet,
   linePath,
   plotOf,
   summarize,
@@ -165,5 +166,14 @@ describe("fillGaps", () => {
     expect(Math.min(...short.map((bar) => bar.low))).toBe(100);
     const long = fillGaps(bars, 3_600, 7_199, 3);
     expect(Math.min(...long.map((bar) => bar.low))).toBe(50);
+  });
+});
+
+describe("isQuiet", () => {
+  const bar = (volume: number) => ({ time: 0, open: 1, high: 1, low: 1, close: 1, volume });
+  test("a market with a handful of traded slots is quiet, one that trades is not", () => {
+    expect(isQuiet([])).toBe(true);
+    expect(isQuiet([bar(1), bar(0), bar(2), bar(0), bar(1)])).toBe(true);
+    expect(isQuiet([bar(1), bar(1), bar(1), bar(1)])).toBe(false);
   });
 });
