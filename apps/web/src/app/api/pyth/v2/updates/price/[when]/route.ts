@@ -8,7 +8,11 @@ let proxy: PythProxy | null | undefined;
 /** Same path and query as Hermes, so the client only swaps its base URL. */
 export async function GET(request: Request, { params }: { params: Promise<{ when: string }> }) {
   if (proxy === undefined) {
-    const env = parseServerEnv(process.env);
+    // Only this route's own variables: an unrelated malformed one must not take futures prices down.
+    const env = parseServerEnv({
+      PYTH_API_KEY: process.env["PYTH_API_KEY"],
+      PYTH_HERMES_URL: process.env["PYTH_HERMES_URL"],
+    });
     proxy = env.PYTH_API_KEY
       ? createPythProxy({ baseUrl: env.PYTH_HERMES_URL, apiKey: env.PYTH_API_KEY })
       : null;
@@ -22,10 +26,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ when
     return new Response(body, {
       headers: {
         "content-type": "application/json",
-        "cache-control":
-          when === "latest"
-            ? "public, s-maxage=1, stale-while-revalidate=2"
-            : "public, s-maxage=3600, immutable",
+        "cache-control": "public, s-maxage=1, stale-while-revalidate=2",
       },
     });
   } catch (cause) {

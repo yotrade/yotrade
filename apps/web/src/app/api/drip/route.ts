@@ -6,6 +6,7 @@ import { z } from "zod";
 import { publicEnv } from "@/lib/env.ts";
 import { createAppRuntime } from "@/lib/runtime.ts";
 import { parseServerEnv } from "@/lib/server-env.ts";
+import { clientIp } from "@/server/client-ip.ts";
 import { createDripper } from "@/server/drip.ts";
 
 export const dynamic = "force-dynamic";
@@ -49,9 +50,7 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: "Expected { address }" }, { status: 400 });
   }
-  // Vercel overwrites this header with the client address. Behind another proxy a caller could forge it,
-  // which only lets them at the global hourly cap, never past it.
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip = clientIp(request.headers);
 
   try {
     const result = await drip(body.data.address as Address, ip);

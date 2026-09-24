@@ -109,11 +109,7 @@ export function createLogoProxy(deps: LogoDeps = {}) {
     if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) {
       throw new LogoError(413, "Image too large");
     }
-    const body = await response.arrayBuffer();
-    if (body.byteLength > MAX_BYTES) {
-      throw new LogoError(413, "Image too large");
-    }
-    return { body, contentType };
+    return { body: await readCapped(response, MAX_BYTES), contentType };
   }
 
   return async function get(link: string): Promise<Logo> {
@@ -133,4 +129,36 @@ export function createLogoProxy(deps: LogoDeps = {}) {
     }
     throw new LogoError(502, "Too many redirects");
   };
+}
+
+/**
+ * The body, read chunk by chunk and abandoned as soon as it passes `max` bytes. A header can lie or be missing
+ * (chunked), so only counting what arrives keeps an endless response from filling memory.
+ */
+export async function readCapped(response: Response, max: number): Promise<ArrayBuffer> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    return new ArrayBuffer(0);
+  }
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      throw new LogoError(413, "Image too large");
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
 }

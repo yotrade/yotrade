@@ -81,6 +81,7 @@ console.info(
 
 let checked = 0;
 let due = 0;
+let failed = 0;
 for (const tournament of await liveFuturesTournaments()) {
   const id = BigInt(tournament.id);
   const cap = await runtime.perps.leverageCapOf(id);
@@ -104,12 +105,24 @@ for (const tournament of await liveFuturesTournaments()) {
       `  ${tournament.id} ${tradingAccount} equity ${formatEther(state.equity)} notional ${formatEther(state.notional)} at ${cap}x`,
     );
     if (execute) {
-      const hash = await runtime.perps.liquidate(wallet, {
-        tournamentId: id,
-        trader: tradingAccount,
-      });
-      console.info(`  ok   liquidated ${hash}`);
+      // One account that cannot be liquidated right now (a rival got there first, the price moved back, Pyth
+      // was stale) must not leave every account after it for the next run.
+      try {
+        const hash = await runtime.perps.liquidate(wallet, {
+          tournamentId: id,
+          trader: tradingAccount,
+        });
+        console.info(`  ok   liquidated ${hash}`);
+      } catch (cause) {
+        failed += 1;
+        console.error(
+          `  fail ${tournament.id} ${tradingAccount}: ${(cause as Error).message.split("\n")[0]}`,
+        );
+      }
     }
   }
 }
-console.info(`${checked} accounts with positions, ${due} under maintenance`);
+console.info(`${checked} accounts with positions, ${due} under maintenance, ${failed} failed`);
+if (failed > 0) {
+  process.exitCode = 1;
+}

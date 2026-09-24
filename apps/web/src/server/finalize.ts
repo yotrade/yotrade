@@ -15,7 +15,14 @@ export interface FinalizeDeps {
    * price here, so the posted ranking can be recomputed from the chain alone. Spot has nothing to do.
    */
   settle?(board: Leaderboard): Promise<void>;
+  /** Entrants on-chain. The board lists the indexer's, which can trail a join made just before the end. */
+  participants?(id: bigint): Promise<number>;
   now?: () => number;
+}
+
+/** The indexer has not seen every join yet: a ranking now would leave someone out for good. */
+export class IndexerBehindError extends Error {
+  override readonly name = "IndexerBehindError";
 }
 
 /**
@@ -26,9 +33,12 @@ export function createFinalizer({
   leaderboard,
   postResults,
   settle,
+  participants,
   now = Date.now,
 }: FinalizeDeps) {
   const inFlight = new Map<string, Promise<FinalizeResult>>();
+  // Every transaction comes from the one scorer wallet, and Monad's pending nonce lags: one run at a time.
+  let queue: Promise<unknown> = Promise.resolve();
 
   async function run(id: bigint): Promise<FinalizeResult> {
     const board = await leaderboard(id);
@@ -42,6 +52,9 @@ export function createFinalizer({
     if (BigInt(Math.floor(now() / 1000)) < tournament.endTime) {
       return { status: "not-ended" };
     }
+    if (participants && (await participants(id)) > board.rows.length) {
+      throw new IndexerBehindError(`Tournament ${id} has entries the indexer has not seen yet`);
+    }
     // The board already scores at the end prices, so settling changes the chain and not the ranking.
     await settle?.(board);
     const winners = winnersOf(board.rows, tournament.prizeSplitBps.length);
@@ -54,7 +67,8 @@ export function createFinalizer({
     if (running) {
       return running;
     }
-    const next = run(id).finally(() => inFlight.delete(key));
+    const next = queue.then(() => run(id)).finally(() => inFlight.delete(key));
+    queue = next.catch(() => undefined);
     inFlight.set(key, next);
     return next;
   };

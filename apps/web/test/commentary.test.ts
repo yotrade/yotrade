@@ -88,6 +88,10 @@ describe("commentary", () => {
     // The board moved: one more call.
     await commentary("1", { rank: 2 }, "en");
     expect(calls).toBe(3);
+    // Only the countdown moved: nothing new to say.
+    time = 240_000;
+    await commentary("1", { rank: 2, clock: "1h 03m" }, "en");
+    expect(calls).toBe(3);
   });
 
   test("stops asking after the day's allowance and serves what it has", async () => {
