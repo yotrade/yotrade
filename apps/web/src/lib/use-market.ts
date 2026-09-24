@@ -42,6 +42,8 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     queryKey: ["market-info", orderBook],
     queryFn: () => kuru.data.market(orderBook),
     staleTime: Number.POSITIVE_INFINITY,
+    // Never refetched once known; after a failure it must be, or the book waits on it forever.
+    refetchInterval: (query) => (query.state.status === "error" ? 10_000 : false),
   });
   const candles = useQuery({
     queryKey: ["candles", orderBook, range],
@@ -75,6 +77,8 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     refetchInterval: 3_000,
   });
 
+  const chartFailed = info.isError || (candles.isError && !candles.data);
+  const bookFailed = info.isError || (depth.isError && !depth.data);
   const bars =
     info.data && candles.data
       ? fillGaps(
@@ -105,9 +109,12 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
     /** A buy needs offers and a sell needs bids. Unknown until the book has loaded. */
     canBuy: top.data?.hasAsk ?? true,
     canSell: top.data?.hasBid ?? true,
+    /** Kuru did not answer: not the same as a market with no trades or an empty book. */
+    chartFailed,
+    bookFailed,
     /** Nothing here may be read as "empty" before it has loaded. */
-    chartLoading: info.isPending || candles.isPending,
-    bookLoading: info.isPending || depth.isPending,
+    chartLoading: !chartFailed && (info.isPending || candles.isPending),
+    bookLoading: !bookFailed && (info.isPending || depth.isPending),
     bars,
     from: bars[0]?.time ?? 0,
     to: bars.at(-1)?.time ?? 1,
