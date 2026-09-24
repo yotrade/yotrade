@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import type { MeraWallet } from "@yotrade/plugin-mera/plugin";
-import { type OrderPlan, planOrder } from "@yotrade/plugin-perps/math";
+import { maxMargin, type OrderPlan, planOrder } from "@yotrade/plugin-perps/math";
 import { type FormEvent, useState } from "react";
 import { parseUnits } from "viem";
 
@@ -125,8 +125,8 @@ export function PerpsTicket({
   const problem = problemOf(margin, typed, plan, cap);
 
   function shortcut(percent: bigint) {
-    // A hair under the cap: the fee comes out of equity in the same fill.
-    const amount = (free * percent * 995n) / 100_000n;
+    // Less 0.2% for the price moving between the quote and the fill.
+    const amount = (maxMargin(snapshot.risk, price, cap, multiple) * percent * 998n) / 100_000n;
     setMargin((Number(amount / 10n ** 16n) / 100).toFixed(2));
   }
 

@@ -112,7 +112,7 @@ export function usePerpsMarket(id: string, slug: PerpsSlug, range: RangeName) {
         return;
       }
       await fundGas(publicClient, wallet.account.address);
-      await perps.trade(wallet, { tournamentId: BigInt(id), market: feed, sizeDelta: -position.size });
+      await perps.close(wallet, { tournamentId: BigInt(id), market: feed });
       await queryClient.invalidateQueries({ queryKey: ["perps", id] });
     },
   };

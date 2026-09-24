@@ -6,6 +6,7 @@ import {
   liquidationPrice,
   maintenanceBps,
   maxAdd,
+  maxMargin,
   planOrder,
   pnl,
   risk,
@@ -160,6 +161,50 @@ describe("planning an order", () => {
     const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000), 20n) ?? 0n;
     expect(short > usd(61_700) && short < usd(62_000)).toBe(true);
     expect(liquidationPrice(usd(10_000), WAD / 10n, usd(60_000), 20n)).toBeNull();
+  });
+
+  test("the cap sets the maintenance: 0.1 BTC at 100,000 on 2,000 of equity at 5x is out near 88,889", () => {
+    const at5 = liquidationPrice(usd(2000), WAD / 10n, usd(100_000), 5n) ?? 0n;
+    expect(at5 / WAD).toBe(88_888n);
+    // Read at the default 100x instead, the same position looks safe down to about 80,400.
+    expect((liquidationPrice(usd(2000), WAD / 10n, usd(100_000)) ?? 0n) / WAD).toBe(80_402n);
+  });
+
+  test("other markets' maintenance comes out of what this position can lose", () => {
+    const alone = liquidationPrice(usd(9910), 3n * WAD, usd(60_000), 20n) ?? 0n;
+    const withEth = liquidationPrice(usd(9910), 3n * WAD, usd(60_000), 20n, usd(40_000)) ?? 0n;
+    expect(withEth).toBeGreaterThan(alone);
+    const short = liquidationPrice(usd(9910), -3n * WAD, usd(60_000), 20n, usd(40_000)) ?? 0n;
+    expect(short).toBeLessThan(liquidationPrice(usd(9910), -3n * WAD, usd(60_000), 20n) ?? 0n);
+    // Already under maintenance, counting the other markets: out at the current price, either side.
+    expect(liquidationPrice(0n, -WAD, usd(60_000), 20n, usd(400_000))).toBe(usd(60_000));
+    expect(liquidationPrice(usd(100), WAD, usd(60_000), 20n, usd(400_000))).toBe(usd(60_000));
+  });
+});
+
+describe("maxMargin", () => {
+  test("MAX at a multiple equal to the cap fits the cap once the fee is paid", () => {
+    for (const cap of [5n, 20n, 100n]) {
+      const flat = risk(STARTING_BALANCE, [], cap);
+      const margin = (maxMargin(flat, usd(60_000), cap, cap) * 998n) / 1000n;
+      const plan = planOrder({
+        balance: STARTING_BALANCE,
+        positions: [],
+        market: "0xbtc",
+        price: usd(60_000),
+        side: "long",
+        notionalUsd: margin * cap,
+        cap,
+      });
+      expect(plan.withinCap).toBe(true);
+    }
+  });
+
+  test("a low multiple is limited by the free margin, and nothing is free under water", () => {
+    const flat = risk(STARTING_BALANCE, [], 100n);
+    expect(maxMargin(flat, usd(60_000), 100n, 1n)).toBe(STARTING_BALANCE);
+    const sunk = risk(-usd(1), [], 100n);
+    expect(maxMargin(sunk, usd(60_000), 100n, 10n)).toBe(0n);
   });
 });
 

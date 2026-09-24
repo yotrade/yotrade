@@ -54,7 +54,7 @@
   },
   "PerpsEngine": {
     "proxy": "0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336",
-    "implementation": "0x9BeDb5E0734A7C0945CbCaCc0a678d8227b19a7f",
+    "implementation": "0x12C458Ff0556b9d89cfbc6Fbc598b9c651659593",
     "deployBlock": 64494582,
     "pyth": "0x2880aB155794e7179c9eE2e38200202908C17B43",
     "markets": {
@@ -81,7 +81,11 @@
       },
       {
         "address": "0x9BeDb5E0734A7C0945CbCaCc0a678d8227b19a7f",
-        "note": "refactor: PerpsBase with Trading and Settlement modules; ABI, selectors and storage identical (2026-09-24), verified; current"
+        "note": "refactor: PerpsBase with Trading and Settlement modules; ABI, selectors and storage identical (2026-09-24), verified"
+      },
+      {
+        "address": "0x12C458Ff0556b9d89cfbc6Fbc598b9c651659593",
+        "note": "a flip through zero is checked like an open (#215, 2026-09-24), verified; current"
       }
     ]
   },

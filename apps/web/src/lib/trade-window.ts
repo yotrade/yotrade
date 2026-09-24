@@ -13,6 +13,8 @@ export function tradeGate(phase: Phase, opensIn: string): string | null {
     case "cancelled":
       return "This tournament was called off";
     case "unknown":
+      // The indexer is late or down. The chain still enforces the futures window and spot fills outside it are
+      // never scored, so trading stays open rather than going dark with the indexer.
       return null;
     default:
       return "Trading has ended. The results are being scored";

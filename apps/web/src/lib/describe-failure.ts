@@ -35,6 +35,24 @@ const REVERTS: Record<string, string> = {
   NothingToSettle: "There is nothing to settle.",
   NotLiquidatable: "That position is not liquidatable.",
   ZeroSize: "Enter a size.",
+  EnforcedPause: "Trading is paused for a moment. Try again shortly.",
+  InvalidPrice: "The oracle sent an unusable price. Try again in a moment.",
+  WrongVenue: "This tournament does not trade futures.",
+  // Pyth's own errors: not in our ABI, so they are recognised by selector below.
+  StalePrice: "The oracle price went stale before the order landed. Try again.",
+  PriceFeedNotFound: "The oracle has no price for this market right now.",
+  PriceFeedNotFoundWithinRange: "The oracle has no price for that moment yet. Try again shortly.",
+  InsufficientFee: "The price update fee changed. Try again.",
+  InvalidUpdateData: "The oracle update was rejected. Try again.",
+};
+
+/** Selectors of errors raised inside Pyth, which a revert through our contracts carries undecoded. */
+const PYTH_SELECTORS: Record<string, string> = {
+  "0x19abf40e": "StalePrice",
+  "0x14aebe68": "PriceFeedNotFound",
+  "0x45805f5d": "PriceFeedNotFoundWithinRange",
+  "0x025dbdd4": "InsufficientFee",
+  "0xe69ffece": "InvalidUpdateData",
 };
 
 /** The contract error name inside a viem error, when the transaction reverted with one. */
@@ -43,7 +61,10 @@ export function revertName(cause: unknown): string | undefined {
     return undefined;
   }
   const revert = cause.walk((error) => error instanceof ContractFunctionRevertedError);
-  return revert instanceof ContractFunctionRevertedError ? revert.data?.errorName : undefined;
+  if (!(revert instanceof ContractFunctionRevertedError)) {
+    return undefined;
+  }
+  return revert.data?.errorName ?? (revert.signature ? PYTH_SELECTORS[revert.signature] : undefined);
 }
 
 /**

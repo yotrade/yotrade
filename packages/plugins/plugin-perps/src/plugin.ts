@@ -119,6 +119,34 @@ export function perps(options: PerpsOptions) {
         );
       },
 
+      /**
+       * Closes the caller's position in `market` at the size the chain holds now, not the size a screen showed:
+       * after a liquidation or a close from another tab, minus that stale size would open the opposite side.
+       * Null when there is nothing to close.
+       */
+      async close(
+        wallet: Wallet,
+        order: { tournamentId: bigint; market: Hex },
+      ): Promise<Hash | null> {
+        const open = await account(order.tournamentId, wallet.account.address);
+        const held = open.positions.find(
+          (p) => p.market.toLowerCase() === order.market.toLowerCase(),
+        );
+        if (!held || held.size === 0n) {
+          return null;
+        }
+        const ids = [...new Set([order.market, ...open.positions.map((p) => p.market)])];
+        const { updates } = await options.hermes.latest(ids);
+        return confirm(
+          wallet.writeContract({
+            ...contract,
+            functionName: "trade",
+            args: [order.tournamentId, order.market, -held.size, updates],
+            value: await feeOf(updates),
+          }),
+        );
+      },
+
       /** Closes every position of `trader` at the newest Pyth price when the account is under maintenance. */
       async liquidate(
         wallet: Wallet,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { pnl, STARTING_BALANCE } from "@yotrade/plugin-perps/math";
 import Link from "next/link";
 
@@ -17,6 +18,7 @@ import { roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { type PerpsPosition, usePerps } from "@/lib/use-perps.ts";
 import { useReference } from "@/lib/use-reference.ts";
+import { useRuntime } from "@/lib/use-runtime.ts";
 import { GameStatus } from "./game-status.tsx";
 import { describe } from "./perps-ticket.tsx";
 import { BackButton } from "./ui/back-button.tsx";
@@ -93,9 +95,18 @@ function PositionRow({ id, position }: { id: string; position: PerpsPosition }) 
 export function PerpsMarketList({ id }: { id: string }) {
   const { identity } = useIdentity();
   const trader = identity?.tournamentWallet(BigInt(id)).account.address;
+  const { tournament } = useRuntime();
+  const entry = useQuery({
+    queryKey: ["entry", id, trader],
+    queryFn: () => (trader ? tournament.entry(BigInt(id), trader) : null),
+    enabled: trader !== undefined,
+  });
   const account = usePerps(id, trader, FEEDS);
-  const snapshot = account.data;
-  const roi = snapshot ? roiBps(toUsdc(snapshot.risk.equity), toUsdc(STARTING_BALANCE)) : null;
+  // Only an entrant has an account here: anyone else would read the untouched $10,000 as theirs.
+  const snapshot = entry.data ? account.data : null;
+  // A paper account cannot owe, so equity and return stop at zero, as on the leaderboard.
+  const equity = snapshot && snapshot.risk.equity > 0n ? snapshot.risk.equity : 0n;
+  const roi = snapshot ? roiBps(toUsdc(equity), toUsdc(STARTING_BALANCE)) : null;
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
@@ -110,8 +121,8 @@ export function PerpsMarketList({ id }: { id: string }) {
       <GameStatus id={id} you={trader} returnBps={roi} />
       {snapshot ? (
         <p className="tabular -mt-3 text-center text-[13px] font-semibold text-ink-muted">
-          Equity ${usd(snapshot.risk.equity < 0n ? 0n : snapshot.risk.equity)} ·{" "}
-          {leverage(snapshot.risk.leverageX100)} leverage · up to {snapshot.leverageCap.toString()}x
+          Equity ${usd(equity)} · {leverage(snapshot.risk.leverageX100)} leverage · up to{" "}
+          {snapshot.leverageCap.toString()}x
         </p>
       ) : null}
 
