@@ -6,7 +6,13 @@ import { useState } from "react";
 import { describeFailure } from "@/lib/describe-failure.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
-import { hostInvite, inviteLink } from "@/lib/invite.ts";
+import {
+  hostInvite,
+  inviteLink,
+  isPrivatePending,
+  markPrivatePending,
+  saveInvite,
+} from "@/lib/invite.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { Button } from "./ui/button.tsx";
@@ -31,7 +37,7 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
     return null;
   }
   if (signer.data === "0x0000000000000000000000000000000000000000") {
-    return null;
+    return isPrivatePending(tournament.id) ? <FinishPrivate tournament={tournament} /> : null;
   }
   const current = hostInvite(identity, tournament.id, signer.data);
 
@@ -111,6 +117,53 @@ export function InvitePanel({ tournament }: { tournament: IndexedTournament }) {
       )}
       {error ? (
         <p role="alert" className="text-sm text-down">
+          {error}
+        </p>
+      ) : null}
+    </Card>
+  );
+}
+
+/** The create's second step, when it failed: until the invite is on-chain, anyone with the link can join. */
+function FinishPrivate({ tournament }: { tournament: IndexedTournament }) {
+  const { publicClient, tournament: manager } = useRuntime();
+  const { identity } = useIdentity();
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+
+  async function finish() {
+    if (!identity) {
+      return;
+    }
+    setPending(true);
+    setError(undefined);
+    try {
+      await fundGas(publicClient, identity.wallet.account.address);
+      const invite = identity.inviteKey(tournament.id, 0);
+      await manager.setInvite(identity.wallet, tournament.id, invite.address);
+      saveInvite(tournament.id, invite.privateKey);
+      markPrivatePending(tournament.id, false);
+      await queryClient.invalidateQueries({ queryKey: ["invite-signer"] });
+    } catch (cause) {
+      setError(describeFailure(cause, "The invite was not set. Try again."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-3 py-4">
+      <p className="font-semibold">This tournament is not private yet</p>
+      <p className="text-sm font-medium leading-5 text-ink-muted">
+        It was created and its prize pool is in escrow, but the invite did not reach the chain.
+        Until it does, anyone with the link can join.
+      </p>
+      <Button className="min-h-10" pending={pending} onClick={finish}>
+        Make it private now
+      </Button>
+      {error ? (
+        <p role="alert" className="text-sm font-medium text-down">
           {error}
         </p>
       ) : null}

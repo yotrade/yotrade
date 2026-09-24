@@ -13,7 +13,7 @@ import { indexer } from "@/lib/indexer-client.ts";
 import { hostInvite, inviteLink } from "@/lib/invite.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
 import { roomCode, spaced } from "@/lib/room-code.ts";
-import { clock, joinUrl } from "@/lib/screen.ts";
+import { clock, joinUrl, podiumOf } from "@/lib/screen.ts";
 import { formatBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLeaderboard } from "@/lib/use-leaderboard.ts";
@@ -91,6 +91,8 @@ function StartNow({ tournament }: { tournament: IndexedTournamentDetail }) {
     try {
       await fundGas(publicClient, identity.wallet.account.address);
       await manager.startNow(identity.wallet, tournament.id);
+      // The chain's schedule is what flips the lobby to live; the indexer's follows a few seconds later.
+      await queryClient.invalidateQueries({ queryKey: ["schedule"] });
       await queryClient.invalidateQueries({ queryKey: ["tournament"] });
     } catch (cause) {
       console.error("startNow failed", cause);
@@ -229,7 +231,7 @@ function Race({
 /** After the bell: three steps, the winners on them, and the pool they split. */
 function Podium({ id, tournament }: { id: string; tournament: IndexedTournamentDetail }) {
   const { data } = useLeaderboard(id);
-  const top = (data ?? []).slice(0, 3);
+  const top = podiumOf(data ?? [], tournament.winners);
   const profileOf = useProfiles(top.map((row) => row.participant));
   const order = [1, 0, 2].filter((index) => top[index]);
   const heights = ["h-56", "h-40", "h-32"];
@@ -257,9 +259,9 @@ function Podium({ id, tournament }: { id: string; tournament: IndexedTournamentD
                 {traderName(row.participant, profileOf(row.participant), false)}
               </p>
               <p
-                className={`tabular font-mono text-xl font-bold ${row.roiPpm >= 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]"}`}
+                className={`tabular font-mono text-xl font-bold ${(row.roiPpm ?? 0) >= 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]"}`}
               >
-                {roi(row.roiPpm)}
+                {row.roiPpm === null ? "" : roi(row.roiPpm)}
               </p>
               <div
                 className={`flex w-full items-start justify-center rounded-t-3xl pt-4 ${heights[index]} ${MEDALS[index]}`}
