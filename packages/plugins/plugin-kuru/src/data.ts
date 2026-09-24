@@ -246,6 +246,16 @@ export function createDataClient(
       return { realizedUsdc: realized / PNL_TO_USDC, fills, positions };
     },
 
+    /** What the account holds on every market it has traded, and what that inventory cost. */
+    async positions(userId: bigint): Promise<DataPosition[]> {
+      const body: RawTradesPage = await get(`/users/${userId}/trades?limit=1`);
+      return body.data.positions.map((row) => ({
+        market: row.marketAddress,
+        openSize: BigInt(row.openSize),
+        openCost: BigInt(row.openCost),
+      }));
+    },
+
     /** Most recent fills first. */
     async trades(userId: bigint, limit = 100): Promise<DataTrade[]> {
       const body = await get<{ data: { trades: RawTrade[] } }>(

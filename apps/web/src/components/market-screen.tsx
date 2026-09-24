@@ -13,7 +13,7 @@ import { DepthChart } from "./depth-chart.tsx";
 import { OrderBook } from "./order-book.tsx";
 import { OrderTicket, type Side } from "./order-ticket.tsx";
 import { PriceChart } from "./price-chart.tsx";
-import { SpotFillsList } from "./spot-fills-list.tsx";
+import { SpotPositionCard } from "./spot-position.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Dropdown } from "./ui/dropdown.tsx";
 import { Segmented } from "./ui/segmented.tsx";
@@ -134,14 +134,13 @@ export function RangeTabs({
 }
 
 function Stats({ data }: { data: MarketData }) {
-  const { summary, positionUsd, base, chartLoading } = data;
+  const { summary, chartLoading } = data;
   const cells: [string, string][] = [
     ["Open", summary ? money(summary.open) : "—"],
     ["High", summary ? money(summary.high) : "—"],
     ["Close", summary ? money(summary.close) : "—"],
     ["Low", summary ? money(summary.low) : "—"],
     ["Volume", summary ? `$${compact(summary.volume)}` : "—"],
-    [`Your ${TOKEN_LABELS[base]}`, positionUsd === null ? "—" : `$${money(positionUsd)}`],
   ];
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
@@ -226,6 +225,7 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
   const [range, setRange] = useState<RangeName>("15m");
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
+  const [closing, setClosing] = useState(false);
   const [done, setDone] = useState<string>();
   const data = useMarket(id, market, range, view !== "Chart");
   const chart = view === "Chart";
@@ -252,11 +252,15 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
       </div>
       {chart ? <RangeTabs value={range} onChange={setRange} /> : null}
       <Stats data={data} />
-      {data.joined && data.wallet && data.info ? (
-        <SpotFillsList
+      {data.joined && data.wallet && data.holding ? (
+        <SpotPositionCard
           trader={data.wallet.account.address}
-          info={data.info}
-          base={TOKEN_LABELS[data.base]}
+          market={market}
+          holding={data.holding}
+          onClose={() => {
+            setClosing(true);
+            setSide("Sell");
+          }}
         />
       ) : null}
 
@@ -269,20 +273,32 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
       <TradeBar data={data} onPick={setSide} />
 
       {data.wallet ? (
-        <Sheet open={side !== null} onClose={() => setSide(null)} label="Order ticket">
+        <Sheet
+          open={side !== null}
+          onClose={() => {
+            setSide(null);
+            setClosing(false);
+          }}
+          label="Order ticket"
+        >
           <h2 className="text-xl font-bold leading-[26px] tracking-tight">
-            {side ?? "Buy"} {TOKEN_LABELS[data.base]}
+            {closing ? "Close position" : `${side ?? "Buy"} ${TOKEN_LABELS[data.base]}`}
           </h2>
           <OrderTicket
             // The amount is in the token being paid, so a new side or market starts from an empty field.
-            key={`${market}-${side}`}
+            key={`${market}-${side}-${closing}`}
             wallet={data.wallet}
             market={market}
             side={side ?? "Buy"}
-            onSideChange={setSide}
+            max={closing}
+            onSideChange={(next) => {
+              setClosing(false);
+              setSide(next);
+            }}
             onDone={(message) => {
               setDone(message);
               setSide(null);
+              setClosing(false);
             }}
           />
         </Sheet>
