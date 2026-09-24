@@ -262,3 +262,20 @@ export const QUIET_TRADES = 4;
 export function isQuiet(bars: readonly Bar[]): boolean {
   return bars.filter((bar) => bar.volume > 0).length < QUIET_TRADES;
 }
+
+/** How far the window moved, first open to last close: in price and in basis points. */
+export function changeOf(bars: readonly Bar[]): { amount: number; bps: number } | null {
+  const first = bars[0];
+  const last = bars.at(-1);
+  if (!(first && last) || first.open === 0) {
+    return null;
+  }
+  const amount = last.close - first.open;
+  return { amount, bps: Math.round((amount / first.open) * 10_000) };
+}
+
+/** A window's length the way a price tag says it: 24H, 4D. */
+export function spanText(seconds: number): string {
+  const hours = Math.round(seconds / 3_600);
+  return hours < 48 ? `${Math.max(hours, 1)}H` : `${Math.round(hours / 24)}D`;
+}

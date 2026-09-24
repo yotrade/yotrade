@@ -29,9 +29,6 @@ const FEEDS = PERPS_SLUGS.map(feedOf);
 const ROW =
   "flex items-center gap-3 rounded-2xl bg-surface-raised p-4 transition duration-200 hover:bg-well focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.99]";
 
-/** Each market's own colour: Bitcoin orange, Ethereum blue, Solana purple. */
-const COLORS: Record<PerpsSlug, string> = { btc: "#f7931a", eth: "#627eea", sol: "#9945ff" };
-
 function MarketRow({
   id,
   slug,
@@ -47,7 +44,7 @@ function MarketRow({
   if (reference.isPending || price === undefined) {
     return (
       <Loading label={`Loading ${name}`}>
-        <Skeleton className="h-[144px] rounded-3xl" />
+        <Skeleton className="h-[300px] rounded-3xl" />
       </Loading>
     );
   }
@@ -57,13 +54,11 @@ function MarketRow({
   return (
     <MarketCard
       href={`/t/${id}/trade/${slug}`}
-      icon={<PerpsIcon slug={slug} size={44} />}
+      icon={<PerpsIcon slug={slug} size={32} />}
       ticker={`${label}-PERP`}
       name={name}
-      color={COLORS[slug]}
       price={`$${usd(price)}`}
       series={series}
-      window="24h"
     />
   );
 }
