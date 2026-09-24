@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { isLogoUrl } from "@/lib/logo-url.ts";
-import { createLogoProxy, isPublicAddress, LogoError } from "@/server/logo.ts";
+import { createLogoProxy, isPublicAddress, LogoError, readCapped } from "@/server/logo.ts";
 
 const PNG = "https://cdn.example.com/logo.png";
 
@@ -92,5 +92,28 @@ describe("logo proxy", () => {
     const blocked = createLogoProxy({ blocklist: ["cdn.example.com"] });
     await expect(blocked(PNG)).rejects.toMatchObject({ status: 404 });
     await expect(blocked("http://x")).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe("readCapped", () => {
+  const streamOf = (chunks: number[]) =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const size of chunks) {
+            controller.enqueue(new Uint8Array(size).fill(7));
+          }
+          controller.close();
+        },
+      }),
+    );
+
+  test("joins the chunks of a body within the cap", async () => {
+    const body = await readCapped(streamOf([3, 4]), 10);
+    expect(new Uint8Array(body)).toEqual(new Uint8Array(7).fill(7));
+  });
+
+  test("gives up as soon as the running size passes the cap, header or not", async () => {
+    await expect(readCapped(streamOf([6, 6, 6]), 10)).rejects.toThrow("Image too large");
   });
 });
