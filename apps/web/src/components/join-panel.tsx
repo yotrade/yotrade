@@ -12,7 +12,7 @@ import { describeFailure } from "@/lib/describe-failure.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
-import { loadInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
+import { loadInvite, needsInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
 import { JOIN_STEPS, type JoinDeps, type JoinStep, runJoin } from "@/lib/join.ts";
 import { toUsdc } from "@/lib/perps-markets.ts";
 import { isEmpty, loadProfile, parseProfile, publishProfile } from "@/lib/profile.ts";
@@ -28,8 +28,6 @@ import { Card } from "./ui/card.tsx";
 import { Field } from "./ui/field.tsx";
 import { Icon } from "./ui/icon.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const STEP_LABELS: Record<JoinStep, string> = {
   gas: "Getting gas",
@@ -191,9 +189,18 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
   if (tournament.allowlisted) {
     return <p className="text-sm text-ink-muted">This tournament is invite only.</p>;
   }
-  if (inviteSigner.data && inviteSigner.data !== ZERO_ADDRESS && !code) {
+  // Private or not is unknown until the signer loads: offering Join meanwhile would pay for a revert.
+  if (inviteSigner.isPending) {
+    return (
+      <Loading label="Checking the invite">
+        <Skeleton className="h-[72px] rounded-2xl" />
+      </Loading>
+    );
+  }
+  if (needsInvite(inviteSigner.data, code)) {
     return (
       <InviteGate
+        stale={code !== null}
         onCode={(next) => {
           saveInvite(tournament.id, next);
           setCode(next);
@@ -282,15 +289,19 @@ export function JoinPanel({ tournament, phase }: { tournament: IndexedTournament
 }
 
 /** The private card: the link still works on its own, and a code or link can be pasted here instead. */
-function InviteGate({ onCode }: { onCode(code: Hex): void }) {
+function InviteGate({ stale, onCode }: { stale: boolean; onCode(code: Hex): void }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string>();
   return (
     <Card className="flex flex-col gap-3 py-4">
       <div className="flex flex-col gap-1">
-        <p className="font-semibold">This tournament is private</p>
+        <p className="font-semibold">
+          {stale ? "This invite no longer works" : "This tournament is private"}
+        </p>
         <p className="text-sm font-medium leading-5 text-ink-muted">
-          Ask the host for the invite. Opening their link is all it takes, or paste the code here.
+          {stale
+            ? "The host made a new invite. Open their new link, or paste the new code here."
+            : "Ask the host for the invite. Opening their link is all it takes, or paste the code here."}
         </p>
       </div>
       <form
@@ -299,6 +310,7 @@ function InviteGate({ onCode }: { onCode(code: Hex): void }) {
           event.preventDefault();
           const code = parseInviteCode(value);
           if (code) {
+            // A code that is not the current one comes straight back here, with the "no longer works" note.
             onCode(code);
           } else {
             setError("That is not an invite code. It starts with 0x and is 66 characters long.");

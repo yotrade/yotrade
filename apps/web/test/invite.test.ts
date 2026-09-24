@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import { privateKeyToAddress } from "viem/accounts";
+
 import {
   hostInvite,
   inviteFromUrl,
   inviteLink,
+  inviteMatches,
   isInviteCode,
+  needsInvite,
   parseInviteCode,
 } from "@/lib/invite.ts";
 
@@ -41,5 +45,23 @@ describe("parseInviteCode", () => {
     expect(parseInviteCode(`https://app.yotrade.xyz/t/7#invite=${code}`)).toBe(code);
     expect(parseInviteCode("https://app.yotrade.xyz/t/7")).toBeNull();
     expect(parseInviteCode("0x1234")).toBeNull();
+  });
+});
+
+describe("needsInvite", () => {
+  const code = `0x${"11".repeat(32)}` as const;
+  const signer = privateKeyToAddress(code);
+
+  test("a public room needs nothing, a private one needs the current signer's key", () => {
+    expect(needsInvite(undefined, null)).toBe(false);
+    expect(needsInvite("0x0000000000000000000000000000000000000000", null)).toBe(false);
+    expect(needsInvite(signer, null)).toBe(true);
+    expect(needsInvite(signer, code)).toBe(false);
+    expect(inviteMatches(code, signer.toLowerCase() as typeof signer)).toBe(true);
+  });
+
+  test("a code from before the host rotated the invite no longer opens the room", () => {
+    const old = `0x${"22".repeat(32)}` as const;
+    expect(needsInvite(signer, old)).toBe(true);
   });
 });
