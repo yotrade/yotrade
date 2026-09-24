@@ -6,11 +6,13 @@ interface Props {
   readonly open: boolean;
   readonly label: string;
   onClose(): void;
+  /** While true, Escape and the backdrop do nothing: an order in flight must stay on screen to report back. */
+  readonly locked?: boolean;
   readonly children: ReactNode;
 }
 
 /** Kit bottom sheet on a native dialog: 32 px corners, grab handle, slide-up, Escape and backdrop to close. */
-export function Sheet({ open, label, onClose, children }: Props) {
+export function Sheet({ open, label, onClose, locked = false, children }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -27,8 +29,10 @@ export function Sheet({ open, label, onClose, children }: Props) {
     <dialog
       ref={dialog}
       onClose={onClose}
-      onClick={(event) => event.target === dialog.current && onClose()}
-      onKeyDown={(event) => event.key === "Escape" && onClose()}
+      // Escape fires `cancel` first; cancelling it keeps the dialog open.
+      onCancel={(event) => locked && event.preventDefault()}
+      onClick={(event) => !locked && event.target === dialog.current && onClose()}
+      onKeyDown={(event) => !locked && event.key === "Escape" && onClose()}
       aria-label={label}
       className="m-0 mx-auto mt-auto w-full max-w-md animate-sheet rounded-t-[32px] bg-surface p-0 text-ink backdrop:bg-[#52525b]/60"
     >
