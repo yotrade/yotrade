@@ -19,7 +19,7 @@ import { risk } from "../src/math.ts";
 import { perps } from "../src/plugin.ts";
 
 const INDEXER_URL =
-  process.env["INDEXER_URL"] ?? "https://indexer.dev.hyperindex.xyz/d7c8bd4/v1/graphql";
+  process.env["INDEXER_URL"] ?? "https://indexer.dev.hyperindex.xyz/2d1cdb5/v1/graphql";
 const execute = process.argv.includes("--execute");
 const key = process.env["LIQUIDATOR_PRIVATE_KEY"];
 const pythKey = process.env["PYTH_API_KEY"];
