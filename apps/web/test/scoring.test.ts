@@ -19,14 +19,48 @@ describe("scoring", () => {
       realizedUsdc: -35_545_101n,
       fills: 4,
       positions: [{ market: MARKET, openSize: 97_955n, openCost: 99_999_951n }],
+      opening: [],
     } as const;
     // 0.00097955 cbBTC marked at 87.70 USDC
-    expect(pnlOf(performance, () => 87_700_000n)).toBe(-35_545_101n + 87_700_000n - 99_999_951n);
+    expect(
+      pnlOf(
+        performance,
+        () => 87_700_000n,
+        () => null,
+      ),
+    ).toBe(-35_545_101n + 87_700_000n - 99_999_951n);
+  });
+
+  test("a bag bought before the start scores only what it did during the window", () => {
+    const bag = { market: MARKET, openSize: 97_955n, openCost: 99_999_951n } as const;
+    const held = { realizedUsdc: 0n, fills: 0, positions: [bag], opening: [bag] } as const;
+    // Bought for $100, worth $82.44 at the start and $85 at the end: +$2.56, not −$15.
+    expect(
+      pnlOf(
+        held,
+        () => 85_000_000n,
+        () => 82_440_000n,
+      ),
+    ).toBe(2_560_000n);
+    // No price at the start: it counts from its cost.
+    expect(
+      pnlOf(
+        held,
+        () => 85_000_000n,
+        () => null,
+      ),
+    ).toBe(85_000_000n - 99_999_951n);
   });
 
   test("a deposit cannot move the score: only fills and marks are inputs", () => {
-    const idle = { realizedUsdc: 0n, fills: 0, positions: [] } as const;
-    expect(pnlOf(idle, () => 0n)).toBe(0n);
+    const idle = { realizedUsdc: 0n, fills: 0, positions: [], opening: [] } as const;
+    expect(
+      pnlOf(
+        idle,
+        () => 0n,
+        () => 0n,
+      ),
+    ).toBe(0n);
     expect(roiPpm(0n, 10_000_000_000n)).toBe(0);
   });
 

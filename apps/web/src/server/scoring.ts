@@ -16,16 +16,28 @@ export interface Scored {
 const PPM = 1_000_000n;
 
 /**
- * PnL = realized PnL of fills in the window + (open inventory at the mid − what it cost).
- * Money moved in or out of the account is never a fill, so it cannot change the score.
+ * PnL over the window = realized PnL of its fills + unrealized PnL at the end − unrealized PnL at the start,
+ * where unrealized is inventory at the mark minus what it cost. The last term keeps a bag bought before the start
+ * from scoring its earlier drift. Money moved in or out of the account is never a fill, so it cannot change it.
+ * `markAtStart` returns null when a market has no price then; that inventory then counts from its cost.
  */
 export function pnlOf(
   performance: Performance,
-  markToUsdc: (market: Address, baseAmount: bigint) => bigint,
+  markAtEnd: (market: Address, baseAmount: bigint) => bigint,
+  markAtStart: (market: Address, baseAmount: bigint) => bigint | null,
 ): bigint {
-  return performance.positions.reduce(
-    (sum, position) => sum + markToUsdc(position.market, position.openSize) - position.openCost,
-    performance.realizedUsdc,
+  const unrealized = (
+    positions: Performance["positions"],
+    mark: (market: Address, baseAmount: bigint) => bigint | null,
+  ) =>
+    positions.reduce((sum, position) => {
+      const value = position.openSize === 0n ? 0n : mark(position.market, position.openSize);
+      return value === null ? sum : sum + value - position.openCost;
+    }, 0n);
+  return (
+    performance.realizedUsdc +
+    unrealized(performance.positions, markAtEnd) -
+    unrealized(performance.opening, markAtStart)
   );
 }
 
