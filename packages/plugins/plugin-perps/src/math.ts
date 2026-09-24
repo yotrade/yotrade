@@ -66,6 +66,20 @@ export function risk(
   };
 }
 
+/**
+ * The most margin (USD 1e18) an order at `multiple` can put up: the equity not already backing positions at the
+ * cap, and no more than the cap's room once the fee is paid out of equity. At a multiple equal to the cap the
+ * second bound is the tighter one, by exactly the fee.
+ */
+export function maxMargin(current: Risk, price: bigint, cap: bigint, multiple: bigint): bigint {
+  const free = current.equity - current.notional / cap;
+  if (free <= 0n || multiple <= 0n) {
+    return 0n;
+  }
+  const room = (maxAdd(current, price, cap) * price) / WAD / multiple;
+  return room < free ? room : free;
+}
+
 /** Largest size (base units, unsigned) that a fill adding risk may add at `price` before the cap rejects it. */
 export function maxAdd(current: Risk, price: bigint, cap: bigint = DEFAULT_LEVERAGE): bigint {
   if (current.equity <= 0n || price === 0n) {
@@ -119,24 +133,32 @@ export function applyFill(
 
 /**
  * Price at which a position alone would take the account under maintenance, other positions standing still.
- * An estimate for the trader, never an input to anything: the contract values the whole account live.
+ * `otherNotional` is what the account's other markets hold: their maintenance is owed too, so it comes out of
+ * the equity this position can lose. An estimate for the trader, never an input to anything: the contract
+ * values the whole account live.
  */
 export function liquidationPrice(
   equity: bigint,
   size: bigint,
   price: bigint,
   cap: bigint = DEFAULT_LEVERAGE,
+  otherNotional = 0n,
 ): bigint | null {
   if (size === 0n) {
     return null;
   }
   const held = notional(size, price);
   const maintenance = maintenanceBps(cap);
+  const spare = equity - (otherNotional * maintenance) / BPS;
+  // Already under maintenance: out at the price it is at now, whichever side it is on.
+  if (spare * BPS <= held * maintenance) {
+    return price;
+  }
   if (size > 0n) {
     // Fully collateralized longs cannot be liquidated by their own market.
-    return held <= equity ? null : ((held - equity) * WAD * BPS) / (size * (BPS - maintenance));
+    return held <= spare ? null : ((held - spare) * WAD * BPS) / (size * (BPS - maintenance));
   }
-  return ((equity + held) * WAD * BPS) / (-size * (BPS + maintenance));
+  return ((spare + held) * WAD * BPS) / (-size * (BPS + maintenance));
 }
 
 export interface Held extends Valued {
@@ -190,6 +212,12 @@ export function planOrder(order: {
     position: next,
     after,
     withinCap: !addsRisk || (after.equity > 0n && after.notional <= after.equity * cap),
-    liquidationPrice: liquidationPrice(after.equity, next.size, order.price, cap),
+    liquidationPrice: liquidationPrice(
+      after.equity,
+      next.size,
+      order.price,
+      cap,
+      others.reduce((sum, p) => sum + notional(p.size, p.price), 0n),
+    ),
   };
 }
