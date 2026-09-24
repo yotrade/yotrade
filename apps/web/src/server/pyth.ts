@@ -2,8 +2,6 @@ import { pyth } from "@yotrade/core/addresses";
 
 /** A fresh price every second is as live as a fill needs, and it caps upstream calls at one per second. */
 const LATEST_CACHE_MS = 1_000;
-/** A price at a past timestamp never changes. */
-const PAST_CACHE_MS = 3_600_000;
 const TIMEOUT_MS = 8_000;
 const MAX_ENTRIES = 256;
 const FEEDS: ReadonlySet<string> = new Set(Object.values(pyth.feeds).map((id) => id.toLowerCase()));
@@ -54,10 +52,13 @@ export function createPythProxy(deps: PythProxyDeps) {
   }
 
   return {
-    /** `when` is "latest" or a Unix timestamp in seconds. */
+    /**
+     * Only "latest": that is all a browser needs. Past prices settle tournaments on the server, which calls
+     * Hermes directly, and every distinct timestamp here would be one more upstream call on our key.
+     */
     async get(when: string, rawIds: readonly string[]): Promise<string> {
-      if (!/^(latest|\d{10})$/.test(when)) {
-        throw new PythProxyError(400, "Expected `latest` or a Unix timestamp");
+      if (when !== "latest") {
+        throw new PythProxyError(400, "Expected `latest`");
       }
       const ids = [...new Set(rawIds.map((id) => id.toLowerCase()))].sort();
       if (ids.length === 0 || ids.some((id) => !FEEDS.has(id))) {
@@ -79,7 +80,7 @@ export function createPythProxy(deps: PythProxyDeps) {
           }
           cache.set(key, {
             body,
-            expires: now() + (when === "latest" ? LATEST_CACHE_MS : PAST_CACHE_MS),
+            expires: now() + LATEST_CACHE_MS,
           });
           return body;
         })

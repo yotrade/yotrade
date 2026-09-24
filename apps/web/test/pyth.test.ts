@@ -44,22 +44,7 @@ describe("pyth proxy", () => {
     expect(calls).toHaveLength(2);
   });
 
-  test("a past timestamp is cached for good", async () => {
-    const { calls, fetcher } = upstream();
-    let clock = 0;
-    const proxy = createPythProxy({
-      baseUrl: "https://h",
-      apiKey: "k",
-      fetch: fetcher,
-      now: () => clock,
-    });
-    await proxy.get("1790026681", [BTC]);
-    clock += 600_000;
-    await proxy.get("1790026681", [BTC]);
-    expect(calls).toHaveLength(1);
-  });
-
-  test("is not an open relay: only our feeds and the two price endpoints", async () => {
+  test("is not an open relay: only our feeds, only the latest price", async () => {
     const { calls, fetcher } = upstream();
     const proxy = createPythProxy({ baseUrl: "https://h", apiKey: "k", fetch: fetcher });
     const other = `0x${"ab".repeat(32)}`;
@@ -68,6 +53,8 @@ describe("pyth proxy", () => {
       proxy.get("latest", []),
       proxy.get("../../v2/price_feeds", [BTC]),
       proxy.get("123", [BTC]),
+      // Past prices settle tournaments server-side; through here each timestamp would cost an upstream call.
+      proxy.get("1790026681", [BTC]),
     ]) {
       await expect(attempt).rejects.toBeInstanceOf(PythProxyError);
     }
