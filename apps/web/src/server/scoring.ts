@@ -55,8 +55,9 @@ export function valueAt(
   );
 }
 
-export function roiPpm(pnl: bigint, capitalAtJoin: bigint): number {
-  return capitalAtJoin === 0n ? 0 : Number((pnl * PPM) / capitalAtJoin);
+/** Return in parts per million of `capital`: what was there at the join, plus what was added after it. */
+export function roiPpm(pnl: bigint, capital: bigint): number {
+  return capital === 0n ? 0 : Number((pnl * PPM) / capital);
 }
 
 /**

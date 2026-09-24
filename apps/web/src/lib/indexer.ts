@@ -57,6 +57,15 @@ const fillSchema = z.object({
 
 const detailSchema = tournamentSchema.extend({ entries: z.array(entrySchema) });
 
+/** Money that reached a spot entry's trading account after its join and by the end. */
+const capitalInSchema = z.object({
+  entry_id: z.string(),
+  token: address,
+  amount: bigint,
+  timestamp: bigint,
+});
+export type IndexedCapitalIn = z.infer<typeof capitalInSchema>;
+
 export type IndexedTournament = z.infer<typeof tournamentSchema>;
 export type IndexedEntry = z.infer<typeof entrySchema>;
 export type IndexedOwnEntry = z.infer<typeof ownEntrySchema>;
@@ -114,6 +123,18 @@ export function createIndexer(url: string, fetcher: Fetch = fetch) {
         z.object({ entries: z.array(ownEntrySchema) }),
       );
       return data.entries;
+    },
+
+    /** Every top-up of every entry in a spot tournament. Entry ids are `<tournament>-<participant lowercase>`. */
+    async capitalIn(id: bigint): Promise<IndexedCapitalIn[]> {
+      const data = await query(
+        `query ($id: String!) { rows: CapitalIn(where: { tournament_id: { _eq: $id } }, limit: 1000) {
+          entry_id token amount timestamp
+        } }`,
+        { id: id.toString() },
+        z.object({ rows: z.array(capitalInSchema) }),
+      );
+      return data.rows;
     },
 
     /** A trader's futures fills in one tournament, newest first. */
