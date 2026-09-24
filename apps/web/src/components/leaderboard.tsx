@@ -5,6 +5,7 @@ import type { Address } from "viem";
 
 import { formatUsdc } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
+import { formatBps } from "@/lib/ticket.ts";
 import { useLeaderboard } from "@/lib/use-leaderboard.ts";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import type { Venue } from "@/lib/venue.ts";
@@ -12,9 +13,8 @@ import { Podium } from "./podium.tsx";
 import { Avatar } from "./ui/avatar.tsx";
 import { Loading, Skeleton } from "./ui/skeleton.tsx";
 
-function formatRoi(ppm: number): string {
-  return `${ppm >= 0 ? "+" : ""}${(ppm / 10_000).toFixed(2)}%`;
-}
+/** Parts per million as the app's usual percent. */
+const formatRoi = (ppm: number) => formatBps(ppm / 100);
 
 function formatPnl(raw: string): string {
   const pnl = BigInt(raw);

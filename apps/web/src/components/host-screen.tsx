@@ -14,6 +14,7 @@ import { hostInvite, inviteLink } from "@/lib/invite.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
 import { roomCode, spaced } from "@/lib/room-code.ts";
 import { clock, joinUrl } from "@/lib/screen.ts";
+import { formatBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
 import { useLeaderboard } from "@/lib/use-leaderboard.ts";
 import { useNow } from "@/lib/use-now.ts";
@@ -27,7 +28,7 @@ import { QrCode } from "./ui/qr-code.tsx";
 const ROW = 76;
 const SHOWN = 8;
 const MEDALS = ["bg-[#ffd166] text-ink", "bg-[#dfe3ea] text-ink", "bg-[#f4a261] text-ink"] as const;
-const roi = (ppm: number) => `${ppm >= 0 ? "+" : ""}${(ppm / 10_000).toFixed(2)}%`;
+const roi = (ppm: number) => formatBps(ppm / 100);
 
 /** Where a phone goes to join. A private room's QR carries the invite when the host has it on this device. */
 function useJoinTarget(tournament: IndexedTournamentDetail): string {
