@@ -116,10 +116,9 @@ abstract contract PerpsBase is
     }
 
     function _price(Layout storage $, bytes32 market, uint256 cap) internal view returns (uint256 price) {
-        // forge-lint: disable-next-line(calls-loop)
-        IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
-        price = PerpsMath.toWad(quote.price, quote.expo);
-        if (!_confident(quote, cap)) {
+        bool confident;
+        (price,, confident) = _quote($, market, cap);
+        if (!confident) {
             // forge-lint: disable-next-line(require-revert-in-loop)
             revert PriceTooUncertain(market);
         }
@@ -133,21 +132,29 @@ abstract contract PerpsBase is
         view
         returns (uint256 price)
     {
-        IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
-        price = PerpsMath.toWad(quote.price, quote.expo);
-        if (_confident(quote, cap)) return price;
-        uint256 band = PerpsMath.scale(quote.conf, quote.expo);
-        if (sizeDelta > 0) return price + band;
+        (uint256 mid, uint256 band, bool confident) = _quote($, market, cap);
+        if (confident) return mid;
+        if (sizeDelta > 0) return mid + band;
         // A band as wide as the price leaves nothing to sell at.
-        if (band >= price) revert PriceTooUncertain(market);
-        return price - band;
+        if (band >= mid) revert PriceTooUncertain(market);
+        return mid - band;
     }
 
-    /// @dev conf / price <= (maintenance / CONF_DIVISOR) with maintenance = NUMERATOR / cap, cross-multiplied so
-    /// nothing is divided. Callers checked the price is positive with `toWad`, and `conf` shares its exponent.
-    function _confident(IPyth.Price memory quote, uint256 cap) internal pure returns (bool) {
+    /// @dev Fresh Pyth price of `market` in USD 1e18, its confidence band in the same units, and whether the band
+    /// is inside the cap's limit: conf / price <= (maintenance / CONF_DIVISOR), maintenance = NUMERATOR / cap,
+    /// cross-multiplied so nothing is divided. `toWad` rejects non-positive prices; `conf` shares the exponent.
+    function _quote(Layout storage $, bytes32 market, uint256 cap)
+        internal
+        view
+        returns (uint256 price, uint256 band, bool confident)
+    {
+        // forge-lint: disable-next-line(calls-loop)
+        IPyth.Price memory quote = $.pyth.getPriceNoOlderThan(market, MAX_PRICE_AGE);
+        price = PerpsMath.toWad(quote.price, quote.expo);
+        band = PerpsMath.scale(quote.conf, quote.expo);
         // forge-lint: disable-next-line(unsafe-typecast)
-        return quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap <= uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR;
+        confident =
+            quote.conf * PerpsMath.BPS * CONF_DIVISOR * cap <= uint256(uint64(quote.price)) * MAINTENANCE_NUMERATOR;
     }
 
     /// @dev Current price of every open market, in `openMarkets` order.
