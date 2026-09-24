@@ -51,6 +51,28 @@ type Entry {
   liquidated: Boolean!
   settled: Boolean!
   fills: [Fill!]! @derivedFrom(field: "entry")
+  "Spot only: money that reached the trading account after the join and by the end. Part of the ROI denominator."
+  capitalIn: [CapitalIn!]! @derivedFrom(field: "entry")
+}
+
+"A Kuru AccountCore id and the address it belongs to."
+type KuruAccount {
+  "AccountCore id"
+  id: ID!
+  account: String! @index
+}
+
+"A deposit or internal transfer into a spot entry's trading account between its join and the end."
+type CapitalIn {
+  "<tx hash>-<log index>-<entry id>"
+  id: ID!
+  entry: Entry! @index
+  tournament: Tournament! @index
+  token: String!
+  "Raw token units"
+  amount: BigInt!
+  timestamp: BigInt!
+  tx: String!
 }
 
 "One fill on the futures venue."
