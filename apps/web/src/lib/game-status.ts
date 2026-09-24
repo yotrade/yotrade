@@ -1,6 +1,7 @@
 import type { Phase } from "@yotrade/plugin-tournament/phase";
 
 import { clock } from "./screen.ts";
+import { direction } from "./ticket.ts";
 
 type Mine = { readonly rank: number; readonly fills: number } | undefined;
 
@@ -40,5 +41,9 @@ export function returnTone(bps: number | null): string {
   if (bps === null) {
     return "";
   }
-  return bps >= 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]";
+  const way = direction(bps);
+  if (way === 0) {
+    return "";
+  }
+  return way > 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]";
 }

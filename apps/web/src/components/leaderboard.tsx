@@ -5,7 +5,7 @@ import type { Address } from "viem";
 
 import { formatUsdc } from "@/lib/format.ts";
 import type { LeaderboardRow } from "@/lib/leaderboard-row.ts";
-import { formatBps } from "@/lib/ticket.ts";
+import { direction, formatBps } from "@/lib/ticket.ts";
 import { useLeaderboard } from "@/lib/use-leaderboard.ts";
 import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import type { Venue } from "@/lib/venue.ts";
@@ -27,10 +27,36 @@ interface Props {
   readonly venue: Venue;
 }
 
+const BADGE = {
+  1: "bg-up/10 text-up",
+  0: "bg-well text-ink-muted",
+  [-1]: "bg-down/10 text-down",
+} as const;
+
+function ReturnBadge({ ppm }: { ppm: number }) {
+  const way = direction(ppm / 100);
+  return (
+    <span
+      className={`tabular flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-bold ${BADGE[way]}`}
+    >
+      {formatRoi(ppm)}
+      {way === 0 ? null : (
+        <span aria-hidden className={way > 0 ? "" : "rotate-180"}>
+          ▲
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** Spot counts fills. Futures only knows whether an account ever traded. */
 function activity(row: LeaderboardRow, venue: Venue): string {
   if (venue === "spot") {
-    return `${formatPnl(row.pnl)} USDC · ${row.fills} fills`;
+    // A bag bought before the start can move without a fill, so the PnL is shown whenever it is not zero.
+    if (row.fills === 0 && BigInt(row.pnl) === 0n) {
+      return "No trades yet";
+    }
+    return `${formatPnl(row.pnl)} USDC · ${row.fills} ${row.fills === 1 ? "fill" : "fills"}`;
   }
   return `${formatPnl(row.pnl)} USD · ${row.fills > 0 ? "trading" : "has not traded"}`;
 }
@@ -118,14 +144,7 @@ export function Leaderboard({ id, you, venue }: Props) {
                 {activity(row, venue)}
               </p>
             </div>
-            <span
-              className={`tabular flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-bold ${row.roiPpm >= 0 ? "bg-up/10 text-up" : "bg-down/10 text-down"}`}
-            >
-              {formatRoi(row.roiPpm)}
-              <span aria-hidden className={row.roiPpm >= 0 ? "" : "rotate-180"}>
-                ▲
-              </span>
-            </span>
+            <ReturnBadge ppm={row.roiPpm} />
           </li>
         ))}
       </ol>

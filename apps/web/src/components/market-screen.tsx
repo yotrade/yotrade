@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { CHART_TYPES, type ChartType, RANGES, type RangeName, type Summary } from "@/lib/chart.ts";
-import { formatBps } from "@/lib/ticket.ts";
+import { direction, formatBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { tradeGate } from "@/lib/trade-window.ts";
 import { type MarketData, useMarket } from "@/lib/use-market.ts";
@@ -30,7 +30,12 @@ const money = (value: number) =>
 /** Volumes run to nine digits on global venues: "126.2M" fits a stat cell, the full number does not. */
 const compact = (value: number) =>
   value.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 1 });
-const tone = (bps: number) => (bps >= 0 ? "bg-up/10 text-up" : "bg-down/10 text-down");
+const TONES = {
+  1: "bg-up/10 text-up",
+  0: "bg-well text-ink-muted",
+  [-1]: "bg-down/10 text-down",
+} as const;
+const tone = (bps: number) => TONES[direction(bps)];
 
 function MarketHeader({ base, roi }: { base: TokenSymbol; roi: number | null }) {
   return (

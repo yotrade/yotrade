@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  direction,
   fillableWithin,
   formatBps,
   parseTicket,
@@ -39,6 +40,9 @@ describe("roi", () => {
     // Too small to show: no signed zero.
     expect(formatBps(-0.4)).toBe("0.00%");
     expect(formatBps(0)).toBe("0.00%");
+    expect([direction(250), direction(-0.4), direction(0), direction(-1000)]).toEqual([
+      1, 0, 0, -1,
+    ]);
   });
 });
 

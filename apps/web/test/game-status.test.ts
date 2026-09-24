@@ -23,6 +23,8 @@ describe("game status", () => {
   test("return colour", () => {
     expect(returnTone(null)).toBe("");
     expect(returnTone(12)).toContain("7ce7a3");
+    // Shown as 0.00%: no colour either way.
+    expect(returnTone(0.3)).toBe("");
     expect(returnTone(-1)).toContain("ff8a8a");
   });
 });
