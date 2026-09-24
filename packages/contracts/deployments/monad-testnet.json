@@ -54,7 +54,7 @@
   },
   "PerpsEngine": {
     "proxy": "0x33F9Aa5A77a5795D416DD0903bE209Ca1643F336",
-    "implementation": "0x12C458Ff0556b9d89cfbc6Fbc598b9c651659593",
+    "implementation": "0xd1Cf6635B0D21E22698c98E7e782022ba92DC7c2",
     "deployBlock": 64494582,
     "pyth": "0x2880aB155794e7179c9eE2e38200202908C17B43",
     "markets": {
@@ -85,7 +85,11 @@
       },
       {
         "address": "0x12C458Ff0556b9d89cfbc6Fbc598b9c651659593",
-        "note": "a flip through zero is checked like an open (#215, 2026-09-24), verified; current"
+        "note": "a flip through zero is checked like an open (#215, 2026-09-24), verified"
+      },
+      {
+        "address": "0xd1Cf6635B0D21E22698c98E7e782022ba92DC7c2",
+        "note": "exits never wait for a confident price, they take its worse edge (#229, 2026-09-24), verified; current"
       }
     ]
   },

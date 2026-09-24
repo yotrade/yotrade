@@ -5,7 +5,7 @@ import { winnersOf } from "./scoring.ts";
 
 export type FinalizeResult =
   | { readonly status: "posted"; readonly hash: Hash; readonly winners: Address[] }
-  | { readonly status: "not-ended" | "already-final" | "unknown" };
+  | { readonly status: "not-ended" | "already-final" | "unknown" | "settling" };
 
 export interface FinalizeDeps {
   leaderboard(id: bigint): Promise<Leaderboard | null>;
@@ -14,10 +14,18 @@ export interface FinalizeDeps {
    * Makes the venue's own record final before winners are named. Futures close open positions at the end
    * price here, so the posted ranking can be recomputed from the chain alone. Spot has nothing to do.
    */
-  settle?(board: Leaderboard): Promise<void>;
+  settle?(board: Leaderboard): Promise<SettleProgress>;
   /** Entrants on-chain. The board lists the indexer's, which can trail a join made just before the end. */
   participants?(id: bigint): Promise<number>;
   now?: () => number;
+}
+
+/**
+ * `done` once nothing is left open. A call settles a bounded number of accounts, so a large tournament is
+ * settled over several calls instead of one that outlives the request.
+ */
+export interface SettleProgress {
+  readonly done: boolean;
 }
 
 /** The indexer has not seen every join yet: a ranking now would leave someone out for good. */
@@ -56,7 +64,9 @@ export function createFinalizer({
       throw new IndexerBehindError(`Tournament ${id} has entries the indexer has not seen yet`);
     }
     // The board already scores at the end prices, so settling changes the chain and not the ranking.
-    await settle?.(board);
+    if (settle && !(await settle(board)).done) {
+      return { status: "settling" };
+    }
     const winners = winnersOf(board.rows, tournament.prizeSplitBps.length);
     return { status: "posted", hash: await postResults(id, winners), winners };
   }

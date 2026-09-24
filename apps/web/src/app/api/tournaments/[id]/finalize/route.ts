@@ -2,20 +2,22 @@ import { NextResponse } from "next/server";
 import { createWalletClient, custom, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { publicEnv } from "@/lib/env.ts";
-import { createAppRuntime } from "@/lib/runtime.ts";
 import { parseServerEnv } from "@/lib/server-env.ts";
 import { venueOf } from "@/lib/venue.ts";
 import { createFinalizer, type FinalizeResult } from "@/server/finalize.ts";
-import { serverHermes } from "@/server/hermes-options.ts";
 import { getLeaderboard } from "@/server/leaderboard.ts";
+import { serverRuntime } from "@/server/runtime.ts";
 
 export const dynamic = "force-dynamic";
+
+const SETTLES_PER_CALL = 6;
 
 const HTTP_STATUS: Record<FinalizeResult["status"], number> = {
   posted: 200,
   "already-final": 409,
   "not-ended": 409,
+  // Accepted, not done: more accounts to settle before results can be posted. Call again.
+  settling: 202,
   unknown: 404,
 };
 
@@ -26,7 +28,7 @@ function createFinalize() {
   if (!key) {
     return null;
   }
-  const runtime = createAppRuntime(publicEnv, serverHermes() ?? undefined);
+  const runtime = serverRuntime();
   const wallet = createWalletClient({
     account: privateKeyToAccount(key as Hex),
     chain: runtime.chain,
@@ -39,16 +41,25 @@ function createFinalize() {
     participants: async (id) => (await runtime.tournament.get(id)).participantCount,
     async settle({ tournament }) {
       if (venueOf(tournament.venue) !== "futures") {
-        return;
+        return { done: true };
       }
-      // One at a time: Monad wants each receipt before the next transaction from the same account.
+      // One at a time: Monad wants each receipt before the next transaction from the same account. At most a few
+      // per call, so each request stays well inside its time limit; an already settled account costs one read.
+      let sent = 0;
       for (const entry of tournament.entries) {
-        await runtime.perps.settle(wallet, {
+        if (sent === SETTLES_PER_CALL) {
+          return { done: false };
+        }
+        const hash = await runtime.perps.settle(wallet, {
           tournamentId: tournament.id,
           trader: entry.tradingAccount,
           endTime: tournament.endTime,
         });
+        if (hash) {
+          sent += 1;
+        }
       }
+      return { done: true };
     },
   });
 }

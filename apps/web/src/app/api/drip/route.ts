@@ -3,11 +3,10 @@ import { type Address, createWalletClient, custom, type Hex, isAddress } from "v
 import { privateKeyToAccount } from "viem/accounts";
 import { z } from "zod";
 
-import { publicEnv } from "@/lib/env.ts";
-import { createAppRuntime } from "@/lib/runtime.ts";
 import { parseServerEnv } from "@/lib/server-env.ts";
 import { clientIp } from "@/server/client-ip.ts";
 import { createDripper } from "@/server/drip.ts";
+import { serverRuntime } from "@/server/runtime.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +20,7 @@ function createDrip() {
   if (!key) {
     return null;
   }
-  const { publicClient, chain } = createAppRuntime(publicEnv);
+  const { publicClient, chain } = serverRuntime();
   const wallet = createWalletClient({
     account: privateKeyToAccount(key as Hex),
     chain,

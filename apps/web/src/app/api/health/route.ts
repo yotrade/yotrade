@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { publicEnv } from "@/lib/env.ts";
-import { createAppRuntime } from "@/lib/runtime.ts";
+import { serverRuntime } from "@/server/runtime.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +8,7 @@ const RPC_TIMEOUT_MS = 3_000;
 
 /** Liveness plus the one dependency nothing works without: the chain RPC. */
 export async function GET() {
-  const runtime = createAppRuntime(publicEnv);
+  const runtime = serverRuntime();
   try {
     const block = await Promise.race([
       runtime.publicClient.getBlockNumber(),
