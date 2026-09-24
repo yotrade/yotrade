@@ -4,11 +4,10 @@ import type { Address, Hex } from "viem";
 
 import { publicEnv } from "@/lib/env.ts";
 import { createIndexer, type IndexedTournamentDetail } from "@/lib/indexer.ts";
-import { createAppRuntime } from "@/lib/runtime.ts";
 import { withChainSchedule } from "@/lib/schedule.ts";
 import { venueOf } from "@/lib/venue.ts";
-import { serverHermes } from "./hermes-options.ts";
 import { scorePerps } from "./perps-scoring.ts";
+import { serverRuntime } from "./runtime.ts";
 import { pnlOf, rank, roiPpm, type Scored, valueAt } from "./scoring.ts";
 
 const CACHE_MS = 5_000;
@@ -29,7 +28,7 @@ export interface Leaderboard {
  * ponytail: cache and in-flight map are per instance. Fine for one server; a shared cache if there are many.
  */
 function createLeaderboards() {
-  const runtime = createAppRuntime(publicEnv, serverHermes() ?? undefined);
+  const runtime = serverRuntime();
   const indexer = createIndexer(publicEnv.NEXT_PUBLIC_INDEXER_URL);
   const kuruIds = new Map<Address, bigint>();
   const cache = new Map<string, Leaderboard>();
