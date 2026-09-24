@@ -31,3 +31,11 @@ Envio Cloud deploys every push to the `envio` branch, from `apps/indexer` alone 
 ```bash
 git push origin main:envio
 ```
+
+**Lifespan.** Envio Cloud deletes development-plan deployments 30 days after they are created, and each deployment has its own URL. `scripts/refresh-indexer.sh` starts a fresh one and moves production to it:
+- It deletes the oldest unused deployment when the three-deployment limit is reached, after asking.
+- It pushes an empty commit to `envio` and waits for the full sync.
+- It sets `NEXT_PUBLIC_INDEXER_URL` in Coolify and redeploys.
+- It sets the `INDEXER_URL` repository variable the liquidator workflow reads.
+
+Run it at least every 30 days, and on 12 or 13 Oct 2026 so the deployment outlives judging (until 3 Nov). `/api/health` reports `indexer.ok` and its lag in blocks, and the `watch` workflow emails when it is down or more than about ten minutes behind.

@@ -27,4 +27,6 @@ jobs:
         working-directory: packages/plugins/plugin-perps
         env:
           LIQUIDATOR_PRIVATE_KEY: ${{ secrets.LIQUIDATOR_PRIVATE_KEY }}
+          # Set by scripts/refresh-indexer.sh; the script's default is the fallback.
+          INDEXER_URL: ${{ vars.INDEXER_URL }}
           PYTH_API_KEY: ${{ secrets.PYTH_API_KEY }}
