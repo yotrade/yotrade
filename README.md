@@ -14,8 +14,8 @@ Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackatho
 |---|---|---|
 | Host | Three steps: basics, prize, schedule; `createTournament` escrows the pool | 2 s once confirmed |
 | Join | Passkey → derived account → gas, faucet, Kuru deposit, `join` (Futures: gas and `join` only) | 11 s spot, 6 s futures |
-| Trade | Spot: market orders with empty-side, impact and slippage guards. Futures: a signed Pyth update rides with every order, up to 100x in every tournament, permissionless liquidation | 2 to 5 s per order |
-| Score | Spot: Kuru's public fills + `capitalAtJoin`. Futures: equity at Pyth prices. Deposits cannot move a score | 1.1 s cold, 5 ms cached |
+| Trade | Spot: market orders with empty-side, impact and slippage guards. Futures: a signed Pyth update rides with every order, up to 100x in every tournament, permissionless liquidation, and a way out that never waits for the oracle | 2 to 5 s per order |
+| Score | Spot: Kuru's public fills inside the window, frozen at the last traded price once it ends, over the capital at join plus anything added later. Futures: equity at Pyth prices. Money added buys no return | 1.1 s cold, 5 ms cached |
 | Settle | Anyone finalizes: futures positions close at the first Pyth price after the end, winners are posted, review window, claim | 6 s to post, 8 s to claim |
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

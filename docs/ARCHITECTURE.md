@@ -50,14 +50,20 @@ A fresh account per tournament means clean starting capital, no positions carrie
    The host can start it early with `startNow` (the duration is kept), rename or swap the logo with `setMetadata` while the tournament is open, and cancel until it starts, reclaim the pool when no result is posted for seven days, or sweep what no winner can claim.
 2. **Join**: gas drip → faucet → deposit into Kuru → `join` records `capitalAtJoin` through the venue adapter. Measured live: 11 s from tap to registered.
 3. **Trade**: market orders on Kuru with three guards: empty side, price impact against the top of the book, slippage after the quote.
-4. **Score**: `(realized PnL inside the window + open inventory at the mark − its cost) / capitalAtJoin`. Inputs are Kuru's public fills and the contract's `capitalAtJoin`. Deposits and transfers are not fills, so they cannot move a score.
+4. **Score**: `(realized PnL inside the window + unrealized at the end − unrealized at the start) / (capitalAtJoin + capital added after the join)`.
+   - The inventory at each edge of the window is rebuilt from Kuru's fills, not taken from its current positions, so a sale after the end cannot erase a loss.
+   - While the tournament runs, holdings are marked at the book's mid. Once it ends, they are marked at the last price traded by the end, so the board stops moving.
+   - Deposits and transfers are not fills and never change PnL. The indexer records every one that reaches a trading account after its join (Kuru AccountCore's `Deposit` and `InternalAccountTransfer`), and its value joins the capital, so more money buys no more return.
 5. **Finalize**: anyone may trigger it after the end. The server recomputes the ranking and posts winners with a key that holds `SCORER_ROLE` only.
+   - It waits until the indexer lists every entrant the chain counts.
+   - Runs are serialized on the scorer wallet.
+   - A futures tournament is settled six accounts per call, and the Finalize button keeps calling until the results are posted.
 6. **Dispute window**: the admin can void wrong results before prizes unlock.
 7. **Claim**: winners pull their share; unfilled ranks and rounding dust return to the organizer.
 
 A **private** tournament is hidden from the lists and needs an invite: the host's passkey derives an invite key per tournament (one more Mera namespace), its address goes onchain with `setInvite`, and the code travels in the link fragment. `join` presents the code's signature over a digest bound to chain, contract, tournament and participant. A leaked link is revoked by rotating to the next epoch; any device with the passkey finds the current one.
 
-A **Futures** tournament differs in three steps. Joining is gas drip → `join`: the capital is a virtual 10,000 USD, the same for everyone. Trading sends a signed Pyth update with every order, so the fill price is the oracle's and not the trader's. The score is equity over the start; finalize first closes every open position at the first Pyth price at or after the end (`settle`), then posts the winners, so the ranking can be recomputed from the chain alone. Measured live: join 6 s, fill 3 to 5 s, finalize with settlement 6 s.
+A **Futures** tournament differs in three steps. Joining is gas drip → `join`: the capital is a virtual 10,000 USD, the same for everyone. Trading sends a signed Pyth update with every order, so the fill price is the oracle's and not the trader's. Taking on risk, a flip through zero included, needs a confident price. Getting out never waits for one: it fills at the edge of the band that is worse for the trader. The score is equity over the start; finalize first closes every open position at the first Pyth price at or after the end (`settle`), then posts the winners, so the ranking can be recomputed from the chain alone. Measured live: join 6 s, fill 3 to 5 s, finalize with settlement 6 s.
 
 ## Media and sharing
 
