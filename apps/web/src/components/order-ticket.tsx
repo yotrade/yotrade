@@ -194,6 +194,8 @@ interface Props {
   readonly wallet: MeraWallet;
   readonly market: MarketSymbol;
   readonly side: Side;
+  /** Start filled with MAX, once the balance and the book are known: closing a position. */
+  readonly max?: boolean;
   onSideChange(next: Side): void;
   /** Called after a fill, with a sentence describing it. */
   onDone(message: string): void;
@@ -251,13 +253,22 @@ function minimumOrder(
   return { amount, label: `about ${formatUsdc(minQuoteNotional)} USDC` };
 }
 
+/** Runs `fill` once, during render, as soon as every input it needs has loaded. */
+function usePrefill(enabled: boolean, needs: readonly unknown[], fill: () => void): void {
+  const [done, setDone] = useState(!enabled);
+  if (!done && needs.every((value) => value !== undefined)) {
+    setDone(true);
+    fill();
+  }
+}
+
 /** A balance that has not loaded is not a balance of zero. */
 function BalanceLine({ loaded, text }: { loaded: boolean; text: string }) {
   return loaded ? `Balance: ${text}` : <Skeleton className="mt-1 h-3 w-20" />;
 }
 
 /** The kit's exchange field as an order ticket: pay row, flip button, receive row, the numbers, one button. */
-export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Props) {
+export function OrderTicket({ wallet, market, side, max = false, onSideChange, onDone }: Props) {
   const { kuru, publicClient } = useRuntime();
   const queryClient = useQueryClient();
   const address = wallet.account.address;
@@ -289,6 +300,9 @@ export function OrderTicket({ wallet, market, side, onSideChange, onDone }: Prop
   const decimals = tokens[tokenIn].decimals;
   const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
   const { fillable, fillableText } = useFillable(info.data, isBuy, base, decimals);
+  usePrefill(max, [portfolio.data, fillable], () =>
+    setInput(shortcutAmount(available, 100n, decimals, tokenIn === "usdc", fillable)),
+  );
 
   // Kuru refuses orders under a quote notional. A buy pays quote, so the floor is that number; a sell pays
   // base, so the floor is that number at the top of the book.
