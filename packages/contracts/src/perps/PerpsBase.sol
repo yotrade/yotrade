@@ -100,7 +100,7 @@ abstract contract PerpsBase is
         }
 
         (f.price, f.newSize, f.balance) = (price, p.size, STARTING_BALANCE + a.realized);
-        f.addsRisk = PerpsMath.abs(p.size) > PerpsMath.abs(size);
+        f.addsRisk = PerpsMath.addsRisk(size, p.size);
     }
 
     /// @dev Fresh, confident price of `market` in USD 1e18. Called once per open market: an account is valued

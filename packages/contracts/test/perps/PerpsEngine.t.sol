@@ -301,6 +301,26 @@ contract PerpsEngineTest is PerpsFixture {
         assertEq(engine.positionOf(id, alice, BTC).size, 1e18);
     }
 
+    function test_trade_aFlipIsCheckedLikeAnOpen() public {
+        _trade(alice, BTC, 2e18, 60_000);
+        vm.prank(admin);
+        engine.setMarket(BTC, false);
+        // Smaller on the other side is still a new position in a market that takes none.
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.MarketDisabled.selector, BTC));
+        _trade(alice, BTC, -3e18, 60_000);
+    }
+
+    function test_trade_anUnderwaterAccountCannotFlip() public {
+        _trade(alice, BTC, 3e18, 60_000);
+        vm.warp(vm.getBlockTimestamp() + 1);
+        // Equity is below zero at 56,000: flipping to a smaller short would be a free bet on the way back.
+        vm.expectRevert(abi.encodeWithSelector(IPerpsEngine.ExceedsLeverage.selector, 56_000e18, 0));
+        _trade(alice, BTC, -4e18, 56_000);
+        // Closing is still allowed.
+        _trade(alice, BTC, -3e18, 56_000);
+        assertEq(engine.positionOf(id, alice, BTC).size, 0);
+    }
+
     function test_trade_enforcesTheLeverageCap() public {
         // 4 BTC is 240,000 of notional against 20 x (10,000 - 120).
         vm.expectRevert(
