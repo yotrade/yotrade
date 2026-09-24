@@ -196,6 +196,8 @@ interface Props {
   readonly side: Side;
   /** Start filled with MAX, once the balance and the book are known: closing a position. */
   readonly max?: boolean;
+  /** Told when an order starts and stops being in flight, so the sheet can hold still meanwhile. */
+  onPending?(pending: boolean): void;
   onSideChange(next: Side): void;
   /** Called after a fill, with a sentence describing it. */
   onDone(message: string): void;
@@ -268,12 +270,31 @@ function BalanceLine({ loaded, text }: { loaded: boolean; text: string }) {
 }
 
 /** The kit's exchange field as an order ticket: pay row, flip button, receive row, the numbers, one button. */
-export function OrderTicket({ wallet, market, side, max = false, onSideChange, onDone }: Props) {
+export function OrderTicket({
+  wallet,
+  market,
+  side,
+  max = false,
+  onPending,
+  onSideChange,
+  onDone,
+}: Props) {
   const { kuru, publicClient } = useRuntime();
   const queryClient = useQueryClient();
   const address = wallet.account.address;
-  const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
+  const [input, setTyped] = useState("");
+  // The whole balance, in raw units, when MAX took all of it: the text is rounded down to six decimals, and
+  // selling the text would leave dust that is below any order Kuru takes.
+  const [exact, setExact] = useState<bigint | null>(null);
+  const setInput = (text: string, whole: bigint | null = null) => {
+    setTyped(text);
+    setExact(whole);
+  };
+  const [pending, setPendingState] = useState(false);
+  const setPending = (next: boolean) => {
+    setPendingState(next);
+    onPending?.(next);
+  };
   const [error, setError] = useState<string>();
 
   const portfolio = useQuery({
@@ -300,9 +321,14 @@ export function OrderTicket({ wallet, market, side, max = false, onSideChange, o
   const decimals = tokens[tokenIn].decimals;
   const available = portfolio.data?.holdings[tokenIn]?.free ?? 0n;
   const { fillable, fillableText } = useFillable(info.data, isBuy, base, decimals);
-  usePrefill(max, [portfolio.data, fillable], () =>
-    setInput(shortcutAmount(available, 100n, decimals, tokenIn === "usdc", fillable)),
-  );
+  const takeAll = (percent: bigint) => {
+    const whole = percent === 100n && (fillable === undefined || fillable >= available);
+    setInput(
+      shortcutAmount(available, percent, decimals, tokenIn === "usdc", fillable),
+      whole ? available : null,
+    );
+  };
+  usePrefill(max, [portfolio.data, fillable], () => takeAll(100n));
 
   // Kuru refuses orders under a quote notional. A buy pays quote, so the floor is that number; a sell pays
   // base, so the floor is that number at the top of the book.
@@ -329,7 +355,9 @@ export function OrderTicket({ wallet, market, side, max = false, onSideChange, o
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const ticket = parseTicket(input, decimals, available, minimum);
+    const parsed = parseTicket(input, decimals, available, minimum);
+    // The typed text passed every check; when it stands for the whole balance, send the whole balance.
+    const ticket = parsed.ok && exact === available ? { ok: true as const, amount: exact } : parsed;
     if (!ticket.ok) {
       setError(ticket.reason);
       return;
@@ -350,7 +378,7 @@ export function OrderTicket({ wallet, market, side, max = false, onSideChange, o
         : `Sold ${input} ${TOKEN_LABELS[base]}`;
       setInput("");
       await queryClient.invalidateQueries({ queryKey: ["portfolio", address] });
-      await queryClient.invalidateQueries({ queryKey: ["spot-fills", address] });
+      await queryClient.invalidateQueries({ queryKey: ["spot-positions", address] });
       onDone(message);
     } catch (cause) {
       console.error("swap failed", cause);
@@ -389,11 +417,7 @@ export function OrderTicket({ wallet, market, side, max = false, onSideChange, o
                   type="button"
                   className={CHIP}
                   disabled={available === 0n}
-                  onClick={() =>
-                    setInput(
-                      shortcutAmount(available, percent, decimals, tokenIn === "usdc", fillable),
-                    )
-                  }
+                  onClick={() => takeAll(percent)}
                 >
                   {percent === 100n ? "MAX" : `${percent}%`}
                 </button>

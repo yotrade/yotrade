@@ -36,6 +36,9 @@ export function GameStatus({
   const phase = tournament ? phaseAt(tournament, now) : "unknown";
   const rows = board.data ?? [];
   const mine = rows.find((row) => row.participant.toLowerCase() === you?.toLowerCase());
+  // Live, the account's own value is fresher than the board. After the end the board is frozen at the end
+  // prices and ranks by its own number, so that is the return shown next to the rank.
+  const shownBps = phase !== "live" && mine ? mine.roiPpm / 100 : returnBps;
 
   return (
     <section
@@ -49,8 +52,8 @@ export function GameStatus({
       />
       <Fact
         label="Return"
-        value={returnBps === null ? "—" : formatBps(returnBps)}
-        tone={returnTone(returnBps)}
+        value={shownBps === null ? "—" : formatBps(shownBps)}
+        tone={returnTone(shownBps)}
       />
     </section>
   );

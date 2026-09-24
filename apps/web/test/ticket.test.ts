@@ -35,7 +35,10 @@ describe("roi", () => {
     expect(roiBps(9_000_000_000n, 10_000_000_000n)).toBe(-1000);
     expect(roiBps(1n, 0n)).toBeNull();
     expect(formatBps(250)).toBe("+2.50%");
-    expect(formatBps(-1000)).toBe("-10.00%");
+    expect(formatBps(-1000)).toBe("−10.00%");
+    // Too small to show: no signed zero.
+    expect(formatBps(-0.4)).toBe("0.00%");
+    expect(formatBps(0)).toBe("0.00%");
   });
 });
 

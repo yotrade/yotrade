@@ -226,6 +226,7 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<Side | null>(null);
   const [closing, setClosing] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const [done, setDone] = useState<string>();
   const data = useMarket(id, market, range, view !== "Chart");
   const chart = view === "Chart";
@@ -257,6 +258,8 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
           trader={data.wallet.account.address}
           market={market}
           holding={data.holding}
+          minimumUsdc={data.info?.minQuoteNotional ?? 0n}
+          open={tradeGate(data.phase, data.opensIn) === null}
           onClose={() => {
             setClosing(true);
             setSide("Sell");
@@ -275,6 +278,7 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
       {data.wallet ? (
         <Sheet
           open={side !== null}
+          locked={ordering}
           onClose={() => {
             setSide(null);
             setClosing(false);
@@ -291,6 +295,7 @@ export function MarketScreen({ id, market }: { id: string; market: MarketSymbol 
             market={market}
             side={side ?? "Buy"}
             max={closing}
+            onPending={setOrdering}
             onSideChange={(next) => {
               setClosing(false);
               setSide(next);

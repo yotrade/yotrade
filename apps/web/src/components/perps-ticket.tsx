@@ -31,6 +31,8 @@ interface Props {
   readonly price: bigint;
   readonly side: PerpsSide;
   onSideChange(side: PerpsSide): void;
+  /** Told when an order starts and stops being in flight, so the sheet can hold still meanwhile. */
+  onPending?(pending: boolean): void;
   onDone(message: string): void;
 }
 
@@ -91,13 +93,18 @@ export function PerpsTicket({
   price,
   side,
   onSideChange,
+  onPending,
   onDone,
 }: Props) {
   const { publicClient, perps } = useRuntime();
   const queryClient = useQueryClient();
   const [margin, setMargin] = useState("");
   const [times, setTimes] = useState("5x");
-  const [pending, setPending] = useState(false);
+  const [pending, setPendingState] = useState(false);
+  const setPending = (next: boolean) => {
+    setPendingState(next);
+    onPending?.(next);
+  };
   const [error, setError] = useState<string>();
   const { label } = PERPS_MARKETS[slug];
   const multiple = BigInt(times.slice(0, -1));

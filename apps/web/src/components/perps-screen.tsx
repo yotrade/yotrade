@@ -206,6 +206,7 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<PerpsSide | null>(null);
   const [closing, setClosing] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string }>();
   const market = usePerpsMarket(id, slug, range);
   const { wallet, account, reference, price, position, headline } = market;
@@ -293,7 +294,12 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
       />
 
       {wallet && account.data && price ? (
-        <Sheet open={side !== null} onClose={() => setSide(null)} label="Order ticket">
+        <Sheet
+          open={side !== null}
+          locked={ordering}
+          onClose={() => setSide(null)}
+          label="Order ticket"
+        >
           <h2 className="text-xl font-bold leading-[26px] tracking-tight">
             {side ?? "Long"} {label}
           </h2>
@@ -306,6 +312,7 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
             price={price}
             side={side ?? "Long"}
             onSideChange={setSide}
+            onPending={setOrdering}
             onDone={(text) => {
               setNotice({ tone: "ok", text });
               setSide(null);

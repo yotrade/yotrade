@@ -37,8 +37,16 @@ export function roiBps(value: bigint, capital: bigint): number | null {
   return capital === 0n ? null : Number(((value - capital) * 10_000n) / capital);
 }
 
+/**
+ * A return as the app shows it: "+2.50%", "−10.00%". A move too small for two decimals is "0.00%", never a
+ * "-0.00%" next to a red arrow. The minus is the typographic one the money figures use.
+ */
 export function formatBps(bps: number): string {
-  return `${bps >= 0 ? "+" : ""}${(bps / 100).toFixed(2)}%`;
+  const text = Math.abs(bps / 100).toFixed(2);
+  if (text === "0.00") {
+    return "0.00%";
+  }
+  return `${bps > 0 ? "+" : "−"}${text}%`;
 }
 
 /** Decimals a person would type for this token: cents for a dollar token, six at most for the rest. */
