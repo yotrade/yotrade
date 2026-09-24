@@ -79,7 +79,7 @@ export function useMarket(id: string, market: MarketSymbol, range: RangeName, ne
 
   const chartFailed = info.isError || (candles.isError && !candles.data);
   const bookFailed = info.isError || (depth.isError && !depth.data);
-  const roi = useMyReturn(id, identity?.wallet.account.address);
+  const roi = useMyReturn(id, address);
   const bars =
     info.data && candles.data
       ? fillGaps(
