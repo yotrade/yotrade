@@ -48,8 +48,20 @@ const resultsPosted = (id: bigint, winners: string[]) => ({
   params: { id, winners, claimableAt: 5_600n },
 });
 
+/** Simulated blocks start at our contracts' deployment, as the real ones do, and only ever move forward. */
+let nextBlock = 64_421_055;
 const run = (indexer: Indexer, simulate: unknown[]) =>
-  indexer.process({ chains: { [CHAIN]: { simulate } } } as Parameters<Indexer["process"]>[0]);
+  indexer.process({
+    chains: {
+      [CHAIN]: {
+        simulate: simulate.map((item) => {
+          const given = item as { block?: object };
+          nextBlock += 1;
+          return { ...given, block: { number: nextBlock, ...given.block } };
+        }),
+      },
+    },
+  } as Parameters<Indexer["process"]>[0]);
 
 describe("tournament lifecycle", () => {
   it("indexes a tournament with its config, entries and global stats", async () => {

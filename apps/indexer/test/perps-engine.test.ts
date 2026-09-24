@@ -59,8 +59,20 @@ const traded = (tournamentId: bigint, trader: string, sizeDelta: bigint, balance
   },
 });
 
+/** Simulated blocks start at our contracts' deployment, as the real ones do, and only ever move forward. */
+let nextBlock = 64_421_055;
 const run = (indexer: Indexer, simulate: unknown[]) =>
-  indexer.process({ chains: { [CHAIN]: { simulate } } } as Parameters<Indexer["process"]>[0]);
+  indexer.process({
+    chains: {
+      [CHAIN]: {
+        simulate: simulate.map((item) => {
+          const given = item as { block?: object };
+          nextBlock += 1;
+          return { ...given, block: { number: nextBlock, ...given.block } };
+        }),
+      },
+    },
+  } as Parameters<Indexer["process"]>[0]);
 
 describe("futures venue", () => {
   it("records fills on the entry and keeps the last balance", async () => {
