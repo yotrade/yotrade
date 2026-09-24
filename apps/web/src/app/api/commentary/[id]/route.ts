@@ -2,9 +2,11 @@ import { phaseAt } from "@yotrade/plugin-tournament/phase";
 import { NextResponse } from "next/server";
 
 import { isLanguage } from "@/lib/languages.ts";
+import { readProfiles } from "@/lib/profile.ts";
 import { parseServerEnv } from "@/lib/server-env.ts";
 import { createCommentator, factsOf } from "@/server/commentary.ts";
 import { getLeaderboard } from "@/server/leaderboard.ts";
+import { serverRuntime } from "@/server/runtime.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +44,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Unknown tournament" }, { status: 404 });
     }
     const now = BigInt(Math.floor(Date.now() / 1000));
-    const facts = factsOf(board, phaseAt(board.tournament, now), now);
+    const top = board.rows.slice(0, 10).map((row) => row.participant);
+    const profiles = await readProfiles(serverRuntime().publicClient, top).catch(() => null);
+    const names = new Map(
+      [...(profiles ?? new Map())].map(([account, profile]) => [account, profile.name]),
+    );
+    const facts = factsOf(board, phaseAt(board.tournament, now), now, names);
     const { text, generatedAt } = await commentator(id, facts, language);
     return NextResponse.json({ text, generatedAt });
   } catch {

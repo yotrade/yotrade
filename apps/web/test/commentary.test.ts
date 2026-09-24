@@ -43,6 +43,16 @@ describe("commentary", () => {
     });
   });
 
+  test("a trader's chosen name replaces the address, as untrusted data", () => {
+    const participant = BOARD.rows[0]?.participant.toLowerCase() ?? "";
+    const facts = factsOf(BOARD, "live", 0n, new Map([[participant, "Fajar"]]));
+    expect(facts.standings[0]?.trader).toBe("Fajar");
+    // An empty name falls back to the address.
+    expect(factsOf(BOARD, "live", 0n, new Map([[participant, ""]])).standings[0]?.trader).toBe(
+      "0x73F6…d60F",
+    );
+  });
+
   test("asks Kimi in the requested language and keeps untrusted text in the user message", async () => {
     const requests: {
       url: string;

@@ -23,6 +23,7 @@ export function useLeaderboard(id: string) {
  * My return as the board scores it, in basis points: realized and marked PnL over capital at join plus anything
  * added since. The account's own balance would count a deposit as profit. Null until I am on the board.
  */
+/** `me` is the tournament's trading account, which is who the board lists, not the main account. */
 export function useMyReturn(id: string, me: string | undefined): number | null {
   const board = useLeaderboard(id);
   const mine = board.data?.find((row) => row.participant.toLowerCase() === me?.toLowerCase());

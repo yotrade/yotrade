@@ -11,6 +11,7 @@ import { erc20Abi, type Hex } from "viem";
 import { describeFailure } from "@/lib/describe-failure.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { fundGas } from "@/lib/fund-gas.ts";
+import { returnTone } from "@/lib/game-status.ts";
 import type { IndexedTournament } from "@/lib/indexer.ts";
 import { loadInvite, needsInvite, parseInviteCode, saveInvite } from "@/lib/invite.ts";
 import { JOIN_STEPS, type JoinDeps, type JoinStep, runJoin } from "@/lib/join.ts";
@@ -19,6 +20,7 @@ import { isEmpty, loadProfile, parseProfile, publishProfile } from "@/lib/profil
 import type { AppRuntime } from "@/lib/runtime.ts";
 import { formatBps, roiBps } from "@/lib/ticket.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { useMyReturn } from "@/lib/use-leaderboard.ts";
 import { useLocalProfile } from "@/lib/use-local-profile.ts";
 import { usePerps } from "@/lib/use-perps.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
@@ -100,7 +102,10 @@ function MyStatus({
     ? toUsdc(futures.data.risk.equity < 0n ? 0n : futures.data.risk.equity)
     : undefined;
   const value = (venue === "futures" ? equity : portfolio.data?.totalUsdc) ?? capitalAtJoin;
-  const roi = roiBps(value, capitalAtJoin);
+  // Spot: the board's return, which counts money added after the join as capital, not profit. Futures capital
+  // is virtual and cannot be added to, so live equity over the start is the same number, sooner.
+  const boardReturn = useMyReturn(id.toString(), venue === "spot" ? address : undefined);
+  const roi = venue === "spot" ? boardReturn : roiBps(value, capitalAtJoin);
 
   if (phase !== "upcoming" && phase !== "live") {
     // After the end the results card and the table say everything.
@@ -116,9 +121,7 @@ function MyStatus({
           <p className="tabular flex items-baseline gap-2 font-semibold leading-5">
             ${formatUsdc(value)}
             {roi === null ? null : (
-              <span className={`text-sm ${roi >= 0 ? "text-[#7ce7a3]" : "text-[#ff8a8a]"}`}>
-                {formatBps(roi)}
-              </span>
+              <span className={`text-sm ${returnTone(roi)}`}>{formatBps(roi)}</span>
             )}
           </p>
         </div>

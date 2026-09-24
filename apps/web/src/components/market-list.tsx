@@ -100,7 +100,7 @@ export function MarketList({ id }: { id: string }) {
     enabled: address !== undefined,
     refetchInterval: 3_000,
   });
-  const roi = useMyReturn(id, identity?.wallet.account.address);
+  const roi = useMyReturn(id, address);
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
