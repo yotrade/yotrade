@@ -62,7 +62,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
   if (data.isPending) {
     return (
       <Loading label={`Loading ${TOKEN_NAMES[base]}`}>
-        <Skeleton className="h-[196px] rounded-3xl" />
+        <Skeleton className="h-[144px] rounded-3xl" />
       </Loading>
     );
   }
@@ -85,10 +85,6 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
       series={data.data ?? null}
       window="recent"
       note={note}
-      actions={[
-        { label: "Sell", side: "Sell" },
-        { label: "Buy", side: "Buy" },
-      ]}
     />
   );
 }

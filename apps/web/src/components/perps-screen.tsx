@@ -1,7 +1,7 @@
 "use client";
 
 import { liquidationPrice, pnl } from "@yotrade/plugin-perps/math";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { CHART_TYPES, type ChartType, type RangeName } from "@/lib/chart.ts";
 import { describeFailure } from "@/lib/describe-failure.ts";
@@ -190,14 +190,6 @@ export function PerpsScreen({ id, slug }: { id: string; slug: PerpsSlug }) {
   const [range, setRange] = useState<RangeName>("15m");
   const [type, setType] = useState<ChartType>("Candles");
   const [side, setSide] = useState<PerpsSide | null>(null);
-  // A card's Buy or Sell lands here with `?side=`: open the ticket once, then drop the parameter.
-  useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("side");
-    if (v === "Long" || v === "Short") {
-      setSide(v);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-  }, []);
   const [closing, setClosing] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string }>();
   const market = usePerpsMarket(id, slug, range);
