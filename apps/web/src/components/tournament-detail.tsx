@@ -141,7 +141,7 @@ function Overview({ id, data, phase, venue, now, you, leverageCap }: OverviewPro
         <p className="pt-2 text-sm font-medium leading-5 text-ink-muted">
           {venue === "futures"
             ? `Return on a virtual $10,000, traded long or short at Pyth prices with up to ${leverageCap}${/^\d+$/.test(leverageCap) ? "x" : ""}. Positions still open at the end are closed at the first Pyth price after it, so nobody picks their exit. Hosted by `
-            : "Return on the capital you joined with, from your fills on Kuru. Deposits cannot move a score, and anyone can recompute the table. Hosted by "}
+            : "Return from your fills on Kuru, on the capital you joined with plus anything you add later, so more money buys no more return. Anyone can recompute the table. Hosted by "}
           <span className="font-mono text-[13px]">{shortAddress(data.organizer)}</span>.
         </p>
       </details>

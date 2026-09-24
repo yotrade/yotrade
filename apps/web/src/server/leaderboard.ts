@@ -12,6 +12,9 @@ import { scorePerps } from "./perps-scoring.ts";
 import { pnlOf, rank, roiPpm, type Scored, valueAt } from "./scoring.ts";
 
 const CACHE_MS = 5_000;
+
+/** The indexer's entry id: tournament and participant, lowercase. */
+const entryKey = (id: bigint, participant: Address) => `${id}-${participant.toLowerCase()}`;
 const MARKET_SYMBOLS = Object.keys(markets) as MarketSymbol[];
 
 export interface Leaderboard {
@@ -43,6 +46,45 @@ function createLeaderboards() {
       kuruIds.set(account, id);
     }
     return id;
+  }
+
+  /**
+   * What each entry's trading account received after its join and by the end, in raw USDC: USDC as is, a base
+   * token at the last price traded by the time it arrived. A token no market here trades is worth nothing.
+   */
+  async function capitalAdded(
+    id: bigint,
+    marks: ReadonlyMap<string, { book: Book; decimals: number }>,
+  ): Promise<Map<string, bigint>> {
+    const added = new Map<string, bigint>();
+    for (const row of await indexer.capitalIn(id)) {
+      const value = await valueOfTopUp(row.token, row.amount, row.timestamp, marks);
+      added.set(row.entry_id, (added.get(row.entry_id) ?? 0n) + value);
+    }
+    return added;
+  }
+
+  async function valueOfTopUp(
+    token: Address,
+    amount: bigint,
+    timestamp: bigint,
+    marks: ReadonlyMap<string, { book: Book; decimals: number }>,
+  ): Promise<bigint> {
+    if (token.toLowerCase() === tokens.usdc.address.toLowerCase()) {
+      return amount;
+    }
+    const symbol = MARKET_SYMBOLS.find(
+      (candidate) => tokens[markets[candidate].base].address.toLowerCase() === token.toLowerCase(),
+    );
+    const market = symbol ? markets[symbol] : undefined;
+    const mark = market ? marks.get(market.orderBook.toLowerCase()) : undefined;
+    if (!(market && mark)) {
+      return 0n;
+    }
+    const price = await runtime.kuru.data.priceAt(market.orderBook, Number(timestamp));
+    return price === null
+      ? valueInQuote(amount, mark.decimals, tokens.usdc.decimals, mark.book)
+      : valueAt(amount, price, mark.book.pricePrecision, mark.decimals, tokens.usdc.decimals);
   }
 
   /** Futures: equity at live prices while it runs, at the end prices once it is over. */
@@ -140,6 +182,8 @@ function createLeaderboards() {
       return price;
     };
 
+    const topUps = await capitalAdded(tournament.id, marks);
+
     const window = { from: tournament.startTime, to: tournament.endTime };
     const rows = await Promise.all(
       tournament.entries.map(async (entry): Promise<Scored> => {
@@ -170,7 +214,11 @@ function createLeaderboards() {
           joinedAt: entry.joinedAt,
           capitalAtJoin: entry.capitalAtJoin,
           pnl,
-          roiPpm: roiPpm(pnl, entry.capitalAtJoin),
+          // Money added after the join buys no return: it joins the capital the return is measured against.
+          roiPpm: roiPpm(
+            pnl,
+            entry.capitalAtJoin + (topUps.get(entryKey(id, entry.participant_id)) ?? 0n),
+          ),
           fills: performance.fills,
         };
       }),

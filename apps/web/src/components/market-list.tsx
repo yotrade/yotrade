@@ -8,9 +8,9 @@ import Image from "next/image";
 import { CANDLES, fillGaps, RANGES, summarize, toBars } from "@/lib/chart.ts";
 import { formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
-import { roiBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
+import { useMyReturn } from "@/lib/use-leaderboard.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { GameStatus } from "./game-status.tsx";
 import { BackButton } from "./ui/back-button.tsx";
@@ -90,25 +90,17 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
 
 /** Pick a market first: what it costs now, where it has been, what I already hold. */
 export function MarketList({ id }: { id: string }) {
-  const { kuru, tournament } = useRuntime();
+  const { kuru } = useRuntime();
   const { identity } = useIdentity();
   const address = identity?.tournamentWallet(BigInt(id)).account.address;
 
-  const entry = useQuery({
-    queryKey: ["entry", id, address],
-    queryFn: () => (address ? tournament.entry(BigInt(id), address) : null),
-    enabled: address !== undefined,
-  });
   const portfolio = useQuery({
     queryKey: ["portfolio", address],
     queryFn: () => (address ? kuru.portfolio(address) : null),
     enabled: address !== undefined,
     refetchInterval: 3_000,
   });
-  const roi =
-    portfolio.data && entry.data
-      ? roiBps(portfolio.data.totalUsdc, entry.data.capitalAtJoin)
-      : null;
+  const roi = useMyReturn(id, identity?.wallet.account.address);
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-10 pt-4">
