@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { pnlOf, rank, roiPpm, type Scored, winnersOf } from "../src/server/scoring.ts";
+import { pnlOf, rank, roiPpm, type Scored, valueAt, winnersOf } from "../src/server/scoring.ts";
 
 const MARKET = "0x5bdea6f9f9aba34f4ecb9b865646a792b835ef7f";
 const row = (participant: string, ppm: number, joinedAt: bigint, fills = 1): Scored => ({
@@ -49,5 +49,13 @@ describe("scoring", () => {
     ]);
     expect(winnersOf(ranked, 3)).toEqual(["0xwinner", "0xloser"]);
     expect(winnersOf(ranked, 1)).toEqual(["0xwinner"]);
+  });
+});
+
+describe("valueAt", () => {
+  test("a base amount at one price, in raw quote units", () => {
+    // 0.00097955 cbBTC (8 decimals) at $84,666.00 (precision 100) is $82.935...
+    expect(valueAt(97_955n, 8_466_600n, 100n, 8, 6)).toBe(82_934_580n);
+    expect(valueAt(0n, 8_466_600n, 100n, 8, 6)).toBe(0n);
   });
 });
