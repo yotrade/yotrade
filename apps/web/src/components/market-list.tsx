@@ -22,8 +22,6 @@ const SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
 /** The newest hourly candles, from whenever a thin testnet market last traded. */
 const RANGE = RANGES["1h"];
 const LOOKBACK_SECONDS = 30 * 86_400;
-/** Each market's own colour: gold, Monad purple, Coinbase blue. */
-const COLORS: Record<MarketSlug, string> = { xaut0: "#c9a227", mon: "#6e54ff", cbbtc: "#0052ff" };
 
 const money = (value: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
@@ -62,29 +60,22 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
   if (data.isPending) {
     return (
       <Loading label={`Loading ${TOKEN_NAMES[base]}`}>
-        <Skeleton className="h-[144px] rounded-3xl" />
+        <Skeleton className="h-[300px] rounded-3xl" />
       </Loading>
     );
   }
   const price = data.data?.mid ?? data.data?.summary?.close ?? null;
   const oneSided = data.data !== undefined && !data.data.tradable;
-  let note: string | undefined;
-  if (oneSided) {
-    note = "One side of the book is empty";
-  } else if (heldUsdc > 0n) {
-    note = `You hold $${formatUsdc(heldUsdc)}`;
-  }
   return (
     <MarketCard
       href={`/t/${id}/trade/${slug}`}
-      icon={<TokenIcon token={base} size={44} />}
+      icon={<TokenIcon token={base} size={32} />}
       ticker={TOKEN_LABELS[base]}
       name={TOKEN_NAMES[base]}
-      color={COLORS[slug]}
       price={price === null ? "—" : `$${money(price)}`}
       series={data.data ?? null}
-      window="recent"
-      note={note}
+      warning={oneSided ? "One side empty" : undefined}
+      aside={heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : undefined}
     />
   );
 }
