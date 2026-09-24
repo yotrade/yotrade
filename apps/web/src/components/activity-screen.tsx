@@ -29,6 +29,13 @@ function outcome({ entry, phase }: MyTournament): { text: string; tone: string }
   if (phase === "dispute") {
     return { text: "Results in review", tone: "text-accent" };
   }
+  // A place with nothing attached (a friendly, or a rank the split does not pay) is still a place.
+  if (entry.rank) {
+    return {
+      text: `Finished #${entry.rank}`,
+      tone: entry.rank <= 3 ? "text-accent" : "text-ink-muted",
+    };
+  }
   return { text: "No prize this time", tone: "text-ink-muted" };
 }
 

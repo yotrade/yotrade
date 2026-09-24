@@ -68,4 +68,18 @@ describe("hostedBy", () => {
       [1n, "live"],
     ]);
   });
+
+  test("what still runs comes before what is over", () => {
+    const over = (id: bigint) =>
+      ({
+        id,
+        organizer: me,
+        status: "open",
+        startTime: 10n,
+        endTime: 20n,
+        claimableAt: 0n,
+      }) as never;
+    const rows = hostedBy([over(9n), tournament(2n, me), over(8n)], me, 150n);
+    expect(rows.map((row) => row.tournament.id)).toEqual([2n, 9n, 8n]);
+  });
 });

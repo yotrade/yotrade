@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { shortAddress } from "@/lib/format.ts";
 import { hostedBy } from "@/lib/host.ts";
@@ -20,6 +21,8 @@ const ACTIONS = [
   { href: "/new", icon: "plus", label: "Host a game", hint: "Your room, your rules" },
   { href: "/arena", icon: "stars", label: "Browse", hint: "Open games right now" },
 ] as const satisfies readonly { href: string; icon: IconName; label: string; hint: string }[];
+
+const HOSTED_SHOWN = 4;
 
 /** A game lobby first: the code box, then host or browse, then the games you are in or run. */
 export function HomeScreen() {
@@ -105,15 +108,34 @@ export function HomeScreen() {
       {hosted.length > 0 ? (
         <section className="flex flex-col gap-3">
           <SectionLabel>Games you host</SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {hosted.map(({ tournament, phase }) => (
-              <li key={tournament.id.toString()} className="animate-enter">
-                <TournamentRow tournament={tournament} phase={phase} now={now} />
-              </li>
-            ))}
-          </ul>
+          <HostedList hosted={hosted} now={now} />
         </section>
       ) : null}
     </main>
+  );
+}
+
+/** Running ones lead; past the first few, the rest wait behind a tap. */
+function HostedList({ hosted, now }: { hosted: ReturnType<typeof hostedBy>; now: bigint }) {
+  const [allHosted, setAllHosted] = useState(false);
+  return (
+    <>
+      <ul className="flex flex-col gap-2">
+        {(allHosted ? hosted : hosted.slice(0, HOSTED_SHOWN)).map(({ tournament, phase }) => (
+          <li key={tournament.id.toString()} className="animate-enter">
+            <TournamentRow tournament={tournament} phase={phase} now={now} />
+          </li>
+        ))}
+      </ul>
+      {hosted.length > HOSTED_SHOWN && !allHosted ? (
+        <button
+          type="button"
+          onClick={() => setAllHosted(true)}
+          className="self-center rounded-full px-4 py-2 font-mono text-[13px] font-semibold text-accent transition duration-200 hover:text-accent-strong focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          Show all {hosted.length}
+        </button>
+      ) : null}
+    </>
   );
 }

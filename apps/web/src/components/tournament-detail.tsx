@@ -236,7 +236,8 @@ function Loaded({ id, data, now, you, leverageCap: cap }: LoadedProps) {
       <header className="flex items-center gap-3">
         <BackButton />
         {meta.image ? <TournamentLogo image={meta.image} size={36} /> : null}
-        <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-[26px] tracking-tight">
+        {/* Two lines before an ellipsis: a community's name is its identity, and the badges take room. */}
+        <h1 className="line-clamp-2 min-w-0 flex-1 break-words text-xl font-bold leading-[26px] tracking-tight">
           {meta.name}
         </h1>
         <span className="rounded-lg bg-surface-raised px-2 py-1 font-mono text-[11px] font-bold uppercase text-ink-muted">

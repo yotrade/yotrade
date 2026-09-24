@@ -45,6 +45,8 @@ export function hostAction(input: {
 }
 
 /** What `organizer` still has a hand in, newest first: everything they created that was not called off. */
+const RUNNING: ReadonlySet<Phase> = new Set(["upcoming", "live"]);
+
 export function hostedBy(
   tournaments: readonly IndexedTournament[],
   organizer: Address,
@@ -54,5 +56,10 @@ export function hostedBy(
     .filter((tournament) => isAddressEqual(tournament.organizer, organizer))
     .map((tournament) => ({ tournament, phase: phaseAt(tournament, now) }))
     .filter(({ phase }) => phase !== "cancelled")
-    .sort((a, b) => Number(b.tournament.id - a.tournament.id));
+    // What the host still runs comes first; what is over follows, newest first either way.
+    .sort(
+      (a, b) =>
+        Number(RUNNING.has(b.phase)) - Number(RUNNING.has(a.phase)) ||
+        Number(b.tournament.id - a.tournament.id),
+    );
 }
