@@ -154,6 +154,7 @@ describe("performance", () => {
       realizedUsdc: -25_545_101n,
       fills: 2,
       positions: [{ market: "0x5bde", openSize: 97_955n, openCost: 99_999_951n }],
+      opening: [{ market: "0x5bde", openSize: 5n, openCost: 6n }],
     });
     expect(urls[0]).toBe("https://kuru.test/api/v1/users/85/trades?limit=500&from=0&to=200");
     expect(urls[1]).toContain("cursor=abc");
@@ -213,8 +214,23 @@ describe("summarizeTrades", () => {
     expect(summary.fills).toBe(4);
   });
 
+  test("the opening inventory is the newest record before the window", () => {
+    const summary = summarizeTrades(
+      [row("0xA", 30, "1"), row("0xA", 20, null), row("0xA", 15, "4"), row("0xA", 10, "9")],
+      20n,
+    );
+    expect(summary.opening).toEqual([{ market: "0xA", openSize: 4n, openCost: 4n }]);
+    expect(summary.positions).toEqual([{ market: "0xA", openSize: 1n, openCost: 1n }]);
+    expect(summary.fills).toBe(2);
+  });
+
   test("no fills is no inventory and nothing realized", () => {
-    expect(summarizeTrades([], 0n)).toEqual({ realizedUsdc: 0n, fills: 0, positions: [] });
+    expect(summarizeTrades([], 0n)).toEqual({
+      realizedUsdc: 0n,
+      fills: 0,
+      positions: [],
+      opening: [],
+    });
   });
 });
 

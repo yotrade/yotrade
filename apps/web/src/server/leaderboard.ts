@@ -121,6 +121,18 @@ function createLeaderboards() {
       );
     };
 
+    // Start prices only for markets someone already held when the window opened, fetched once each.
+    const startPrices = new Map<string, Promise<bigint | null>>();
+    const priceAtStart = (market: Address): Promise<bigint | null> => {
+      const key = market.toLowerCase();
+      let price = startPrices.get(key);
+      if (!price) {
+        price = runtime.kuru.data.priceAt(market, Number(tournament.startTime));
+        startPrices.set(key, price);
+      }
+      return price;
+    };
+
     const window = { from: tournament.startTime, to: tournament.endTime };
     const rows = await Promise.all(
       tournament.entries.map(async (entry): Promise<Scored> => {
@@ -128,7 +140,23 @@ function createLeaderboards() {
           await kuruId(entry.tradingAccount),
           window,
         );
-        const pnl = pnlOf(performance, mark);
+        const opening = new Map<string, bigint | null>();
+        for (const position of performance.opening.filter((p) => p.openSize > 0n)) {
+          opening.set(position.market.toLowerCase(), await priceAtStart(position.market));
+        }
+        const pnl = pnlOf(performance, mark, (market, amount) => {
+          const price = opening.get(market.toLowerCase());
+          const entry = marks.get(market.toLowerCase());
+          return price == null || !entry
+            ? null
+            : valueAt(
+                amount,
+                price,
+                entry.book.pricePrecision,
+                entry.decimals,
+                tokens.usdc.decimals,
+              );
+        });
         return {
           participant: entry.participant_id,
           tradingAccount: entry.tradingAccount,
