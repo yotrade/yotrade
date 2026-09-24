@@ -29,6 +29,20 @@ export function pnlOf(
   );
 }
 
+/** A base amount at one price, in raw quote units, rounded down. */
+export function valueAt(
+  baseAmount: bigint,
+  price: bigint,
+  pricePrecision: bigint,
+  baseDecimals: number,
+  quoteDecimals: number,
+): bigint {
+  return (
+    (baseAmount * price * 10n ** BigInt(quoteDecimals)) /
+    (pricePrecision * 10n ** BigInt(baseDecimals))
+  );
+}
+
 export function roiPpm(pnl: bigint, capitalAtJoin: bigint): number {
   return capitalAtJoin === 0n ? 0 : Number((pnl * PPM) / capitalAtJoin);
 }

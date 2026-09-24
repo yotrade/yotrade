@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createDataClient } from "../src/data.ts";
+import { createDataClient, summarizeTrades } from "../src/data.ts";
 import { parsePricePrecision, parseSwapQuote } from "../src/parse.ts";
 
 const respond =
@@ -118,20 +118,29 @@ describe("SDK boundary parsers", () => {
 });
 
 describe("performance", () => {
-  test("sums realized PnL across pages inside the window and scales it to USDC units", async () => {
+  const trade = (
+    ts: number,
+    realized: string,
+    openSize: string | null,
+    openCost: string | null = openSize,
+  ) => ({
+    marketAddress: "0x5bde",
+    blockTimestamp: ts,
+    pnl: { realizedPnl: realized, openSize, openCost },
+  });
+
+  test("reads every fill up to the end, realizes only inside the window, and pages", async () => {
     const urls: string[] = [];
     const pages = [
       {
-        data: {
-          trades: [{ pnl: { realizedPnl: "-35545101000000000000" } }],
-          positions: [{ marketAddress: "0x5bde", openSize: "97955", openCost: "99999951" }],
-        },
+        // Newest first. A sale after the end is not asked for: `to` is the end.
+        data: { trades: [trade(150, "-35545101000000000000", "97955", "99999951")], positions: [] },
         pagination: { nextCursor: "abc" },
       },
       {
         data: {
-          trades: [{ pnl: { realizedPnl: "10000000000000000000" } }, { pnl: { realizedPnl: "0" } }],
-          positions: [{ marketAddress: "0x5bde", openSize: "97955", openCost: "99999951" }],
+          trades: [trade(120, "10000000000000000000", null), trade(90, "0", "5", "6")],
+          positions: [],
         },
         pagination: { nextCursor: null },
       },
@@ -143,11 +152,69 @@ describe("performance", () => {
 
     expect(await client.performance(85n, { from: 100n, to: 200n })).toEqual({
       realizedUsdc: -25_545_101n,
-      fills: 3,
+      fills: 2,
       positions: [{ market: "0x5bde", openSize: 97_955n, openCost: 99_999_951n }],
     });
-    expect(urls[0]).toBe("https://kuru.test/api/v1/users/85/trades?limit=500&from=100&to=200");
+    expect(urls[0]).toBe("https://kuru.test/api/v1/users/85/trades?limit=500&from=0&to=200");
     expect(urls[1]).toContain("cursor=abc");
+  });
+});
+
+describe("priceAt", () => {
+  const candles = (t: number[], c: string[]) => ({
+    data: { t, o: c, h: c, l: c, c, v: c.map(() => "0") },
+  });
+
+  test("the close of the last minute that ended by then, else of the last hour", async () => {
+    const urls: string[] = [];
+    const client = createDataClient("https://kuru.test/api/v1", (url) => {
+      urls.push(url);
+      const body = url.includes("interval=1h")
+        ? candles([0, 3_600, 7_200], ["10", "11", "12"])
+        : candles([7_200, 7_260, 7_320], ["20", "21", "22"]);
+      return Promise.resolve(new Response(JSON.stringify(body)));
+    });
+    // 7,330: minutes 7,200 and 7,260 have ended, 7,320 has not.
+    expect(await client.priceAt("0x5bde", 7_330)).toBe(21n);
+    expect(urls.some((url) => url.includes("interval=1m") && url.includes("from=7200"))).toBe(true);
+  });
+
+  test("falls back to the last closed hour, and to null when nothing traded", async () => {
+    const quiet = createDataClient("https://kuru.test/api/v1", (url) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.includes("interval=1h") ? candles([0, 3_600], ["10", "11"]) : candles([], []),
+          ),
+        ),
+      ),
+    );
+    expect(await quiet.priceAt("0x5bde", 7_300)).toBe(11n);
+    expect(await quiet.priceAt("0x5bde", 3_000)).toBeNull();
+  });
+});
+
+describe("summarizeTrades", () => {
+  const row = (market: string, ts: number, openSize: string | null) => ({
+    marketAddress: market as `0x${string}`,
+    blockTimestamp: ts,
+    pnl: { realizedPnl: "0", openSize, openCost: openSize },
+  });
+
+  test("the inventory is the newest record that carries it, per market", () => {
+    const summary = summarizeTrades(
+      [row("0xA", 30, null), row("0xA", 30, "0"), row("0xB", 20, "7"), row("0xA", 10, "9")],
+      0n,
+    );
+    expect(summary.positions).toEqual([
+      { market: "0xA", openSize: 0n, openCost: 0n },
+      { market: "0xB", openSize: 7n, openCost: 7n },
+    ]);
+    expect(summary.fills).toBe(4);
+  });
+
+  test("no fills is no inventory and nothing realized", () => {
+    expect(summarizeTrades([], 0n)).toEqual({ realizedUsdc: 0n, fills: 0, positions: [] });
   });
 });
 

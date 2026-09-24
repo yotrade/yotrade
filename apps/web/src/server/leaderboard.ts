@@ -8,7 +8,7 @@ import { createAppRuntime } from "@/lib/runtime.ts";
 import { venueOf } from "@/lib/venue.ts";
 import { serverHermes } from "./hermes-options.ts";
 import { scorePerps } from "./perps-scoring.ts";
-import { pnlOf, rank, roiPpm, type Scored } from "./scoring.ts";
+import { pnlOf, rank, roiPpm, type Scored, valueAt } from "./scoring.ts";
 
 const CACHE_MS = 5_000;
 const MARKET_SYMBOLS = Object.keys(markets) as MarketSymbol[];
@@ -85,19 +85,40 @@ function createLeaderboards() {
     if (venueOf(tournament.venue) === "futures") {
       return computePerps(tournament);
     }
-    const books = new Map<string, { book: Book; decimals: number }>();
+    const ended = BigInt(Math.floor(Date.now() / 1000)) >= tournament.endTime;
+    const marks = new Map<string, { book: Book; atEnd: bigint | null; decimals: number }>();
     await Promise.all(
       MARKET_SYMBOLS.map(async (symbol) => {
         const market = markets[symbol];
-        books.set(market.orderBook.toLowerCase(), {
-          book: await runtime.kuru.market.book(symbol),
+        const book = await runtime.kuru.market.book(symbol);
+        // Live: the mid of the book. Over: the last price traded by the end, so the board stops moving and a
+        // finalize an hour later ranks the same as one a second later. A market silent for 30 days before the
+        // end has no such price and falls back to the book.
+        const atEnd = ended
+          ? await runtime.kuru.data.priceAt(market.orderBook, Number(tournament.endTime))
+          : null;
+        marks.set(market.orderBook.toLowerCase(), {
+          book,
+          atEnd,
           decimals: tokens[market.base].decimals,
         });
       }),
     );
     const mark = (market: Address, amount: bigint) => {
-      const entry = books.get(market.toLowerCase());
-      return entry ? valueInQuote(amount, entry.decimals, tokens.usdc.decimals, entry.book) : 0n;
+      const entry = marks.get(market.toLowerCase());
+      if (!entry) {
+        return 0n;
+      }
+      if (entry.atEnd === null) {
+        return valueInQuote(amount, entry.decimals, tokens.usdc.decimals, entry.book);
+      }
+      return valueAt(
+        amount,
+        entry.atEnd,
+        entry.book.pricePrecision,
+        entry.decimals,
+        tokens.usdc.decimals,
+      );
     };
 
     const window = { from: tournament.startTime, to: tournament.endTime };
