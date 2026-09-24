@@ -21,6 +21,7 @@ import { traderName, useProfiles } from "@/lib/use-profiles.ts";
 import { useRuntime } from "@/lib/use-runtime.ts";
 import { useChainSchedule, withChainSchedule } from "@/lib/use-schedule.ts";
 import { Avatar } from "./ui/avatar.tsx";
+import { Confetti } from "./ui/confetti.tsx";
 import { QrCode } from "./ui/qr-code.tsx";
 
 const ROW = 76;
@@ -221,27 +222,6 @@ function Race({
         <p className="text-2xl font-semibold text-white/50">The first trade takes the lead.</p>
       ) : null}
     </section>
-  );
-}
-
-function Confetti() {
-  const colors = ["#6e54ff", "#ffd166", "#7ce7a3", "#85e6ff", "#ff8fb1"];
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-      {Array.from({ length: 60 }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed set of decorative pieces
-          key={i}
-          className="absolute top-[-5%] block h-3 w-2 animate-confetti rounded-sm"
-          style={{
-            left: `${(i * 37) % 100}%`,
-            background: colors[i % colors.length],
-            animationDelay: `${(i % 12) * 0.35}s`,
-            animationDuration: `${4 + (i % 5)}s`,
-          }}
-        />
-      ))}
-    </div>
   );
 }
 
