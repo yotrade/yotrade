@@ -4,10 +4,12 @@ import {
   areaPath,
   bookRows,
   candleShapes,
+  changeOf,
   fillGaps,
   isQuiet,
   linePath,
   plotOf,
+  spanText,
   summarize,
   toBars,
 } from "../src/lib/chart.ts";
@@ -175,5 +177,31 @@ describe("isQuiet", () => {
     expect(isQuiet([])).toBe(true);
     expect(isQuiet([bar(1), bar(0), bar(2), bar(0), bar(1)])).toBe(true);
     expect(isQuiet([bar(1), bar(1), bar(1), bar(1)])).toBe(false);
+  });
+});
+
+describe("changeOf", () => {
+  const bar = (open: number, close: number) => ({
+    time: 0,
+    open,
+    high: 0,
+    low: 0,
+    close,
+    volume: 1,
+  });
+  test("first open to last close, in price and basis points", () => {
+    const change = changeOf([bar(100, 90), bar(90, 98.59)]);
+    expect(change?.amount).toBeCloseTo(-1.41);
+    expect(change?.bps).toBe(-141);
+    expect(changeOf([])).toBeNull();
+    expect(changeOf([bar(0, 5)])).toBeNull();
+  });
+});
+
+describe("spanText", () => {
+  test("hours up to two days, then days", () => {
+    expect(spanText(86_400)).toBe("24H");
+    expect(spanText(96 * 3_600)).toBe("4D");
+    expect(spanText(60)).toBe("1H");
   });
 });
