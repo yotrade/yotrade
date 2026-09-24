@@ -1,10 +1,11 @@
-import { parseUnits } from "viem";
+import { formatUnits, parseUnits } from "viem";
 
 import { tokens, yotrade } from "@yotrade/core/addresses";
 import type { TournamentConfig } from "@yotrade/plugin-tournament/plugin";
 
+import { tournamentMeta } from "./format.ts";
 import { isLogoUrl } from "./logo-url.ts";
-import type { Venue } from "./venue.ts";
+import { type Venue, venueOf } from "./venue.ts";
 
 export const SPLITS = {
   "Winner takes all": [10_000],
@@ -109,5 +110,49 @@ export function buildConfig(form: CreateForm, nowSeconds: bigint): BuildResult {
       prizeSplitBps: SPLITS[form.split],
       metadataURI,
     },
+  };
+}
+
+/** What a rematch needs to know about the tournament it repeats. */
+export interface Played {
+  readonly id: bigint;
+  readonly venue: string;
+  readonly metadataURI: string;
+  readonly prizePool: bigint;
+  readonly prizeSplitBps: readonly number[];
+  readonly startTime: bigint;
+  readonly endTime: bigint;
+  readonly maxParticipants: number;
+}
+
+/** "Game Night" becomes "Game Night #2", "Game Night #2" becomes "Game Night #3". */
+export function nextName(name: string): string {
+  const numbered = /^(.*) #(\d+)$/.exec(name);
+  return numbered ? `${numbered[1]} #${Number(numbered[2]) + 1}` : `${name} #2`;
+}
+
+/**
+ * The create form filled in from a tournament that was played: same market, visibility, logo, pool, split,
+ * length and size, the next number in the name, starting in ten minutes. A community's weekly game is one tap.
+ */
+export function rematchForm(played: Played): CreateForm {
+  const meta = tournamentMeta(played.id, played.metadataURI);
+  const length = Number(played.endTime - played.startTime);
+  const duration = (Object.keys(DURATIONS) as (keyof typeof DURATIONS)[]).reduce((best, key) =>
+    Math.abs(DURATIONS[key] - length) < Math.abs(DURATIONS[best] - length) ? key : best,
+  );
+  const split = (Object.keys(SPLITS) as SplitName[]).find(
+    (key) => SPLITS[key].join() === played.prizeSplitBps.join(),
+  );
+  return {
+    venue: venueOf(played.venue),
+    visibility: meta.visibility,
+    image: meta.image ?? "",
+    name: nextName(meta.name),
+    prizePool: formatUnits(played.prizePool, tokens.usdc.decimals),
+    startDelay: "In 10 minutes",
+    duration,
+    maxParticipants: played.maxParticipants.toString(),
+    split: split ?? "Top 3",
   };
 }

@@ -73,8 +73,12 @@ export function HostPanel({ tournament, phase, now }: Props) {
     : null;
   // The contract takes new metadata while the tournament is open and not over: the same window as an invite.
   const editable = phase === "upcoming" || phase === "live";
-  if (!(host && identity && state.data) || done || !(next || editable)) {
+  if (!(host && identity && state.data)) {
     return null;
+  }
+  if (done || !(next || editable)) {
+    // Over, and nothing left to collect: what a host wants now is the next one.
+    return phase === "unknown" ? null : <RunItBack id={tournament.id} />;
   }
   const copy = next ? COPY[next.action] : null;
 
@@ -112,23 +116,11 @@ export function HostPanel({ tournament, phase, now }: Props) {
         <Icon name="wallet" size={20} />
         {copy?.title ?? "You host this tournament"}
       </p>
-      {phase === "upcoming" ? <StartNowButton id={tournament.id} /> : null}
       {editable ? (
-        <Link
-          href={`/t/${tournament.id}/screen`}
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
-        >
-          Show on a big screen
-        </Link>
-      ) : null}
-      {editable ? (
-        <Link
-          href={`/t/${tournament.id}/edit`}
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
-        >
-          Edit name and logo
-        </Link>
-      ) : null}
+        <LiveTools id={tournament.id} upcoming={phase === "upcoming"} />
+      ) : (
+        <RunItBackLink id={tournament.id} />
+      )}
       {next && copy ? (
         <MoneyAction
           copy={copy}
@@ -145,6 +137,54 @@ export function HostPanel({ tournament, phase, now }: Props) {
           {error}
         </p>
       ) : null}
+    </Card>
+  );
+}
+
+/** While it can still change: start it early, put it on a projector, rename it. */
+function LiveTools({ id, upcoming }: { id: bigint; upcoming: boolean }) {
+  return (
+    <>
+      {upcoming ? <StartNowButton id={id} /> : null}
+      <Link
+        href={`/t/${id}/screen`}
+        className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+      >
+        Show on a big screen
+      </Link>
+      <Link
+        href={`/t/${id}/edit`}
+        className="inline-flex min-h-10 items-center justify-center rounded-full bg-well px-5 font-mono text-[15px] font-semibold tracking-tight transition duration-200 hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+      >
+        Edit name and logo
+      </Link>
+    </>
+  );
+}
+
+/** The weekly game, one tap away: the create form filled in from this one. */
+function RunItBackLink({ id }: { id: bigint }) {
+  return (
+    <Link
+      href={`/new?from=${id}`}
+      className="inline-flex min-h-10 items-center justify-center rounded-full bg-accent px-5 font-mono text-[15px] font-semibold tracking-tight text-accent-ink shadow-button transition duration-200 hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+    >
+      Run it back
+    </Link>
+  );
+}
+
+function RunItBack({ id }: { id: bigint }) {
+  return (
+    <Card className="flex flex-col gap-3 py-4">
+      <p className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+        <Icon name="wallet" size={20} />
+        You hosted this one
+      </p>
+      <p className="text-sm font-medium leading-5 text-ink-muted">
+        Same market, prize and length, the next number in the name. Your room is used to it now.
+      </p>
+      <RunItBackLink id={id} />
     </Card>
   );
 }

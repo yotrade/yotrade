@@ -214,11 +214,12 @@ function StepFields({ step, form, set, errorFor, onLogoStatus, wallet }: StepPro
   );
 }
 
-export function CreateForm() {
+/** `initial` fills the form in, for example from the tournament a host is running again. */
+export function CreateForm({ initial = INITIAL }: { initial?: Form }) {
   const router = useRouter();
   const { publicClient, kuru, tournament } = useRuntime();
   const { identity } = useIdentity();
-  const [form, setForm] = useState(INITIAL);
+  const [form, setForm] = useState(initial);
   const [invalid, setInvalid] = useState<{ field: keyof Form; reason: string }>();
   const [failure, setFailure] = useState<string>();
   const [pending, setPending] = useState(false);
