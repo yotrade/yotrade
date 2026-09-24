@@ -14,6 +14,7 @@ import { useRuntime } from "@/lib/use-runtime.ts";
 import { Podium } from "./podium.tsx";
 import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
+import { Confetti } from "./ui/confetti.tsx";
 
 interface Props {
   readonly tournament: IndexedTournamentDetail;
@@ -112,6 +113,7 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
           ? `Results in review · prizes unlock in ${timeUntil(tournament.claimableAt, now)}`
           : "Final results"}
       </p>
+      <YourPlace entry={mine} of={standings.length} />
       {standings.length === 0 ? (
         <p className="text-sm text-ink-muted">
           Nobody traded, so the prize pool returns to the organizer.
@@ -173,5 +175,35 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
         </Button>
       ) : null}
     </Card>
+  );
+}
+
+/** The one line a player came back for, with a burst of confetti when it is a podium place. */
+function YourPlace({
+  entry,
+  of,
+}: {
+  entry: { readonly rank: number | null; readonly prize: bigint } | undefined;
+  of: number;
+}) {
+  if (!entry?.rank) {
+    return null;
+  }
+  const { rank, prize } = entry;
+  const podium = rank <= 3;
+  return (
+    <div
+      className={`flex animate-pop flex-col items-center gap-1 rounded-2xl px-4 py-5 text-center ${podium ? "bg-accent text-accent-ink" : "bg-surface"}`}
+    >
+      {podium ? <Confetti pieces={40} once /> : null}
+      <p className="text-sm font-semibold opacity-80">
+        {podium ? "You made the podium" : "You finished"}
+      </p>
+      <p className="tabular text-[44px] font-bold leading-none tracking-tight">
+        #{rank}
+        <span className="text-xl font-semibold opacity-60"> of {of}</span>
+      </p>
+      {prize > 0n ? <p className="text-sm font-semibold">${formatUsdc(prize)} is yours</p> : null}
+    </div>
   );
 }
