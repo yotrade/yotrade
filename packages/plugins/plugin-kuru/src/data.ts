@@ -49,7 +49,11 @@ interface RawDepth {
 
 interface RawTradesPage {
   data: {
-    trades: { pnl: { realizedPnl: string } }[];
+    trades: {
+      marketAddress: Address;
+      blockTimestamp: number;
+      pnl: { realizedPnl: string; openSize: string | null; openCost: string | null };
+    }[];
     positions: { marketAddress: Address; openSize: string; openCost: string }[];
   };
   pagination?: { nextCursor: string | null };
@@ -130,6 +134,35 @@ const MAX_PAGES = 20;
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
+/**
+ * Folds fills, newest first as Kuru pages them, into realized PnL since `from` and the inventory after the
+ * newest fill of each market. One order that walks several levels arrives as several records of which only one
+ * carries the running inventory, so records without it are skipped.
+ */
+export function summarizeTrades(
+  newestFirst: RawTradesPage["data"]["trades"],
+  from: bigint,
+): Performance {
+  let realized = 0n;
+  let fills = 0;
+  const inventory = new Map<string, DataPosition>();
+  for (const trade of newestFirst) {
+    if (BigInt(trade.blockTimestamp) >= from) {
+      realized += BigInt(trade.pnl.realizedPnl);
+      fills += 1;
+    }
+    const market = trade.marketAddress.toLowerCase();
+    if (!inventory.has(market) && trade.pnl.openSize !== null && trade.pnl.openCost !== null) {
+      inventory.set(market, {
+        market: trade.marketAddress,
+        openSize: BigInt(trade.pnl.openSize),
+        openCost: BigInt(trade.pnl.openCost),
+      });
+    }
+  }
+  return { realizedUsdc: realized / PNL_TO_USDC, fills, positions: [...inventory.values()] };
+}
+
 /** Kuru's public Data Source API. Finalized data, no key required. */
 export function createDataClient(
   baseUrl: string = KURU_TESTNET_DATA_URL,
@@ -146,7 +179,7 @@ export function createDataClient(
     return (await response.json()) as T;
   }
 
-  return {
+  const client = {
     async balances(userId: bigint): Promise<DataBalance[]> {
       const body = await get<{ data: RawBalance[] }>(`/users/${userId}/balances`);
       return body.data.map((row) => ({
@@ -215,35 +248,46 @@ export function createDataClient(
      * Realized PnL of every fill between `from` and `to` (Unix seconds, inclusive) and the open positions.
      * Deposits and transfers are not fills, so they cannot move this number.
      */
+    /**
+     * Realized PnL and fills inside the window, and the open inventory as it stood at the window's end. Kuru's
+     * own `positions` field is always the current one whatever the filters, so a sale after the end would erase
+     * a loss: the inventory is rebuilt from the running `openSize`/`openCost` of the last fill at or before
+     * `to`, reading every fill up to it.
+     */
     async performance(userId: bigint, window: { from: bigint; to: bigint }): Promise<Performance> {
-      let realized = 0n;
-      let fills = 0;
-      let positions: DataPosition[] = [];
+      const rows: RawTradesPage["data"]["trades"] = [];
       let cursor: string | null = null;
-
       for (let page = 0; page < MAX_PAGES; page++) {
         const query = new URLSearchParams({
           limit: PAGE_SIZE.toString(),
-          from: window.from.toString(),
+          from: "0",
           to: window.to.toString(),
           ...(cursor ? { cursor } : {}),
         });
         const body: RawTradesPage = await get(`/users/${userId}/trades?${query}`);
-        for (const trade of body.data.trades) {
-          realized += BigInt(trade.pnl.realizedPnl);
-        }
-        fills += body.data.trades.length;
-        positions = body.data.positions.map((row) => ({
-          market: row.marketAddress,
-          openSize: BigInt(row.openSize),
-          openCost: BigInt(row.openCost),
-        }));
+        rows.push(...body.data.trades);
         cursor = body.pagination?.nextCursor ?? null;
         if (!cursor) {
           break;
         }
       }
-      return { realizedUsdc: realized / PNL_TO_USDC, fills, positions };
+      return summarizeTrades(rows, window.from);
+    },
+
+    /**
+     * The last traded price of a market at or before `time`, in price precision: the close of the newest
+     * minute that ended by then. Null when it has not traded in the 30 days before. Candles are asked for from a
+     * start, so hours find the last active one and minutes refine the hour `time` falls in.
+     */
+    async priceAt(address: Address, time: number): Promise<bigint | null> {
+      const closedBy = (candles: Candle[], seconds: number) =>
+        candles.filter((candle) => candle.time + seconds <= time).at(-1)?.close ?? null;
+      const hour = Math.floor(time / 3_600) * 3_600;
+      const [hours, minutes] = await Promise.all([
+        client.candles(address, { interval: "1h", from: time - 30 * 86_400, countback: 1_000 }),
+        client.candles(address, { interval: "1m", from: hour, countback: 60 }),
+      ]);
+      return closedBy(minutes, 60) ?? closedBy(hours, 3_600);
     },
 
     /** What the account holds on every market it has traded, and what that inventory cost. */
@@ -278,6 +322,7 @@ export function createDataClient(
       }));
     },
   };
+  return client;
 }
 
 export type DataClient = ReturnType<typeof createDataClient>;
