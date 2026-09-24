@@ -15,7 +15,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
 import { hermes } from "../src/hermes.ts";
-import { risk } from "../src/math.ts";
+import { liveFuturesTournaments, sweep } from "../src/liquidator.ts";
 import { perps } from "../src/plugin.ts";
 
 const INDEXER_URL =
@@ -43,86 +43,21 @@ const runtime = createRuntime({
   ],
 });
 
-interface Row {
-  readonly id: string;
-  readonly entries: readonly { readonly tradingAccount: Hex }[];
-}
-
-/** Running futures tournaments and who is in them. */
-async function liveFuturesTournaments(): Promise<Row[]> {
-  const now = Math.floor(Date.now() / 1000);
-  const response = await fetch(INDEXER_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      query: `query ($venue: String!, $now: numeric!) {
-        Tournament(where: { status: { _eq: "OPEN" }, venue: { _eq: $venue }, startTime: { _lte: $now }, endTime: { _gt: $now } }) {
-          id
-          entries { tradingAccount }
-        }
-      }`,
-      variables: { venue: yotrade.perpsVenueAdapter.toLowerCase(), now },
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Indexer answered ${response.status}`);
-  }
-  const body = (await response.json()) as { data?: { Tournament: Row[] }; errors?: unknown };
-  if (!body.data) {
-    throw new Error(`Indexer query failed: ${JSON.stringify(body.errors)}`);
-  }
-  return body.data.Tournament;
-}
-
+const tournaments = await liveFuturesTournaments(
+  INDEXER_URL,
+  yotrade.perpsVenueAdapter,
+  Math.floor(Date.now() / 1000),
+);
 const gas = await runtime.publicClient.getBalance({ address: account.address });
 console.info(
   `liquidator ${account.address} · ${formatEther(gas)} MON · ${execute ? "EXECUTE" : "plan only"}`,
 );
-
-let checked = 0;
-let due = 0;
-let failed = 0;
-for (const tournament of await liveFuturesTournaments()) {
-  const id = BigInt(tournament.id);
-  const cap = await runtime.perps.leverageCapOf(id);
-  for (const { tradingAccount } of tournament.entries) {
-    const open = await runtime.perps.account(id, tradingAccount);
-    if (open.positions.length === 0) {
-      continue;
-    }
-    checked += 1;
-    const { prices } = await runtime.perps.latest(open.positions.map((p) => p.market));
-    const valued = open.positions.map((p) => ({
-      ...p,
-      price: prices[p.market.toLowerCase() as Hex]?.price ?? p.entryPrice,
-    }));
-    const state = risk(open.balance, valued, cap);
-    if (!state.liquidatable) {
-      continue;
-    }
-    due += 1;
-    console.info(
-      `  ${tournament.id} ${tradingAccount} equity ${formatEther(state.equity)} notional ${formatEther(state.notional)} at ${cap}x`,
-    );
-    if (execute) {
-      // One account that cannot be liquidated right now (a rival got there first, the price moved back, Pyth
-      // was stale) must not leave every account after it for the next run.
-      try {
-        const hash = await runtime.perps.liquidate(wallet, {
-          tournamentId: id,
-          trader: tradingAccount,
-        });
-        console.info(`  ok   liquidated ${hash}`);
-      } catch (cause) {
-        failed += 1;
-        console.error(
-          `  fail ${tournament.id} ${tradingAccount}: ${(cause as Error).message.split("\n")[0]}`,
-        );
-      }
-    }
-  }
-}
-console.info(`${checked} accounts with positions, ${due} under maintenance, ${failed} failed`);
-if (failed > 0) {
+const result = await sweep(runtime.perps, execute ? wallet : null, tournaments, (line) =>
+  console.info(`  ${line}`),
+);
+console.info(
+  `${result.checked} accounts with positions, ${result.due} under maintenance, ${result.liquidated} liquidated, ${result.failed} failed`,
+);
+if (result.failed > 0) {
   process.exitCode = 1;
 }

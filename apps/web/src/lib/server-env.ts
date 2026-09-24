@@ -11,6 +11,11 @@ const serverSchema = z.object({
   DRIP_PRIVATE_KEY: privateKey,
   /** Holds SCORER_ROLE only. Posts results when a tournament ends. Without it finalizing answers 503. */
   SCORER_PRIVATE_KEY: privateKey,
+  /**
+   * Its own hot wallet for liquidating futures accounts under maintenance, every 30 seconds from the server.
+   * Liquidation is permissionless; the key only pays gas. Without it the scheduled workflow is the only sweep.
+   */
+  LIQUIDATOR_PRIVATE_KEY: privateKey,
   /** Moonshot AI key for the live commentator. Without it the commentary card stays hidden. */
   KIMI_API_KEY: z.string().min(1).optional(),
   KIMI_BASE_URL: z.url().default("https://api.moonshot.ai/v1"),

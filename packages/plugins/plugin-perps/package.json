@@ -7,7 +7,8 @@
     "./plugin": "./src/plugin.ts",
     "./abi": "./src/generated/abi.ts",
     "./math": "./src/math.ts",
-    "./hermes": "./src/hermes.ts"
+    "./hermes": "./src/hermes.ts",
+    "./liquidator": "./src/liquidator.ts"
   },
   "scripts": {
     "generate": "bun run scripts/generate-abi.ts",
