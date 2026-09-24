@@ -16,6 +16,9 @@ import { Button } from "./ui/button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Confetti } from "./ui/confetti.tsx";
 
+/** Enough rounds for a few hundred futures accounts at six per round. */
+const MAX_FINALIZE_ROUNDS = 60;
+
 interface Props {
   readonly tournament: IndexedTournamentDetail;
   readonly phase: Phase;
@@ -58,14 +61,21 @@ export function ResultsPanel({ tournament, phase, now }: Props) {
 
   if (phase === "scoring") {
     const finalize = async () => {
-      const response = await fetch(`/api/tournaments/${tournament.id}/finalize`, {
-        method: "POST",
-      });
-      // 409 means someone else finalized first, which is the outcome we wanted.
-      if (!response.ok && response.status !== 409) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new ActionError(body?.error ?? `Finalize answered ${response.status}`);
+      // 202 means a large futures tournament is still being settled a few accounts at a time: ask again.
+      for (let round = 0; round < MAX_FINALIZE_ROUNDS; round += 1) {
+        const response = await fetch(`/api/tournaments/${tournament.id}/finalize`, {
+          method: "POST",
+        });
+        if (response.status !== 202) {
+          // 409 means someone else finalized first, which is the outcome we wanted.
+          if (!response.ok && response.status !== 409) {
+            const body = (await response.json().catch(() => null)) as { error?: string } | null;
+            throw new ActionError(body?.error ?? `Finalize answered ${response.status}`);
+          }
+          return;
+        }
       }
+      throw new ActionError("Still settling positions. Tap again to carry on.");
     };
     return (
       <Card className="flex flex-col gap-3">

@@ -57,9 +57,13 @@ describe("createFinalizer", () => {
       },
       now: () => 1_000_000,
     };
-    await createFinalizer({ ...deps, settle: () => Promise.resolve(void order.push("settle")) })(
-      7n,
-    );
+    await createFinalizer({
+      ...deps,
+      settle: () => {
+        order.push("settle");
+        return Promise.resolve({ done: true });
+      },
+    })(7n);
     expect(order).toEqual(["settle", "post"]);
 
     order.length = 0;
@@ -82,6 +86,26 @@ describe("createFinalizer", () => {
     const { finalize, posted } = setup(board("open", 900n));
     await Promise.all([finalize(7n), finalize(7n), finalize(7n)]);
     expect(posted).toHaveLength(1);
+  });
+
+  test("posts nothing while accounts are still being settled, and says so", async () => {
+    const { posted, finalize } = (() => {
+      const sent: bigint[] = [];
+      return {
+        posted: sent,
+        finalize: createFinalizer({
+          leaderboard: () => Promise.resolve(board("open", 900n)),
+          postResults: (id) => {
+            sent.push(id);
+            return Promise.resolve(HASH);
+          },
+          settle: () => Promise.resolve({ done: false }),
+          now: () => 1_000_000,
+        }),
+      };
+    })();
+    expect(await finalize(7n)).toEqual({ status: "settling" });
+    expect(posted).toHaveLength(0);
   });
 
   test("two tournaments never send at once from the scorer wallet", async () => {
