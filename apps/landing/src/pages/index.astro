@@ -1,28 +1,22 @@
 ---
-import BigScreen from "../components/big-screen.astro";
-import Cta from "../components/cta.astro";
-import Fairness from "../components/fairness.astro";
-import Features from "../components/features.astro";
+import BuiltOn from "../components/built-on.astro";
 import Footer from "../components/footer.astro";
 import Hero from "../components/hero.astro";
-import Nav from "../components/nav.astro";
-import Stack from "../components/stack.astro";
-import Steps from "../components/steps.astro";
-import Ticker from "../components/ticker.astro";
+import Info from "../components/info.astro";
+import Modes from "../components/modes.astro";
+import Navbar from "../components/navbar.astro";
 import Base from "../layouts/base.astro";
 ---
 
 <Base>
-  <Nav />
-  <main>
-    <Hero />
-    <Ticker />
-    <Steps />
-    <BigScreen />
-    <Features />
-    <Fairness />
-    <Stack />
-    <Cta />
-  </main>
-  <Footer />
+  <div class="flex flex-col bg-page">
+    <div class="h-screen min-h-[716px] flex flex-col overflow-hidden relative">
+      <Navbar />
+      <Hero />
+    </div>
+    <Info />
+    <BuiltOn />
+    <Modes />
+    <Footer />
+  </div>
 </Base>

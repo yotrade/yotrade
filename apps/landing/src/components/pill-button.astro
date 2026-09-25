@@ -1,0 +1,24 @@
+---
+import ArrowRight from "./arrow-right.astro";
+
+/** The template's black pill with a white arrow circle at its end. */
+interface Props {
+  href: string;
+  label: string;
+  large?: boolean;
+}
+const { href, label, large = false } = Astro.props;
+---
+
+<a
+  href={href}
+  class:list={[
+    "group inline-flex items-center gap-3 bg-black text-white font-medium pl-8 pr-2 py-2 rounded-full hover:bg-gray-800 transition-colors duration-200",
+    large ? "text-base md:text-lg" : "text-base",
+  ]}
+>
+  {label}
+  <span class="bg-white rounded-full p-2 transition-transform duration-200 group-hover:translate-x-0.5">
+    <ArrowRight class="w-5 h-5 text-black" />
+  </span>
+</a>

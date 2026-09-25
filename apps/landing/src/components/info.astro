@@ -1,0 +1,53 @@
+---
+import { LINKS } from "../data/site.ts";
+import PillButton from "./pill-button.astro";
+---
+
+<section id="meet" class="bg-page px-6 py-24">
+  <div class="max-w-[88rem] mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16 items-start">
+      <div class="reveal">
+        <h2 class="text-black text-4xl md:text-5xl font-medium leading-tight mb-8" style="letter-spacing: -0.03em">
+          Meet YoTrade.
+        </h2>
+        <PillButton href={LINKS.app} label="Open the app" />
+      </div>
+      <p class="reveal text-black/70 text-2xl md:text-3xl leading-relaxed" style="--delay: 100ms">
+        YoTrade turns any community into a trading league: a room code on the big screen, a fresh account for every
+        player, and a prize the contract pays out.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        class="reveal lg:col-span-2 rounded-2xl p-7 min-h-80 flex flex-col justify-between bg-cover bg-center"
+        style="background-image: url('/media/bloom.webp')"
+      >
+        <h3 class="text-black text-2xl font-medium leading-snug" style="letter-spacing: -0.02em">
+          A quiz night,<br />but it's markets
+        </h3>
+        <p class="text-black/70 text-base max-w-xs">
+          A six-character code on the wall, a phone in every hand, and a board that moves with every fill.
+        </p>
+      </div>
+      <div class="reveal rounded-2xl p-7 min-h-80 flex flex-col justify-between bg-plum" style="--delay: 100ms">
+        <h3 class="text-white text-2xl font-medium leading-snug" style="letter-spacing: -0.02em">
+          One passkey,<br />no wallet.
+        </h3>
+        <p class="text-white/60 text-base">
+          No seed phrase, no extension, no faucet to find. Gas and test funds arrive on their own, with a fresh account
+          for every game.
+        </p>
+      </div>
+      <div class="reveal rounded-2xl p-7 min-h-80 flex flex-col justify-between bg-plum" style="--delay: 200ms">
+        <h3 class="text-white text-2xl font-medium leading-snug" style="letter-spacing: -0.02em">
+          Prize in<br />escrow.
+        </h3>
+        <p class="text-white/60 text-base">
+          The pool sits in a contract from the start. The score freezes at the bell, anyone can recompute it, and
+          winners claim straight from the contract.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
