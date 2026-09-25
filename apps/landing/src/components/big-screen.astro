@@ -1,0 +1,64 @@
+---
+/** The host's projector view: the moment the room sees itself on the board. */
+---
+
+<section class="screen">
+  <div class="wrap">
+    <div class="frame reveal">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img
+        src="/shots/screen.jpg"
+        alt="The big-screen view: game code, QR code, time left and the live leaderboard"
+        width="1280"
+        height="800"
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+    <p class="caption reveal" style="--delay: 80ms">
+      The big screen: the game code and QR while people join, then the live board, then the podium with confetti.
+    </p>
+  </div>
+</section>
+
+<style>
+  .screen {
+    padding: 0 0 110px;
+  }
+
+  .frame {
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: var(--ink-2);
+    box-shadow:
+      0 60px 120px rgb(0 0 0 / 0.5),
+      0 0 160px rgb(110 84 255 / 0.2);
+  }
+
+  .bar {
+    display: flex;
+    gap: 8px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .bar i {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.16);
+  }
+
+  .frame img {
+    width: 100%;
+    height: auto;
+  }
+
+  .caption {
+    margin: 20px auto 0;
+    max-width: 640px;
+    text-align: center;
+    color: var(--muted);
+  }
+</style>

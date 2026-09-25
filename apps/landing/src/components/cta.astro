@@ -1,0 +1,89 @@
+---
+import { LINKS } from "../data/site.ts";
+---
+
+<section class="cta">
+  <div class="wrap">
+    <div class="panel reveal">
+      <div class="glow" aria-hidden="true"></div>
+      <h2>Your room is waiting.</h2>
+      <p>Host tonight's game in three taps, or join one with the code on the screen.</p>
+      <div class="actions">
+        <a class="btn btn-light" href={LINKS.host}>Host a game</a>
+        <a class="btn btn-ghost" href={LINKS.arena}>Browse live games</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta {
+    padding: 0 0 110px;
+  }
+
+  .panel {
+    position: relative;
+    overflow: hidden;
+    padding: 72px 28px;
+    border-radius: 36px;
+    background: var(--accent);
+    text-align: center;
+  }
+
+  .glow {
+    position: absolute;
+    inset: -40%;
+    background:
+      radial-gradient(30% 30% at 20% 30%, rgb(255 138 216 / 0.45), transparent 70%),
+      radial-gradient(35% 35% at 80% 70%, rgb(124 231 163 / 0.3), transparent 70%);
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+
+  h2,
+  p,
+  .actions {
+    position: relative;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(34px, 6vw, 64px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  p {
+    margin: 16px auto 0;
+    max-width: 520px;
+    font-size: 18px;
+    color: rgb(255 255 255 / 0.85);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 32px;
+  }
+
+  .btn-light {
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .btn-light:hover {
+    background: #efeaff;
+  }
+
+  .panel :global(.btn-ghost) {
+    border-color: rgb(255 255 255 / 0.3);
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  @keyframes drift {
+    to {
+      transform: translate(6%, -4%) rotate(8deg);
+    }
+  }
+</style>

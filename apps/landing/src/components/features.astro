@@ -1,0 +1,123 @@
+---
+import { FEATURES } from "../data/site.ts";
+import Phone from "./phone.astro";
+---
+
+<section id="features" class="section">
+  <div class="wrap">
+    <p class="eyebrow reveal">Features</p>
+    <h2 class="h2 reveal" style="--delay: 60ms">Everything a room needs. Nothing it has to install.</h2>
+    <div class="layout">
+      <div class="grid">
+        {
+          FEATURES.map((feature, index) => (
+            <article class:list={["card", "reveal", { wide: feature.wide }]} style={`--delay: ${(index % 3) * 80}ms`}>
+              <span class="icon">
+                <img src={`/icons/${feature.icon}.svg`} alt="" width="22" height="22" />
+              </span>
+              <h3>{feature.title}</h3>
+              <p>{feature.body}</p>
+            </article>
+          ))
+        }
+      </div>
+      <div class="phones reveal" style="--delay: 120ms">
+        <Phone src="/shots/markets.jpg" alt="Spot markets as cards with price, move and chart" />
+        <Phone src="/shots/futures.jpg" alt="Bitcoin perpetual with a candle chart and Long and Short buttons" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    padding: 110px 0;
+    background: linear-gradient(180deg, transparent, var(--ink-2) 30%, transparent);
+  }
+
+  .layout {
+    display: grid;
+    gap: 48px;
+    margin-top: 56px;
+  }
+
+  .grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .card {
+    padding: 26px;
+    border-radius: var(--radius);
+    background: rgb(255 255 255 / 0.03);
+    border: 1px solid var(--line);
+    transition:
+      background 300ms ease,
+      transform 300ms ease;
+  }
+
+  .card:hover {
+    background: rgb(110 84 255 / 0.08);
+    transform: translateY(-3px);
+  }
+
+  .icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgb(110 84 255 / 0.18);
+  }
+
+  .icon img {
+    filter: brightness(0) invert(1);
+  }
+
+  h3 {
+    margin: 18px 0 0;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 8px 0 0;
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  .phones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    max-width: 520px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .phones :global(.phone:last-child) {
+    margin-top: 48px;
+  }
+
+  @media (min-width: 720px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .wide {
+      grid-column: span 2;
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .layout {
+      grid-template-columns: 1.4fr 1fr;
+      align-items: start;
+    }
+
+    .phones {
+      position: sticky;
+      top: 100px;
+    }
+  }
+</style>

@@ -1,0 +1,38 @@
+---
+/** A phone frame around a real screenshot of the app. */
+interface Props {
+  src: string;
+  alt: string;
+  class?: string;
+  eager?: boolean;
+}
+const { src, alt, class: className = "", eager = false } = Astro.props;
+---
+
+<figure class:list={["phone", className]}>
+  <img src={src} alt={alt} width="375" height="812" loading={eager ? "eager" : "lazy"} decoding="async" />
+</figure>
+
+<style>
+  .phone {
+    margin: 0;
+    width: 100%;
+    aspect-ratio: 375 / 812;
+    border-radius: 44px;
+    padding: 10px;
+    background: linear-gradient(160deg, #2a2345, #0b0716);
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.08),
+      0 40px 80px rgb(0 0 0 / 0.55),
+      0 0 120px rgb(110 84 255 / 0.25);
+  }
+
+  .phone img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 34px;
+    background: #fff;
+  }
+</style>
