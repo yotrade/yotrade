@@ -1,0 +1,51 @@
+---
+import { LINKS } from "../data/site.ts";
+---
+
+<footer>
+  <div class="wrap row">
+    <p>
+      <strong>YoTrade</strong> · Built for the Monad Metropolis hackathon. Testnet only: funds have no real value.
+    </p>
+    <nav aria-label="Footer">
+      <a href={LINKS.app}>App</a>
+      <a href={LINKS.repo}>GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 0 48px;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  nav {
+    display: flex;
+    gap: 22px;
+    font-size: 14px;
+  }
+
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    color: var(--text);
+  }
+</style>

@@ -180,6 +180,14 @@
       }
     },
     {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": { "noUnusedImports": "off", "noUnusedVariables": "off" }
+        }
+      }
+    },
+    {
       "includes": ["**/*.{test,spec}.{ts,tsx}", "**/test/**", "**/scripts/**", "**/e2e/**"],
       "linter": {
         "rules": {
