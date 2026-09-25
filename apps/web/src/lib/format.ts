@@ -95,3 +95,7 @@ export function countdown(
 export function formatToken(amount: bigint, decimals: number): string {
   return Number(formatUnits(amount, decimals)).toLocaleString("en-US", { maximumFractionDigits: 6 });
 }
+
+/** A market price: cents above ten dollars, up to six decimals below, where thin testnet assets trade. */
+export const formatPrice = (value: number) =>
+  value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });

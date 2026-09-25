@@ -5,8 +5,8 @@ import { markets } from "@yotrade/core/addresses";
 import { midPrice } from "@yotrade/plugin-kuru/pricing";
 import Image from "next/image";
 
-import { CANDLES, fillGaps, RANGES, summarize, toBars } from "@/lib/chart.ts";
-import { formatUsdc } from "@/lib/format.ts";
+import { CANDLES, fillGaps, LOOKBACK_SECONDS, RANGES, summarize, toBars } from "@/lib/chart.ts";
+import { formatPrice, formatUsdc } from "@/lib/format.ts";
 import { MARKET_SLUGS, type MarketSlug } from "@/lib/markets.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { useIdentity } from "@/lib/use-identity.tsx";
@@ -21,10 +21,6 @@ import { TokenIcon } from "./ui/token-icon.tsx";
 const SLUGS = Object.keys(MARKET_SLUGS) as MarketSlug[];
 /** The newest hourly candles, from whenever a thin testnet market last traded. */
 const RANGE = RANGES["1h"];
-const LOOKBACK_SECONDS = 30 * 86_400;
-
-const money = (value: number) =>
-  value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
 
 /** Kuru not answering is not a quiet market; an empty side is not either. */
 function marketWarning(failed: boolean, oneSided: boolean): string | undefined {
@@ -80,7 +76,7 @@ function MarketRow({ id, slug, heldUsdc }: { id: string; slug: MarketSlug; heldU
       icon={<TokenIcon token={base} size={32} />}
       ticker={TOKEN_LABELS[base]}
       name={TOKEN_NAMES[base]}
-      price={price === null ? "—" : `$${money(price)}`}
+      price={price === null ? "—" : `$${formatPrice(price)}`}
       series={data.data ?? null}
       warning={marketWarning(data.isError, oneSided)}
       aside={heldUsdc > 0n ? `You hold $${formatUsdc(heldUsdc)}` : undefined}

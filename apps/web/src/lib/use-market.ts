@@ -8,6 +8,7 @@ import {
   bookRows,
   CANDLES,
   fillGaps,
+  LOOKBACK_SECONDS,
   MAX_CANDLES,
   RANGES,
   type RangeName,
@@ -19,8 +20,6 @@ import { useIdentity } from "./use-identity.tsx";
 import { useRuntime } from "./use-runtime.ts";
 import { useTradingWindow } from "./use-trading-window.ts";
 
-/** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
-const LOOKBACK_SECONDS = 30 * 86_400;
 /** Kuru serves at most 500 candles per call. */
 const MAX_FILLS = 500;
 

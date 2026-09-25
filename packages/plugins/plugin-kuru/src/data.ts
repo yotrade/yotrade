@@ -229,16 +229,22 @@ export function createDataClient(
       };
     },
 
-    /** Up to `countback` candles starting at `from` (Unix seconds). Empty intervals are simply absent. */
+    /**
+     * Up to `countback` candles between `from` and `to` (Unix seconds; `to` defaults to now), the newest kept when
+     * there are more. Empty intervals are simply absent.
+     */
     async candles(
       address: Address,
-      query: { interval: CandleInterval; from: number; countback?: number },
+      query: { interval: CandleInterval; from: number; to?: number; countback?: number },
     ): Promise<Candle[]> {
       const params = new URLSearchParams({
         interval: query.interval,
         from: query.from.toString(),
         countback: (query.countback ?? 500).toString(),
       });
+      if (query.to !== undefined) {
+        params.set("to", query.to.toString());
+      }
       const { data } = await get<RawCandles>(`/markets/${address.toLowerCase()}/candles?${params}`);
       return data.t.map((time, index) => ({
         time,

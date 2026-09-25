@@ -88,6 +88,21 @@ describe("reference prices", () => {
     expect(urls).toHaveLength(3);
   });
 
+  test("a bounded series ends where it is asked to, on both venues", async () => {
+    const urls: string[] = [];
+    const reference = createReference((url) => {
+      urls.push(url);
+      return Promise.resolve(new Response(JSON.stringify(url.includes("gateio") ? GATE : BINANCE)));
+    });
+    const eth = await reference("eth", "1m", 1_790_000_000);
+    expect([eth.from, eth.to]).toEqual([1_790_000_000 - 384 * 60, 1_790_000_000]);
+    await reference("mon", "1m", 1_790_000_000);
+    expect(urls).toEqual([
+      "https://data-api.binance.vision/api/v3/klines?symbol=ETHUSDT&interval=1m&limit=384&endTime=1790000000000",
+      "https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=MON_USDT&interval=1m&from=1789976960&to=1790000000",
+    ]);
+  });
+
   test("surfaces an upstream failure instead of caching it", async () => {
     const reference = createReference(() => Promise.resolve(new Response("{}", { status: 429 })));
     await expect(reference("cbbtc", "1h")).rejects.toThrow("429");

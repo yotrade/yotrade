@@ -57,6 +57,31 @@ describe("createIndexer", () => {
     await expect(http.tournament(1n)).rejects.toThrow("502");
   });
 
+  test("reads every trader's futures fills in a tournament, with signed sizes", async () => {
+    let body = "";
+    const indexer = createIndexer("https://indexer.test", (_url, init) => {
+      body = String(init?.body);
+      return respond({
+        data: {
+          fills: [
+            {
+              id: "0xabc-4",
+              entry_id: "21-0x1bc4d3c5168fb4c0aed0c4caeb30ef29414720cb",
+              market: "0xe62d",
+              sizeDelta: "-59980827728224950",
+              price: "83353920361050000000000",
+              timestamp: "1790244698",
+            },
+          ],
+        },
+      })();
+    });
+    const [fill] = await indexer.fillsIn(21n);
+    expect(fill?.sizeDelta).toBe(-59_980_827_728_224_950n);
+    expect(fill?.entry_id).toBe("21-0x1bc4d3c5168fb4c0aed0c4caeb30ef29414720cb");
+    expect(JSON.parse(body).variables).toEqual({ id: "21", limit: 200 });
+  });
+
   test("an unknown tournament is null, not an error", async () => {
     const indexer = createIndexer("https://indexer.test", respond({ data: { tournament: [] } }));
     expect(await indexer.tournament(99n)).toBeNull();

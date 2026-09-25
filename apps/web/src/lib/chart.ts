@@ -14,6 +14,8 @@ export interface Bar {
 export const CANDLES = 96;
 /** How many candles are kept behind the default view, for zooming out and panning back. */
 export const MAX_CANDLES = 384;
+/** How far back the newest candles may come from. Thirty days covers any lull on testnet. */
+export const LOOKBACK_SECONDS = 30 * 86_400;
 
 /**
  * Candle timeframes, the way a trading screen offers them. `kuru` is the nearest interval Kuru's API serves;

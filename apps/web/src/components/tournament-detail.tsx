@@ -24,6 +24,7 @@ import { LobbyList } from "./lobby-list.tsx";
 import { PhaseBadge } from "./phase-badge.tsx";
 import { ResultsPanel } from "./results-panel.tsx";
 import { ShareButton } from "./share-button.tsx";
+import { TournamentRoom } from "./tournament-room.tsx";
 import { BackButton } from "./ui/back-button.tsx";
 import { Card } from "./ui/card.tsx";
 import { Icon } from "./ui/icon.tsx";
@@ -31,6 +32,8 @@ import { Loading, Skeleton } from "./ui/skeleton.tsx";
 import { TournamentLogo } from "./ui/tournament-logo.tsx";
 
 const BPS = 10_000n;
+/** Once trading has opened there is a round to show, through scoring and payout. */
+const ROOM_PHASES: ReadonlySet<Phase> = new Set(["live", "scoring", "dispute", "claimable"]);
 
 /** Every state keeps the header: a page without a way back is a dead end. */
 function Shell({ title, children }: { title: string | null; children: ReactNode }) {
@@ -247,6 +250,8 @@ function Loaded({ id, data, now, you, leverageCap: cap }: LoadedProps) {
         {/* A private link carries the invite code, which the host's card shares; this one is for public ones. */}
         {isPrivate(data.metadataURI) ? null : <ShareButton title={meta.name} />}
       </header>
+
+      {ROOM_PHASES.has(phase) ? <TournamentRoom id={id} you={you} now={now} /> : null}
 
       {/* Kit wallet card, full width: the one number that matters, then the facts around it. */}
       <section className="flex flex-col gap-5 rounded-[28px] bg-accent p-5 text-accent-ink shadow-button">

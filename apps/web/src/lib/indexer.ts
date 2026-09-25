@@ -55,6 +55,16 @@ const fillSchema = z.object({
   tx: z.string(),
 });
 
+/** A fill anywhere in a tournament: which entry made it, what, and when. */
+const tournamentFillSchema = z.object({
+  id: z.string(),
+  entry_id: z.string(),
+  market: z.string(),
+  sizeDelta: z.string().regex(/^-?\d+$/).transform(BigInt),
+  price: bigint,
+  timestamp: bigint,
+});
+
 const detailSchema = tournamentSchema.extend({ entries: z.array(entrySchema) });
 
 /** Money that reached a spot entry's trading account after its join and by the end. */
@@ -71,6 +81,7 @@ export type IndexedEntry = z.infer<typeof entrySchema>;
 export type IndexedOwnEntry = z.infer<typeof ownEntrySchema>;
 export type IndexedTournamentDetail = z.infer<typeof detailSchema>;
 export type IndexedFill = z.infer<typeof fillSchema>;
+export type IndexedTournamentFill = z.infer<typeof tournamentFillSchema>;
 
 const TOURNAMENT_FIELDS = `id organizer venue prizePool startingCapital startTime endTime claimableAt maxParticipants
   participantCount allowlisted prizeSplitBps metadataURI status winners`;
@@ -145,6 +156,18 @@ export function createIndexer(url: string, fetcher: Fetch = fetch) {
         } }`,
         { entry: `${id}-${trader.toLowerCase()}`, limit },
         z.object({ fills: z.array(fillSchema) }),
+      );
+      return data.fills;
+    },
+
+    /** Every trader's futures fills in one tournament, newest first. */
+    async fillsIn(id: bigint, limit = 200): Promise<IndexedTournamentFill[]> {
+      const data = await query(
+        `query ($id: String!, $limit: Int!) { fills: Fill(where: { tournament_id: { _eq: $id } }, order_by: { timestamp: desc }, limit: $limit) {
+          id entry_id market sizeDelta price timestamp
+        } }`,
+        { id: id.toString(), limit },
+        z.object({ fills: z.array(tournamentFillSchema) }),
       );
       return data.fills;
     },

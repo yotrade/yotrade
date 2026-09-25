@@ -273,6 +273,14 @@ describe("market data", () => {
     expect(urls[0]).toBe(
       "https://kuru.test/api/v1/markets/0x0b4dd2a7b09d5c5401149ffe51301cc589017343/candles?interval=5m&from=50&countback=2",
     );
+    await client.candles("0x0B4dD2A7b09d5c5401149fFe51301Cc589017343", {
+      interval: "1m",
+      from: 50,
+      to: 900,
+    });
+    expect(urls[1]).toBe(
+      "https://kuru.test/api/v1/markets/0x0b4dd2a7b09d5c5401149ffe51301cc589017343/candles?interval=1m&from=50&countback=500&to=900",
+    );
   });
 
   test("reads depth from the gateway and market details from the data API", async () => {
