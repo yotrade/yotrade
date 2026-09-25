@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/contracts/foundry.toml",
+        "$TURBO_ROOT$/packages/contracts/test/**/*.t.sol",
+        "$TURBO_ROOT$/packages/contracts/src/perps/PerpsBase.sol",
+        "$TURBO_ROOT$/apps/web/test/**/*.test.ts",
+        "$TURBO_ROOT$/apps/indexer/test/**/*.test.ts",
+        "$TURBO_ROOT$/packages/plugins/*/test/**/*.test.ts"
+      ]
+    }
+  }
+}

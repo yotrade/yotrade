@@ -6,7 +6,7 @@ YoTrade lets any community host a trading tournament. A host escrows a prize poo
 
 **Private tournaments** are hidden from the arena and need an invite: the code is derived from the host's passkey, its address goes onchain, and the contract checks the code's signature on every join. Leaked links are revoked by rotating the code. Hosts can add a logo (upload or link), traders a name and avatar, all stored onchain.
 
-Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackathons/metropolis), Track 01: Onchain Finance & Trading. Testnet only.
+Built for the [Monad Metropolis hackathon](https://monad.xyz/developers/hackathons/metropolis), Track 01: Onchain Finance & Trading. Testnet only. App: [app.yotrade.xyz](https://app.yotrade.xyz) · Landing: [yotrade.xyz](https://yotrade.xyz).
 
 ## How it works
 
@@ -30,7 +30,7 @@ Open [app.yotrade.xyz](https://app.yotrade.xyz) on a phone or a laptop. There ar
 
 1. Pick a live tournament in the arena and tap **Join**. Spot joins in about 11 seconds, Futures in 6.
 2. Trade a couple of times. Spot fills land on Kuru's order book; Futures orders carry a signed Pyth price.
-3. Watch the leaderboard move and Kimi comment on it. Your row is highlighted.
+3. Watch the round at the top of the tournament page: the busiest market's candles with every trader's fills pinned on them, their avatars on the chart and a tape of who did what. Below it, the leaderboard moves and Kimi comments on it. Your rows are highlighted.
 4. Host one yourself from **Host**: three steps, a private one hands you an invite link derived from your passkey.
 
 Clear the site data or open a fresh browser and sign in with the same passkey: the account, the tournaments you joined, your profile and your invite links all come back, because nothing lives only on the device.
@@ -44,7 +44,7 @@ Clear the site data or open a fresh browser and sign in with the same passkey: t
 | Pyth | Futures tournaments price and settle on Pyth updates that ride with every order; settlement uses the first update after the end ([`packages/contracts/src/perps`](packages/contracts/src/perps)) |
 | Envio | HyperIndex on Envio Cloud: tournaments, entries, results, futures fills and liquidations, profiles and per-trader stats drive every list, page and leaderboard ([`apps/indexer`](apps/indexer)) |
 | Kimi | Commentary on each tournament in the community's language, from the live standings and the last fills ([`apps/web/src/server/commentary.ts`](apps/web/src/server/commentary.ts)) |
-| Alchemy | The RPC transport for the app when `NEXT_PUBLIC_ALCHEMY_API_KEY` is set, with multicall batching on top ([`packages/plugins/plugin-alchemy`](packages/plugins/plugin-alchemy)) |
+| Alchemy | The first RPC transport for the app and its server when `NEXT_PUBLIC_ALCHEMY_API_KEY` is set, with batching on top. The public RPC stands behind it: a failing or rate-limited call falls through on the same request, and ranking moves whichever keeps failing to the back ([`packages/plugins/plugin-alchemy`](packages/plugins/plugin-alchemy), [`apps/web/src/lib/runtime.ts`](apps/web/src/lib/runtime.ts)) |
 
 ## Deployment (Monad testnet, chain 10143)
 
@@ -63,6 +63,7 @@ Verified on MonadVision (Sourcify). History and configuration: [`packages/contra
 | Path | Description |
 |---|---|
 | [`apps/web`](apps/web) | Mobile-first web app and server routes (Next.js 16, React 19, Tailwind v4) |
+| [`apps/landing`](apps/landing) | The landing at yotrade.xyz (Astro, one React island); test counts and the contract snippet are read from the sources at build time |
 | [`apps/indexer`](apps/indexer) | Envio HyperIndex: tournaments, entries, results, futures fills, profiles, trader stats |
 | [`packages/contracts`](packages/contracts) | `TournamentManager` and `PerpsEngine` (Foundry, Solidity 0.8.37, OpenZeppelin 5.7, UUPS) |
 | `packages/core` | Plugin runtime (`definePlugin`, `createRuntime`) and Monad testnet addresses |
