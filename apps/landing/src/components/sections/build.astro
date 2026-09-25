@@ -1,0 +1,134 @@
+---
+import { readFileSync } from "node:fs";
+
+import { Code } from "astro:components";
+
+import { contractTests, indexerTests, pluginTests, webTests } from "../../lib/counts";
+
+const repo = "https://github.com/yotrade/yotrade";
+const file = "packages/contracts/src/perps/PerpsBase.sol";
+// Read from the contract's source at build time, so the page shows the function as this checkout
+// has it. `_exitPrice` is the one worth showing: a trader can always get out, and when the oracle
+// is unsure the doubt is priced against the trader, never in their favour.
+const source = readFileSync(new URL(`../../../../../${file}`, import.meta.url), "utf8");
+const from = source.indexOf("    /// @dev Price for a fill that only reduces");
+const to = source.indexOf("\n    }\n", from) + "\n    }".length;
+const check = source.slice(from, to).replace(/^ {4}/gm, "");
+// The real line number of the first line in this checkout, for the gutter. The link below goes to
+// the file on main without an anchor: a number computed from one revision must not be pinned to another.
+const startLine = source.slice(0, from).split("\n").length;
+const packages = [
+  {
+    name: "Contracts",
+    stat: String(contractTests),
+    unit: "tests",
+    copy: "The tournament escrow and the futures engine, at full line and branch coverage, fuzzed and invariant-tested.",
+    href: `${repo}/tree/main/packages/contracts`,
+  },
+  {
+    name: "Plugins",
+    stat: String(pluginTests),
+    unit: "tests",
+    copy: "Kuru order books, Pyth futures, Mera passkeys, and the tournament client, each its own package.",
+    href: `${repo}/tree/main/packages/plugins`,
+  },
+  {
+    name: "App and indexer",
+    stat: String(webTests + indexerTests),
+    unit: "tests",
+    copy: "The scoring anyone can redo, the gas drip, settlement, and the Envio handlers that feed every board.",
+    href: `${repo}/tree/main/apps`,
+  },
+];
+---
+
+<section class="wrap" id="build" aria-labelledby="build-title">
+	<div class="section-card center" data-reveal>
+		<span class="eyebrow">For builders</span>
+		<h2 class="headline" id="build-title">Built in the Open</h2>
+		<p class="lede">Every line is public: the contracts that hold the prize, the app that scores, and the tests for both.</p>
+		<div class="actions">
+			<a class="btn btn--primary" href={repo}>See the Code</a>
+			<a class="btn btn--secondary" href={`${repo}/blob/main/docs/ARCHITECTURE.md`}>Read the Architecture</a>
+		</div>
+
+		<figure class="code" style={`--start:${startLine - 1}`}>
+			<figcaption>For builders · {file} · <code>_exitPrice</code> · <a href={`${repo}/blob/main/${file}`}>open on GitHub ↗</a></figcaption>
+			<Code code={check} lang="solidity" theme="dark-plus" />
+		</figure>
+
+		<div class="split">
+			<div>
+				<h3>Open by default.</h3>
+				<p>The code above is the rule every futures exit runs through, read from the source when this page is built. Every count below is tallied from the test files at the same moment.</p>
+			</div>
+			<a class="btn btn--secondary" href={`${repo}/tree/main/packages/contracts/deployments`}>See the Deployments</a>
+		</div>
+		<div class="cards" style="text-align:left">
+			{packages.map((p) => (
+				<div class="card">
+					<span class="label">{p.name}</span>
+					<span class="stat">{p.stat} <small>{p.unit}</small></span>
+					<p>{p.copy}</p>
+					<a class="link" href={p.href} aria-label={`Read the source of ${p.name}`}>Read the source ↗</a>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<style>
+	.code {
+		margin: clamp(2.5rem, 5vw, 4rem) auto 0;
+		max-width: 60rem;
+		text-align: left;
+		border-radius: 24px;
+		overflow: hidden;
+		background: #1e1e1e;
+		color: #d4d4d4;
+		box-shadow: 0 40px 80px -40px rgba(93, 76, 230, 0.35);
+	}
+	.code figcaption {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		padding: 0.8rem 1.25rem;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.5);
+		background: #252526;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.code figcaption code,
+	.code figcaption a {
+		color: #b7abff;
+	}
+	/* Shiki's output is global markup, so the gutter and sizing are addressed as such. VS Code's
+	   Dark+ theme and its editor background; the line numbers are the file's real ones. */
+	.code :global(pre.astro-code) {
+		margin: 0;
+		padding: 1.1rem 0;
+		overflow-x: auto;
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		line-height: 1.6;
+		tab-size: 4;
+		font-variant-ligatures: none;
+		counter-reset: line var(--start);
+	}
+	.code :global(.astro-code .line) {
+		display: inline-block;
+		min-width: 100%;
+		padding-right: 1.5rem;
+	}
+	.code :global(.astro-code .line)::before {
+		counter-increment: line;
+		content: counter(line);
+		display: inline-block;
+		width: 3.75rem;
+		padding-right: 1.25rem;
+		text-align: right;
+		color: #858585;
+		user-select: none;
+	}
+</style>

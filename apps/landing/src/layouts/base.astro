@@ -1,48 +1,89 @@
 ---
 import "../styles/global.css";
-import { META } from "../data/site.ts";
+
+interface Props {
+  /** Page name; the home page passes none and gets the tagline. */
+  title?: string;
+  description?: string;
+}
+
+const site = "YoTrade";
+const tagline = "Who's the Best Trader Here?";
+const origin = (Astro.site ?? Astro.url).origin;
+const canonical = new URL(Astro.url.pathname, origin).href;
+const {
+  title,
+  description = "Host a trading tournament for your community in three taps. Players join with one passkey, trade real Kuru order books or up to 100x at Pyth prices, and the contract pays the winners. Live on Monad.",
+} = Astro.props;
+const fullTitle = title ? `${title} | ${site}` : `${site} | ${tagline}`;
+const image = `${origin}/og.png`;
+const organisation = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site,
+  url: origin,
+  logo: `${origin}/icon-512.png`,
+  sameAs: ["https://github.com/yotrade/yotrade", "https://app.yotrade.xyz"],
+};
+const website = { "@context": "https://schema.org", "@type": "WebSite", name: site, url: origin };
 ---
 
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f5f5f5" />
-    <title>{META.title}</title>
-    <meta name="description" content={META.description} />
-    <link rel="icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="YoTrade" />
-    <meta property="og:title" content={META.title} />
-    <meta property="og:description" content={META.description} />
-    <meta property="og:image" content="/og.jpg" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-    />
-  </head>
-  <body>
-    <slot />
-    <script>
-      // Reveal each marked element once, as it scrolls into view.
-      const reveal = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add("in");
-              reveal.unobserve(entry.target);
-            }
-          }
-        },
-        { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
-      );
-      for (const element of document.querySelectorAll(".reveal")) {
-        reveal.observe(element);
-      }
-    </script>
-  </body>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{fullTitle}</title>
+		<meta name="description" content={description} />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="robots" content="index, follow, max-image-preview:large" />
+		<meta name="theme-color" content="#ffffff" />
+		<link rel="canonical" href={canonical} />
+		<link rel="sitemap" href="/sitemap.xml" />
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content={site} />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:title" content={fullTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:image" content={image} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="YoTrade: trading tournaments for your community" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={fullTitle} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={image} />
+		<script type="application/ld+json" set:html={JSON.stringify(organisation)} />
+		<script type="application/ld+json" set:html={JSON.stringify(website)} />
+	</head>
+	<body>
+		<slot />
+		<script>
+			// Each [data-reveal] container shows its parts in order once it scrolls into view.
+			// Lists (cards, FAQ items, logos, buttons) count their own children as parts.
+			document.documentElement.classList.add('js')
+			const lists = '.cards, .faq__list, .brands__grid, .updates__actions, .actions, .hero__copy'
+			for (const box of document.querySelectorAll<HTMLElement>('[data-reveal]')) {
+				const items = Array.from(box.children).flatMap((c) => (c.matches(lists) ? Array.from(c.children) : [c])) as HTMLElement[]
+				items.forEach((el, i) => {
+					el.classList.add('reveal-item')
+					el.style.setProperty('--i', String(i))
+				})
+				const io = new IntersectionObserver(
+					(entries) => {
+						if (!entries.some((e) => e.isIntersecting)) return
+						for (const el of items) el.classList.add('is-in')
+						io.disconnect()
+					},
+					{ threshold: 0.1 },
+				)
+				io.observe(box)
+			}
+		</script>
+	</body>
 </html>

@@ -1,0 +1,57 @@
+---
+import { Image } from "astro:assets";
+
+import logo from "../../assets/logo.png";
+import { HeroCanvas } from "../canvas/hero-canvas";
+---
+
+<section class="wrap hero-wrap" id="hero" aria-labelledby="hero-title">
+	<div class="section-card center hero" data-reveal>
+		<div class="hero__copy">
+			<span class="eyebrow"><Image src={logo} alt="" width={20} height={20} densities={[1, 2]} /> YoTrade</span>
+			<h1 class="headline" id="hero-title">Who's the Best Trader Here?</h1>
+			<p class="lede">Host a trading tournament for your community on Monad. The prize waits in a contract, the board follows every fill, and the winners get paid.</p>
+			<div class="actions">
+				<a class="btn btn--primary cta" href="https://app.yotrade.xyz/new">Host a Game</a>
+				<a class="btn btn--secondary" href="https://app.yotrade.xyz/arena">Join One</a>
+			</div>
+		</div>
+		<div class="hero__canvas" id="canvas">
+			<HeroCanvas client:visible />
+			<p class="hero__caption">A simulation, not a live round: the traders and prices are made up, the rules are the app's own.</p>
+		</div>
+	</div>
+</section>
+
+<style>
+	.hero-wrap {
+		/* The card starts at the top of the page, under the fixed, transparent nav. */
+		margin-top: 0;
+	}
+	.hero {
+		/* The copy keeps the page's column; the canvas below breaks out of it. */
+		padding-inline: clamp(1.25rem, 4vw, 3rem);
+		padding-top: calc(82px + clamp(2.5rem, 5vw, 4.5rem));
+	}
+	@media (max-width: 899px) {
+		.hero {
+			padding-top: calc(64px + 2.5rem);
+		}
+	}
+	.hero__copy {
+		max-width: var(--content-max);
+		margin-inline: auto;
+	}
+	.hero__canvas {
+		max-width: 80rem;
+		margin: clamp(2.5rem, 5vw, 4rem) auto 0;
+		text-align: left;
+	}
+	.hero__caption {
+		margin: 1rem 0 0;
+		text-align: center;
+		font-size: 0.8125rem;
+		letter-spacing: -0.01em;
+		color: var(--ink-65);
+	}
+</style>
