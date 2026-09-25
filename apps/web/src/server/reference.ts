@@ -92,13 +92,17 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
   // Concurrent visitors asking for the same series share one upstream request.
   const inFlight = new Map<string, Promise<Reference>>();
 
-  async function load(market: ReferenceSlug, range: RangeName): Promise<Reference> {
+  /** The `MAX_CANDLES` candles up to `until` (Unix seconds), or up to now. */
+  async function load(market: ReferenceSlug, range: RangeName, until?: number): Promise<Reference> {
     const source = SOURCES[market];
     const [interval, seconds] = PLAN[range][source.venue];
+    const to = until ?? Math.floor(now() / 1000);
+    const from = to - seconds * MAX_CANDLES;
+    // Gate refuses `limit` next to `from`/`to`, so a bounded series is asked for by its window there.
     const url =
       source.venue === "binance"
-        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${interval}&limit=${MAX_CANDLES}`
-        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${interval}&limit=${MAX_CANDLES}`;
+        ? `https://data-api.binance.vision/api/v3/klines?symbol=${source.symbol}&interval=${interval}&limit=${MAX_CANDLES}${until === undefined ? "" : `&endTime=${until * 1000}`}`
+        : `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${source.symbol}&interval=${interval}${until === undefined ? `&limit=${MAX_CANDLES}` : `&from=${from}&to=${until}`}`;
     const response = await fetcher(url, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -108,12 +112,15 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     }
     const body: unknown = await response.json();
     const bars = source.venue === "binance" ? parseBinance(body) : parseGate(body);
-    const to = Math.floor(now() / 1000);
-    return { label: source.label, from: to - seconds * MAX_CANDLES, to, bars };
+    return { label: source.label, from, to, bars };
   }
 
-  return function reference(market: ReferenceSlug, range: RangeName): Promise<Reference> {
-    const key = `${market}:${range}`;
+  return function reference(
+    market: ReferenceSlug,
+    range: RangeName,
+    until?: number,
+  ): Promise<Reference> {
+    const key = `${market}:${range}:${until ?? "now"}`;
     const hit = cache.get(key);
     const ttl = range === "1s" || range === "1m" ? FAST_CACHE_MS : CACHE_MS;
     if (hit && now() - hit.at < ttl) {
@@ -123,7 +130,7 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     if (running) {
       return running;
     }
-    const next = load(market, range)
+    const next = load(market, range, until)
       .then((value) => {
         cache.set(key, { at: now(), value });
         return value;
@@ -132,4 +139,12 @@ export function createReference(fetcher: Fetch = fetch, now: () => number = Date
     inFlight.set(key, next);
     return next;
   };
+}
+
+let shared: ReturnType<typeof createReference> | undefined;
+
+/** The server's one reference cache, shared by every route that asks. */
+export function sharedReference(): ReturnType<typeof createReference> {
+  shared ??= createReference();
+  return shared;
 }
