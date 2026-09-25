@@ -6,6 +6,7 @@ import { publicEnv } from "@/lib/env.ts";
 import { createIndexer, type IndexedTournamentDetail } from "@/lib/indexer.ts";
 import { withChainSchedule } from "@/lib/schedule.ts";
 import { venueOf } from "@/lib/venue.ts";
+import { kuruIdOf } from "./kuru-ids.ts";
 import { scorePerps } from "./perps-scoring.ts";
 import { serverRuntime } from "./runtime.ts";
 import { pnlOf, rank, roiPpm, type Scored, valueAt } from "./scoring.ts";
@@ -30,22 +31,8 @@ export interface Leaderboard {
 function createLeaderboards() {
   const runtime = serverRuntime();
   const indexer = createIndexer(publicEnv.NEXT_PUBLIC_INDEXER_URL);
-  const kuruIds = new Map<Address, bigint>();
   const cache = new Map<string, Leaderboard>();
   const inFlight = new Map<string, Promise<Leaderboard | null>>();
-
-  async function kuruId(account: Address): Promise<bigint> {
-    const known = kuruIds.get(account);
-    if (known !== undefined) {
-      return known;
-    }
-    const id = await runtime.kuru.account.id(account);
-    // Ids are assigned once and never change. Zero means "not registered yet", which can change.
-    if (id !== 0n) {
-      kuruIds.set(account, id);
-    }
-    return id;
-  }
 
   /**
    * What each entry's trading account received after its join and by the end, in raw USDC: USDC as is, a base
@@ -187,7 +174,7 @@ function createLeaderboards() {
     const rows = await Promise.all(
       tournament.entries.map(async (entry): Promise<Scored> => {
         const performance = await runtime.kuru.data.performance(
-          await kuruId(entry.tradingAccount),
+          await kuruIdOf(entry.tradingAccount),
           window,
         );
         const opening = new Map<string, bigint | null>();

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { CHART_TYPES, type ChartType, RANGES, type RangeName, type Summary } from "@/lib/chart.ts";
+import { formatPrice } from "@/lib/format.ts";
 import { direction, formatBps } from "@/lib/ticket.ts";
 import { TOKEN_LABELS, TOKEN_NAMES } from "@/lib/tokens.ts";
 import { tradeGate } from "@/lib/trade-window.ts";
@@ -25,8 +26,6 @@ const VIEWS = ["Chart", "Book", "Depth"] as const;
 type View = (typeof VIEWS)[number];
 const RANGE_NAMES = Object.keys(RANGES) as RangeName[];
 
-const money = (value: number) =>
-  value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 6 : 2 });
 /** Volumes run to nine digits on global venues: "126.2M" fits a stat cell, the full number does not. */
 const compact = (value: number) =>
   value.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 1 });
@@ -85,7 +84,7 @@ export function Headline({ summary, range, loading }: HeadlineProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <p className="tabular text-[32px] font-bold leading-none tracking-tight">
-        ${money(summary.close)}
+        ${formatPrice(summary.close)}
       </p>
       <span
         className={`tabular w-fit rounded-full px-2.5 py-0.5 font-mono text-xs font-bold ${tone(summary.changeBps)}`}
@@ -148,10 +147,10 @@ export function RangeTabs({
 function Stats({ data }: { data: MarketData }) {
   const { summary, chartLoading } = data;
   const cells: [string, string][] = [
-    ["Open", summary ? money(summary.open) : "—"],
-    ["High", summary ? money(summary.high) : "—"],
-    ["Close", summary ? money(summary.close) : "—"],
-    ["Low", summary ? money(summary.low) : "—"],
+    ["Open", summary ? formatPrice(summary.open) : "—"],
+    ["High", summary ? formatPrice(summary.high) : "—"],
+    ["Close", summary ? formatPrice(summary.close) : "—"],
+    ["Low", summary ? formatPrice(summary.low) : "—"],
     ["Volume", summary ? `$${compact(summary.volume)}` : "—"],
   ];
   return (
