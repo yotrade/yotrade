@@ -1,56 +1,362 @@
+/* The fonts are served from this origin. Asking fonts.googleapis.com for a stylesheet meant a
+   render-blocking request to a third party, and on a throttled connection nothing painted until
+   it answered: first paint and largest paint were both 3.6s. */
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 @import "tailwindcss";
 
+/* The landing theme. The island's utility classes read these; the page's CSS does too. */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --color-ink: #0e091c;
-  --color-plum: #2b2644;
-  --color-accent: #6e54ff;
-  --color-page: #f5f5f5;
+  --color-paper: #fbfcfe;
+  --color-cream: #f5f7fa;
+  --color-cream-warm: #e9eef7;
+  --color-ink: #0b0e15;
+  --color-ink-2: #4e5560;
+  --color-ink-3: #6b7280;
+  --color-border: rgba(11, 14, 21, 0.1);
+  --color-border-strong: rgba(11, 14, 21, 0.2);
+  --color-accent: #3b82f6;
+  --color-accent-2: #8b7cf6;
+  --color-accent-3: #e59bd8;
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-html,
+:root {
+  /* Measured on the reference: big cards run edge to edge minus a 24px gutter, and
+	   everything inside them (nav and footer too) sits in a centred 986px column. */
+  --content-max: 61.625rem;
+  --gutter: clamp(1rem, 2vw, 1.5rem);
+  /* Type and surface tokens, measured on the reference at 1440: headings at 90% ink,
+	   body copy at 65%, captions #636161, one lavender for accents. The buttons use a
+	   lavender two notches darker than the reference's so white text passes 4.5:1. */
+  --ink-90: rgba(39, 34, 40, 0.9);
+  --ink-65: rgba(39, 34, 40, 0.65);
+  --ink-solid: #252228;
+  --caption: #636161;
+  --lav: #978eff;
+  --lav-btn: #695cff;
+  --lav-btn-hover: #5a4df0;
+  --lav-text: #6254ff;
+  --lav-tint: rgba(151, 142, 255, 0.1);
+  --ring: 0 0 0 1px rgba(37, 34, 40, 0.05);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  background: var(--color-page);
-  /* Clip, not hide: nothing sideways on a phone, and the nav still overlays. */
-  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Two copies of each list slide by half their width, so the strip loops without a seam. */
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.marquee-track {
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ── page primitives ─────────────────────────────────────────── */
+.wrap {
+  width: calc(100% - 2 * var(--gutter));
+  margin-inline: auto;
+  margin-top: var(--gutter);
+  /* Anchor links land below the sticky nav rather than under it. */
+  scroll-margin-top: 6rem;
+}
+.section-card {
+  border-radius: 32px;
+  padding: clamp(3.5rem, 7vw, 6rem)
+    max(clamp(1.25rem, 4vw, 3rem), calc((100% - var(--content-max)) / 2)) clamp(2rem, 4vw, 3rem);
+  /* white at the top fading into lavender, the way the big cards read on the reference */
+  background:
+    linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0) 38%),
+    radial-gradient(120% 90% at 50% 100%, #e6e1ff 0%, #f1eeff 45%, #f8f7ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.section-card--white {
+  padding: 3rem;
+  background: #ffffff;
+  box-shadow: var(--ring);
+}
+.section-card--dark {
+  background: #0f0f10;
+  color: #f6f7f4;
+  box-shadow: none;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: var(--ink-65);
+}
+.eyebrow img,
+.eyebrow svg {
+  width: 20px;
+  height: 20px;
+}
+.section-card--dark .eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+.headline {
+  margin: 1.5rem 0 0;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  font-weight: 550;
+  color: var(--ink-90);
+}
+.section-card--dark .headline {
+  color: #f6f7f4;
+}
+.lede {
+  margin: 1rem auto 0;
+  max-width: 620px;
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  line-height: 1.36;
+  letter-spacing: -0.01em;
+  color: var(--ink-65);
+}
+.section-card--dark .lede {
+  color: rgba(255, 255, 255, 0.7);
+}
+.actions {
   display: flex;
-  width: max-content;
-  animation: marquee var(--marquee-duration, 22s) linear infinite;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
 }
-
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 99px;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
   transition:
-    opacity 700ms ease,
-    transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  transition-delay: var(--delay, 0ms);
+    background-color 0.15s,
+    color 0.15s;
+}
+.btn--primary {
+  background: var(--lav-btn);
+  color: #ffffff;
+}
+.btn--primary:hover {
+  background: var(--lav-btn-hover);
+}
+.btn--secondary {
+  background: var(--lav-tint);
+  color: var(--lav-text);
+}
+.btn--secondary:hover {
+  background: rgba(151, 142, 255, 0.18);
+}
+.btn--dark {
+  background: #ffffff;
+  color: var(--ink-solid);
+}
+.btn--dark:hover {
+  background: #ecebf5;
+}
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+.btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.btn--ink {
+  height: 42px;
+  padding: 8px 16px;
+  font-size: 1rem;
+  font-weight: 450;
+  background: var(--ink-solid);
+  color: #ffffff;
+}
+.btn--ink:hover {
+  background: #0f0f10;
+}
+.btn--small {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 450;
+}
+.btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+.cards {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+}
+.card {
+  border-radius: 24px;
+  padding: 2rem;
+  background: #ffffff;
+  border: 1px solid rgba(38, 34, 40, 0.05);
+}
+.card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 450;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ink-90);
+}
+.card p {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--caption);
+}
+.card .label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: var(--ink-65);
+}
+.card .stat {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 450;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: var(--ink-90);
+  font-variant-numeric: tabular-nums;
+}
+.card .stat small {
+  font-size: 1rem;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: var(--ink-65);
+}
+.card .link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  font-weight: 450;
+  color: var(--lav-text);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 99px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  background: var(--lav-tint);
+  color: var(--lav-text);
+}
+.chip i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--lav);
+  display: inline-block;
+}
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin: clamp(3rem, 6vw, 4.5rem) 0 2rem;
+  text-align: left;
+}
+.split h3 {
+  margin: 0;
+  max-width: 736px;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+  color: var(--ink-90);
+}
+.split p {
+  margin: 0.75rem 0 0;
+  max-width: 620px;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ink-65);
+}
+.center {
+  text-align: center;
+}
+.section-card--dark .split h3 {
+  color: #ffffff;
+}
+.section-card--dark .split p {
+  color: rgba(255, 255, 255, 0.7);
+}
+.section-card--dark .card {
+  padding: 2rem 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: transparent;
+}
+.section-card--dark .card h3 {
+  color: #ffffff;
+}
+.section-card--dark .card p {
+  color: rgba(255, 255, 255, 0.6);
+}
+.section-card--dark .card .label {
+  color: rgba(255, 255, 255, 0.5);
+}
+.section-card--dark .chip {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+.section-card--dark .chip i {
+  background: var(--lav);
 }
 
-.reveal.in {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .marquee-track {
-    animation: none;
+/* Sections reveal their parts one after another as they come into view (see Base.astro).
+   Without JS nothing is hidden; with reduced motion nothing moves. */
+@media (prefers-reduced-motion: no-preference) {
+  html.js .reveal-item {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+      transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(var(--i, 0) * 90ms);
   }
-
-  .reveal {
+  html.js .reveal-item.is-in {
     opacity: 1;
     transform: none;
-    transition: none;
   }
 }
