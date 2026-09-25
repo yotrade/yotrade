@@ -1,4 +1,4 @@
-import { type Hex, hexToBytes, http } from "viem";
+import { fallback, type Hex, hexToBytes, http } from "viem";
 import { monadTestnet } from "viem/chains";
 
 import { createRuntime } from "@yotrade/core/plugin";
@@ -39,11 +39,26 @@ function e2eRequested(): boolean {
   }
 }
 
-/** Every integration the app talks to, wired once. Alchemy is used when a key is configured. */
+/** How often the fallback re-measures its transports. Every tab pings each one this often, so not too often. */
+const RANK_INTERVAL_MS = 30_000;
+
+/**
+ * Alchemy first when a key is configured, never alone: a rate-limited or failing Alchemy falls through to the public
+ * RPC on the same request, and ranking moves whichever keeps failing to the back.
+ */
+export function appTransport(env: PublicEnv) {
+  const rpc = http(env.NEXT_PUBLIC_RPC_URL);
+  if (!env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
+    return rpc;
+  }
+  return fallback([alchemyTransport(env.NEXT_PUBLIC_ALCHEMY_API_KEY, monadTestnet.id), rpc], {
+    rank: { interval: RANK_INTERVAL_MS },
+  });
+}
+
+/** Every integration the app talks to, wired once. */
 export function createAppRuntime(env: PublicEnv, hermesOptions: HermesOptions = BROWSER_HERMES) {
-  const transport = env.NEXT_PUBLIC_ALCHEMY_API_KEY
-    ? alchemyTransport(env.NEXT_PUBLIC_ALCHEMY_API_KEY, monadTestnet.id)
-    : http(env.NEXT_PUBLIC_RPC_URL);
+  const transport = appTransport(env);
 
   const source = e2eSource(env.NEXT_PUBLIC_E2E_PRF_SEED);
 

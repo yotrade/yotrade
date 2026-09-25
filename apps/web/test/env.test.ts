@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
+import { monadTestnet } from "viem/chains";
+
 import { parsePublicEnv } from "../src/lib/env.ts";
-import { createAppRuntime, E2E_FLAG } from "../src/lib/runtime.ts";
+import { appTransport, createAppRuntime, E2E_FLAG } from "../src/lib/runtime.ts";
 
 describe("parsePublicEnv", () => {
   test("falls back to local development defaults", () => {
@@ -32,9 +34,19 @@ describe("createAppRuntime", () => {
     expect(typeof runtime.mera.signIn).toBe("function");
   });
 
-  test("switches to Alchemy when a key is configured", () => {
-    const runtime = createAppRuntime(parsePublicEnv({ NEXT_PUBLIC_ALCHEMY_API_KEY: "key" }));
-    expect(runtime.publicClient.transport.url).toBe("https://monad-testnet.g.alchemy.com/v2/key");
+  test("puts Alchemy first when a key is configured, with the public RPC behind it", () => {
+    const env = parsePublicEnv({ NEXT_PUBLIC_ALCHEMY_API_KEY: "key" });
+    const transport = appTransport(env)({ chain: monadTestnet });
+    expect(transport.config.type).toBe("fallback");
+    const urls = (transport.value as { transports: { value?: { url?: string } }[] }).transports.map(
+      (inner) => inner.value?.url,
+    );
+    expect(urls).toEqual(["https://monad-testnet.g.alchemy.com/v2/key", env.NEXT_PUBLIC_RPC_URL]);
+  });
+
+  test("uses the public RPC alone without a key", () => {
+    const transport = appTransport(parsePublicEnv({}))({ chain: monadTestnet });
+    expect(transport.config.type).toBe("http");
   });
 
   test("a seed gives one stable account, but only in a browser that opted in", async () => {
