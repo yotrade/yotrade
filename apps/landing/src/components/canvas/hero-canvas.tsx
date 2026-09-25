@@ -8,11 +8,11 @@ import { useEffect, useState } from "react";
  */
 
 type Candle = { o: number; h: number; l: number; c: number };
-type Trader = { name: string; hue: string; size: number; entry: number; realized: number };
+type Trader = { name: string; avatar: string; size: number; entry: number; realized: number };
 type Fill = {
   id: number;
   who: string;
-  hue: string;
+  avatar: string;
   action: "long" | "short" | "close";
   size: number;
   price: number;
@@ -33,13 +33,14 @@ const DOWN = "#e5484d";
 /** Green long, red short, grey close. */
 const TONE = { long: UP, short: DOWN, close: "#9aa1ad" } as const;
 
+/** The app's own avatars, served from public/app/. */
 const ROSTER: [string, string][] = [
-  ["alex", "#7c6bff"],
-  ["maya", "#e59bd8"],
-  ["you", "#0b0e15"],
-  ["ryan", "#3b82f6"],
-  ["nora", "#f59e0b"],
-  ["ben", "#14b8a6"],
+  ["alex", "/app/avatars/1.png"],
+  ["maya", "/app/avatars/2.png"],
+  ["you", "/app/avatars/3.png"],
+  ["ryan", "/app/avatars/4.png"],
+  ["nora", "/app/avatars/5.png"],
+  ["ben", "/app/avatars/6.png"],
 ];
 
 /** A small deterministic generator, so the server's first frame and the browser's are the same. */
@@ -74,7 +75,7 @@ function advance(state: State, random: () => number): State {
   const t = traders[index] as Trader;
   const trend = c - (candles[Math.max(0, candles.length - 6)] as Candle).o;
   const wantsLong = random() < (trend > 0 ? 0.62 : 0.38);
-  let fill: Omit<Fill, "id" | "who" | "hue" | "at" | "price">;
+  let fill: Omit<Fill, "id" | "who" | "avatar" | "at" | "price">;
   if (t.size !== 0 && (random() < 0.4 || t.size > 0 !== wantsLong)) {
     fill = { action: "close", size: Math.abs(t.size) };
     t.realized += t.size * (c - t.entry);
@@ -90,7 +91,7 @@ function advance(state: State, random: () => number): State {
     ...fill,
     id: tick,
     who: t.name,
-    hue: t.hue,
+    avatar: t.avatar,
     price: c,
     at: first + candles.length - 1,
   };
@@ -103,7 +104,7 @@ function initial(): State {
     tick: 0,
     first: 0,
     candles: [{ o: 2418, h: 2418, l: 2418, c: 2418 }],
-    traders: ROSTER.map(([name, hue]) => ({ name, hue, size: 0, entry: 0, realized: 0 })),
+    traders: ROSTER.map(([name, avatar]) => ({ name, avatar, size: 0, entry: 0, realized: 0 })),
     fills: [],
   };
   while (state.candles.length < VISIBLE || state.tick < 260) {
@@ -184,9 +185,7 @@ function Header({ price, change, left }: { price: number; change: number; left: 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-[var(--color-border)] px-4 py-3 sm:px-5">
       <div className="flex items-center gap-3">
-        <span className="grid size-8 place-items-center rounded-full bg-[#627eea] text-[13px] font-semibold text-white">
-          Ξ
-        </span>
+        <img src="/app/eth.png" alt="" width={32} height={32} className="size-8 rounded-full" />
         <div className="leading-tight">
           <div className="text-[14px] font-semibold">ETH-PERP</div>
           <div className="text-[11px] text-[var(--color-ink-3)]">
@@ -292,15 +291,14 @@ function Chart({ state, price }: { state: State; price: number }) {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.35, ease: [0.22, 1.4, 0.36, 1] }}
-                className="absolute grid size-[18px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[9px] font-semibold text-white"
+                className="absolute size-5 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white"
                 style={{
                   left: `${x(f.at - first)}%`,
                   top: `${y(f.price)}%`,
-                  background: f.hue,
                   boxShadow: `0 0 0 2px ${TONE[f.action]}`,
                 }}
               >
-                {f.who[0]?.toUpperCase()}
+                <img src={f.avatar} alt="" width={20} height={20} className="size-full" />
               </motion.span>
             ))}
         </AnimatePresence>
@@ -339,23 +337,29 @@ function Board({ board }: { board: (Trader & { roi: number })[] }) {
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
               className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] ${me ? "bg-[rgba(124,107,255,0.1)]" : ""} ${i > 3 ? "hidden sm:flex" : ""}`}
             >
-              <span className="w-4 font-mono text-[11px] text-[var(--color-ink-3)]">{i + 1}</span>
-              <span
-                className="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white"
-                style={{ background: t.hue }}
-              >
-                {t.name[0]?.toUpperCase()}
+              <span className="grid w-4 place-items-center font-mono text-[11px] text-[var(--color-ink-3)]">
+                {i === 0 ? (
+                  <img src="/icons/crown-gold.svg" alt="1" width={14} height={14} />
+                ) : (
+                  i + 1
+                )}
               </span>
+              <img
+                src={t.avatar}
+                alt=""
+                width={24}
+                height={24}
+                className="size-6 shrink-0 rounded-full bg-white"
+              />
               <span className={`flex-1 truncate ${me ? "font-semibold" : ""}`}>{t.name}</span>
               <span className="font-mono text-[10px] text-[var(--color-ink-3)]">
-                {t.size === 0 ? "flat" : `${t.size > 0 ? "L" : "S"} ${Math.abs(t.size)}`}
+                {sideText(t.size)}
               </span>
               <span
                 className="w-16 text-right font-mono text-[12px] tabular-nums"
                 style={{ color: t.roi >= 0 ? UP : DOWN }}
               >
-                {t.roi >= 0 ? "+" : "−"}
-                {(Math.abs(t.roi) * 100).toFixed(2)}%
+                {roiText(t.roi)}
               </span>
             </motion.li>
           );
@@ -364,6 +368,15 @@ function Board({ board }: { board: (Trader & { roi: number })[] }) {
     </div>
   );
 }
+
+const sideText = (size: number) => {
+  if (size === 0) {
+    return "flat";
+  }
+  return `${size > 0 ? "L" : "S"} ${Math.abs(size)}`;
+};
+
+const roiText = (roi: number) => `${roi >= 0 ? "+" : "−"}${(Math.abs(roi) * 100).toFixed(2)}%`;
 
 const VERB = { long: "longed", short: "shorted", close: "closed" } as const;
 
@@ -385,7 +398,7 @@ function Feed({ fills }: { fills: Fill[] }) {
               transition={{ duration: 0.3 }}
               className="flex items-center gap-2 text-[12px]"
             >
-              <span className="size-1.5 rounded-full" style={{ background: f.hue }} />
+              <img src={f.avatar} alt="" width={16} height={16} className="size-4 rounded-full" />
               <span className="font-medium">{f.who}</span>
               <span style={{ color: TONE[f.action] }}>
                 {VERB[f.action]} {f.size} ETH
