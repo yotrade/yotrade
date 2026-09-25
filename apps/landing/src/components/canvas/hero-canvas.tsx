@@ -165,11 +165,12 @@ export function HeroCanvas() {
           aria-label="A simulated futures round: an ETH candle chart with traders' fills, and a leaderboard that re-ranks as the price moves"
         >
           <Header price={price} change={change} left={left} />
-          <div className="grid lg:grid-cols-12">
+          {/* A fixed height on wide screens: the sidebar never grows the frame, so the page never jumps. */}
+          <div className="grid lg:h-[440px] lg:grid-cols-12">
             <div className="border-[var(--color-border)] lg:col-span-8 lg:border-r">
               <Chart state={state} price={price} />
             </div>
-            <div className="flex flex-col lg:col-span-4">
+            <div className="flex min-h-0 flex-col overflow-hidden lg:col-span-4">
               <Board board={board} />
               <Feed fills={state.fills} />
             </div>
@@ -183,7 +184,7 @@ export function HeroCanvas() {
 function Header({ price, change, left }: { price: number; change: number; left: number }) {
   const up = change >= 0;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-[var(--color-border)] px-4 py-3 sm:px-5">
+    <div className="flex flex-col gap-2 border-b sm:flex-row sm:items-center sm:justify-between sm:gap-6 border-[var(--color-border)] px-4 py-3 sm:px-5">
       <div className="flex items-center gap-3">
         <img src="/app/eth.png" alt="" width={32} height={32} className="size-8 rounded-full" />
         <div className="leading-tight">
@@ -225,7 +226,7 @@ function Chart({ state, price }: { state: State; price: number }) {
   const last = candles[candles.length - 1] as Candle;
   const lastUp = last.c >= last.o;
   return (
-    <div className="relative h-[240px] pr-16 sm:h-[340px] lg:h-[400px]">
+    <div className="relative h-[240px] pr-16 sm:h-[340px] lg:h-full">
       <div className="relative h-full">
         <svg
           viewBox={`0 0 ${VISIBLE * GAP} 100`}
@@ -382,12 +383,13 @@ const VERB = { long: "longed", short: "shorted", close: "closed" } as const;
 
 function Feed({ fills }: { fills: Fill[] }) {
   return (
-    <div className="hidden flex-1 border-t border-[var(--color-border)] px-5 py-3 lg:block">
+    <div className="hidden min-h-0 flex-1 overflow-hidden border-t border-[var(--color-border)] px-5 py-3 lg:block">
       <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-3)]">
         Fills
       </div>
       <ul className="flex list-none flex-col gap-1.5 p-0">
-        <AnimatePresence initial={false}>
+        {/* popLayout takes a leaving fill out of the flow at once, so the list never holds six. */}
+        <AnimatePresence initial={false} mode="popLayout">
           {fills.slice(0, 5).map((f) => (
             <motion.li
               key={f.id}
