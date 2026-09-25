@@ -30,7 +30,8 @@ flowchart LR
 | `apps/indexer` | Envio HyperIndex: tournaments, entries, results and trader stats as GraphQL. |
 | `packages/core` | Plugin runtime: `definePlugin` and `createRuntime` give every integration the same client and chain. |
 | `packages/plugins/*` | `plugin-mera` (passkey accounts), `plugin-kuru` (faucet, deposits, quotes, swaps, PnL), `plugin-tournament` (typed contract client), `plugin-perps` (futures client, the engine's math in `bigint`, Hermes), `plugin-alchemy` (RPC). |
-| `apps/web` | Mobile-first app and the server routes: drip, leaderboard, finalize, commentary, and the keyed Hermes proxy. |
+| `apps/web` | Mobile-first app and the server routes: drip, leaderboard, room, finalize, commentary, and the keyed Hermes proxy. RPC goes to Alchemy first when a key is set, with the public endpoint behind it (`fallback`, ranked every 30 s). |
+| `apps/landing` | yotrade.xyz: a static Astro site served by nginx. Its test counts and the `_exitPrice` snippet are read from the sources at build time, and turbo hashes those files as its build inputs. |
 
 ## One passkey, many keys
 
@@ -64,6 +65,16 @@ A fresh account per tournament means clean starting capital, no positions carrie
 A **private** tournament is hidden from the lists and needs an invite: the host's passkey derives an invite key per tournament (one more Mera namespace), its address goes onchain with `setInvite`, and the code travels in the link fragment. `join` presents the code's signature over a digest bound to chain, contract, tournament and participant. A leaked link is revoked by rotating to the next epoch; any device with the passkey finds the current one.
 
 A **Futures** tournament differs in three steps. Joining is gas drip → `join`: the capital is a virtual 10,000 USD, the same for everyone. Trading sends a signed Pyth update with every order, so the fill price is the oracle's and not the trader's. Taking on risk, a flip through zero included, needs a confident price. Getting out never waits for one: it fills at the edge of the band that is worse for the trader. The score is equity over the start; finalize first closes every open position at the first Pyth price at or after the end (`settle`), then posts the winners, so the ranking can be recomputed from the chain alone. Measured live: join 6 s, fill 3 to 5 s, finalize with settlement 6 s.
+
+## The room
+
+The top of a tournament page, from trading until payout. `/api/tournaments/[id]/room` builds it on the server, cached for 5 s with shared in-flight requests, so viewers do not multiply upstream calls:
+
+- **Market.** The one with the most fills in the window. Ties go to the most recent. With no fills it falls back to MON on Spot and BTC on Futures.
+- **Candles.** The timeframe is the shortest whose 96 candles cover the whole round. Spot uses Kuru's own candles, read back up to 30 days so a quiet book carries its last price into the window. Futures uses the labelled Binance reference, bounded at the round's end.
+- **Fills.** Spot takes each entry's Kuru trades inside the window. Futures takes the indexer's tournament-wide `Fill`s. Each fill is attributed to the participant the board lists.
+
+The card keeps one height from the first frame, loading, empty and error included, so nothing below it moves.
 
 ## Media and sharing
 
