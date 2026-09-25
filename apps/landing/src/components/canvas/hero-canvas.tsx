@@ -2,9 +2,9 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 /**
- * A futures round in motion: an ETH candle chart, a handful of traders opening and closing on it,
- * and the board re-ranking with every tick. A simulation: the rules are the app's (the same
- * $10,000 for everyone, return on capital, the same price for all), the traders and prices are not.
+ * A spot round in motion: a MON/USDC candle chart on Kuru's book, a handful of traders buying in and
+ * selling out on it, and the board re-ranking with every tick. A simulation: the rules are the app's (the
+ * same capital for everyone, return on capital, the same book for all), the traders and prices are not.
  */
 
 type Candle = { o: number; h: number; l: number; c: number };
@@ -13,7 +13,7 @@ type Fill = {
   id: number;
   who: string;
   avatar: string;
-  action: "long" | "short" | "close";
+  action: "buy" | "sell";
   size: number;
   price: number;
   at: number;
@@ -30,8 +30,13 @@ const START = 10_000;
 const ROUND_SECONDS = 2 * 3600 - 17 * 60;
 const UP = "#12a150";
 const DOWN = "#e5484d";
-/** Green long, red short, grey close. */
-const TONE = { long: UP, short: DOWN, close: "#9aa1ad" } as const;
+/** Green buy, red sell. */
+const TONE = { buy: UP, sell: DOWN } as const;
+/** A buy is 40k to 160k MON, in thousands: about $1,000 to $4,000 at the round's prices. */
+const LOT_MIN = 40;
+const LOT_MAX = 160;
+/** MON trades at a few cents, so prices carry five decimals. */
+const DECIMALS = 5;
 
 /** The app's own avatars, served from public/app/. */
 const ROSTER: [string, string][] = [
@@ -74,18 +79,20 @@ function advance(state: State, random: () => number): State {
   const traders = state.traders.map((t) => ({ ...t }));
   const t = traders[index] as Trader;
   const trend = c - (candles[Math.max(0, candles.length - 6)] as Candle).o;
-  const wantsLong = random() < (trend > 0 ? 0.62 : 0.38);
+  const wantsIn = random() < (trend > 0 ? 0.62 : 0.38);
   let fill: Omit<Fill, "id" | "who" | "avatar" | "at" | "price">;
-  if (t.size !== 0 && (random() < 0.4 || t.size > 0 !== wantsLong)) {
-    fill = { action: "close", size: Math.abs(t.size) };
+  // Spot has no shorts: a trader buys in, and sells out of what they hold.
+  if (t.size > 0 && (random() < 0.4 || !wantsIn)) {
+    fill = { action: "sell", size: t.size };
     t.realized += t.size * (c - t.entry);
     t.size = 0;
+  } else if (wantsIn && (t.size + LOT_MAX) * c <= START) {
+    const size = Math.round(LOT_MIN + random() * (LOT_MAX - LOT_MIN)) * 1_000;
+    t.entry = (t.entry * t.size + c * size) / (t.size + size);
+    t.size += size;
+    fill = { action: "buy", size };
   } else {
-    const size = Math.round(2 + random() * 12);
-    const signed = wantsLong ? size : -size;
-    t.entry = t.size === 0 ? c : (t.entry * t.size + c * signed) / (t.size + signed);
-    t.size += signed;
-    fill = { action: wantsLong ? "long" : "short", size };
+    return { ...state, tick, first, candles };
   }
   const entry: Fill = {
     ...fill,
@@ -103,7 +110,7 @@ function initial(): State {
   let state: State = {
     tick: 0,
     first: 0,
-    candles: [{ o: 2418, h: 2418, l: 2418, c: 2418 }],
+    candles: [{ o: 0.0261, h: 0.0261, l: 0.0261, c: 0.0261 }],
     traders: ROSTER.map(([name, avatar]) => ({ name, avatar, size: 0, entry: 0, realized: 0 })),
     fills: [],
   };
@@ -115,8 +122,10 @@ function initial(): State {
 
 const roiOf = (t: Trader, price: number) => (t.realized + t.size * (price - t.entry)) / START;
 
-const money = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n: number) => n.toFixed(DECIMALS);
+
+/** 120000 → "120k". */
+const lot = (size: number) => `${Math.round(size / 1_000)}k`;
 
 const clock = (seconds: number) =>
   [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60]
@@ -162,7 +171,7 @@ export function HeroCanvas() {
         <div
           className="overflow-hidden rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-paper)] text-[var(--color-ink)] shadow-[0_-24px_50px_-30px_rgba(20,28,60,0.32)]"
           role="img"
-          aria-label="A simulated futures round: an ETH candle chart with traders' fills, and a leaderboard that re-ranks as the price moves"
+          aria-label="A simulated spot round: a MON/USDC candle chart with traders' fills, and a leaderboard that re-ranks as the price moves"
         >
           <Header price={price} change={change} left={left} />
           {/* A fixed height on wide screens: the sidebar never grows the frame, so the page never jumps. */}
@@ -186,11 +195,11 @@ function Header({ price, change, left }: { price: number; change: number; left: 
   return (
     <div className="flex flex-col gap-2 border-b sm:flex-row sm:items-center sm:justify-between sm:gap-6 border-[var(--color-border)] px-4 py-3 sm:px-5">
       <div className="flex items-center gap-3">
-        <img src="/app/eth.png" alt="" width={32} height={32} className="size-8 rounded-full" />
+        <img src="/app/mon.png" alt="" width={32} height={32} className="size-8 rounded-full" />
         <div className="leading-tight">
-          <div className="text-[14px] font-semibold">ETH-PERP</div>
+          <div className="text-[14px] font-semibold">MON/USDC</div>
           <div className="text-[11px] text-[var(--color-ink-3)]">
-            Campus Club · round #31 · Pyth
+            Campus Club · round #31 · Kuru
           </div>
         </div>
       </div>
@@ -307,14 +316,14 @@ function Chart({ state, price }: { state: State; price: number }) {
       <div className="absolute inset-y-0 right-0 w-16 font-mono text-[10px] tabular-nums text-[var(--color-ink-3)]">
         {grid.map((p) => (
           <span key={p} className="absolute left-2 -translate-y-1/2" style={{ top: `${y(p)}%` }}>
-            {p.toFixed(1)}
+            {p.toFixed(DECIMALS)}
           </span>
         ))}
         <span
           className="absolute left-1 -translate-y-1/2 rounded px-1 py-0.5 text-white"
           style={{ top: `${y(price)}%`, background: lastUp ? UP : DOWN }}
         >
-          {price.toFixed(1)}
+          {price.toFixed(DECIMALS)}
         </span>
       </div>
     </div>
@@ -370,16 +379,11 @@ function Board({ board }: { board: (Trader & { roi: number })[] }) {
   );
 }
 
-const sideText = (size: number) => {
-  if (size === 0) {
-    return "flat";
-  }
-  return `${size > 0 ? "L" : "S"} ${Math.abs(size)}`;
-};
+const sideText = (size: number) => (size === 0 ? "flat" : lot(size));
 
 const roiText = (roi: number) => `${roi >= 0 ? "+" : "−"}${(Math.abs(roi) * 100).toFixed(2)}%`;
 
-const VERB = { long: "longed", short: "shorted", close: "closed" } as const;
+const VERB = { buy: "bought", sell: "sold" } as const;
 
 function Feed({ fills }: { fills: Fill[] }) {
   return (
@@ -403,7 +407,7 @@ function Feed({ fills }: { fills: Fill[] }) {
               <img src={f.avatar} alt="" width={16} height={16} className="size-4 rounded-full" />
               <span className="font-medium">{f.who}</span>
               <span style={{ color: TONE[f.action] }}>
-                {VERB[f.action]} {f.size} ETH
+                {VERB[f.action]} {lot(f.size)} MON
               </span>
               <span className="ml-auto font-mono text-[11px] tabular-nums text-[var(--color-ink-3)]">
                 {money(f.price)}
