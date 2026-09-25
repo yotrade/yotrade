@@ -2,50 +2,14 @@
 import { LINKS } from "../data/site.ts";
 ---
 
-<footer>
-  <div class="wrap row">
-    <p>
-      <strong>YoTrade</strong> · Built for the Monad Metropolis hackathon. Testnet only: funds have no real value.
+<footer class="bg-page px-6 pb-10">
+  <div class="max-w-[88rem] mx-auto border-t border-black/10 pt-8 flex flex-wrap items-center justify-between gap-4">
+    <p class="text-black/60 text-sm">
+      YoTrade · Built for the Monad Metropolis hackathon. Testnet only: funds have no real value.
     </p>
-    <nav aria-label="Footer">
-      <a href={LINKS.app}>App</a>
-      <a href={LINKS.repo}>GitHub</a>
-    </nav>
+    <div class="flex gap-6 text-sm">
+      <a href={LINKS.app} class="text-black/60 hover:text-black transition-colors">App</a>
+      <a href={LINKS.repo} class="text-black/60 hover:text-black transition-colors">GitHub</a>
+    </div>
   </div>
 </footer>
-
-<style>
-  footer {
-    border-top: 1px solid var(--line);
-    padding: 32px 0 48px;
-  }
-
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--muted);
-  }
-
-  nav {
-    display: flex;
-    gap: 22px;
-    font-size: 14px;
-  }
-
-  nav a {
-    color: var(--muted);
-    text-decoration: none;
-  }
-
-  nav a:hover {
-    color: var(--text);
-  }
-</style>

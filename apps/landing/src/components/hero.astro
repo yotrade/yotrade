@@ -1,232 +1,32 @@
 ---
-import { LINKS } from "../data/site.ts";
-import Phone from "./phone.astro";
+import { LINKS, STACK } from "../data/site.ts";
+import Marquee from "./marquee.astro";
+import PillButton from "./pill-button.astro";
 ---
 
-<section class="hero">
-  <div class="glow" aria-hidden="true"></div>
-  <div class="wrap grid">
-    <div class="copy">
-      <p class="pill reveal"><span class="dot"></span> Live on Monad testnet</p>
-      <h1 class="reveal" style="--delay: 80ms">
-        Who's the best trader in <span class="hl">your community?</span>
+<section class="flex-1 px-6 pt-20 pb-6 flex items-end">
+  <div class="relative w-full rounded-2xl overflow-hidden" style="height: calc(100vh - 96px); min-height: 620px">
+    <video
+      class="object-cover absolute inset-0 w-full h-full"
+      src="/media/hero.mp4"
+      poster="/media/hero-poster.jpg"
+      autoplay
+      muted
+      loop
+      playsinline
+      aria-hidden="true"></video>
+    <div class="relative z-10 flex flex-col items-start justify-start h-full p-8 pt-28 md:p-12 md:pt-36">
+      <h1 class="text-black text-5xl md:text-6xl font-medium leading-tight max-w-xl mb-4" style="letter-spacing: -0.04em">
+        Who's the best<br />trader here?
       </h1>
-      <p class="lead reveal" style="--delay: 160ms">
-        Host a trading tournament in three taps. Friends join with one passkey, trade real Kuru order books or go up to
-        100x on Pyth prices, and the contract pays the winners.
+      <p class="text-black/70 text-base md:text-lg max-w-md mb-8 leading-relaxed">
+        Host a trading tournament for your community in three taps. Friends join with one passkey, trade real Kuru order
+        books or go up to 100x, and the contract pays the winners.
       </p>
-      <div class="actions reveal" style="--delay: 240ms">
-        <a class="btn btn-primary" href={LINKS.host}>Host a game</a>
-        <a class="btn btn-ghost" href={LINKS.app}>Join with a code</a>
-      </div>
-      <p class="note reveal" style="--delay: 320ms">No wallet, no seed phrase. Test funds only, nothing of real value.</p>
-    </div>
-
-    <div class="stage" aria-label="The app on a phone">
-      <Phone class="back" src="/shots/board.jpg" alt="Tournament page with prize pool, game code and podium" />
-      <Phone class="front" src="/shots/home.jpg" alt="Home screen with a box to enter a game code" eager />
-      <div class="chip code" aria-hidden="true">
-        <span>Game code</span>
-        <strong>JJU 3F5</strong>
-      </div>
-      <div class="chip rank" aria-hidden="true">
-        <span class="crown">👑</span>
-        <strong>#1</strong>
-        <em>+4.20%</em>
+      <PillButton href={LINKS.host} label="Host a game" large />
+      <div class="mt-auto md:mt-24 w-full max-w-md">
+        <Marquee items={STACK} duration={22} gap="mx-7" tone="text-black/60" label="Built with" />
       </div>
     </div>
   </div>
 </section>
-
-<style>
-  .hero {
-    position: relative;
-    padding: 72px 0 96px;
-    overflow: hidden;
-  }
-
-  .glow {
-    position: absolute;
-    inset: -30% -10% auto;
-    height: 900px;
-    background:
-      radial-gradient(40% 50% at 70% 30%, rgb(110 84 255 / 0.45), transparent 70%),
-      radial-gradient(30% 40% at 20% 10%, rgb(157 139 255 / 0.25), transparent 70%);
-    filter: blur(20px);
-    pointer-events: none;
-  }
-
-  .grid {
-    position: relative;
-    display: grid;
-    gap: 64px;
-    align-items: center;
-  }
-
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    padding: 7px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgb(255 255 255 / 0.05);
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--up);
-    box-shadow: 0 0 0 0 rgb(124 231 163 / 0.7);
-    animation: pulse 1.8s ease-out infinite;
-  }
-
-  h1 {
-    margin: 22px 0 0;
-    font-size: clamp(42px, 7vw, 82px);
-    line-height: 0.98;
-    letter-spacing: -0.045em;
-    font-weight: 800;
-  }
-
-  .hl {
-    background: linear-gradient(100deg, #b7a9ff, var(--accent) 60%, #ff8ad8);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 32px;
-  }
-
-  .note {
-    margin: 18px 0 0;
-    font-size: 14px;
-    color: var(--muted);
-  }
-
-  .stage {
-    position: relative;
-    width: min(100%, 460px);
-    height: 560px;
-    margin-inline: auto;
-  }
-
-  .stage :global(.front) {
-    position: absolute;
-    left: 6%;
-    top: 20px;
-    width: 250px;
-    animation: float 7s ease-in-out infinite;
-  }
-
-  .stage :global(.back) {
-    position: absolute;
-    right: 0;
-    top: 70px;
-    width: 230px;
-    opacity: 0.9;
-    transform: rotate(6deg);
-    animation: float 8s ease-in-out 1s infinite;
-  }
-
-  .chip {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-radius: 18px;
-    background: rgb(22 16 42 / 0.9);
-    border: 1px solid var(--line);
-    box-shadow: 0 20px 40px rgb(0 0 0 / 0.4);
-    backdrop-filter: blur(8px);
-  }
-
-  .chip span {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .chip strong {
-    font-family: var(--mono);
-    font-size: 18px;
-    letter-spacing: 0.12em;
-  }
-
-  .code {
-    left: -4%;
-    bottom: 90px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    animation: bob 5s ease-in-out infinite;
-  }
-
-  .rank {
-    right: -2%;
-    top: 20px;
-    animation: bob 6s ease-in-out 0.8s infinite;
-  }
-
-  .rank strong {
-    letter-spacing: 0;
-    font-size: 22px;
-  }
-
-  .rank em {
-    font-family: var(--mono);
-    font-style: normal;
-    font-weight: 700;
-    color: var(--up);
-  }
-
-  @keyframes float {
-    50% {
-      translate: 0 -14px;
-    }
-  }
-
-  @keyframes bob {
-    50% {
-      translate: 0 -8px;
-    }
-  }
-
-  @keyframes pulse {
-    to {
-      box-shadow: 0 0 0 10px rgb(124 231 163 / 0);
-    }
-  }
-
-  @media (min-width: 960px) {
-    .hero {
-      padding: 110px 0 130px;
-    }
-
-    .grid {
-      grid-template-columns: 1.1fr 0.9fr;
-    }
-
-    .stage {
-      height: 620px;
-    }
-
-    .stage :global(.front) {
-      width: 280px;
-    }
-
-    .stage :global(.back) {
-      width: 250px;
-    }
-  }
-</style>

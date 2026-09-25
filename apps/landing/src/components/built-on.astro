@@ -1,0 +1,13 @@
+---
+import { BUILT_ON } from "../data/site.ts";
+import Marquee from "./marquee.astro";
+---
+
+<section class="bg-page px-6">
+  <div class="max-w-[88rem] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
+    <p class="text-black/70 text-base leading-relaxed">Built on the fastest<br />stack onchain.</p>
+    <div class="md:col-span-3">
+      <Marquee items={BUILT_ON} duration={30} gap="mx-10" tone="text-black/50" label="Built on" />
+    </div>
+  </div>
+</section>
