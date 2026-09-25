@@ -1,0 +1,139 @@
+---
+const repo = "https://github.com/yotrade/yotrade";
+const faqs = [
+  {
+    q: "What is YoTrade, in plain words?",
+    a: "A trading tournament your community can run by itself. A host puts a prize in a contract, picks the market and who may join, and shares a link. Everyone trades for a set time with the same starting capital, a live leaderboard follows every fill, and when the bell rings the contract pays the winners. Nobody needs an exchange to agree to it.",
+  },
+  {
+    q: "What do I need to join?",
+    a: "A phone or a laptop. One passkey prompt makes your account: no seed phrase, no extension, no email. Testnet gas and test capital arrive on their own, and each tournament gets a fresh trading account, so nobody starts ahead and nothing carries over from the last one. Joining takes about 11 seconds on Spot and 6 on Futures.",
+  },
+  {
+    q: "What is the difference between Spot and Futures?",
+    a: "Spot trades real order books on Kuru: your orders fill against other people's, and the score comes from Kuru's public fills. Futures lets you go long or short at Pyth prices with up to 100x leverage, starting from the same virtual $10,000 as everyone else, with liquidation anyone can trigger. The host picks one when they make the tournament.",
+  },
+  {
+    q: "How is the score worked out?",
+    a: "Return on capital, not size. On Spot it is what you made inside the window, gains you are still holding included, over what you started with plus anything you added later, so topping up buys no better rank. Holdings are marked at the last price traded before the bell, and a sale after the end cannot erase a loss. On Futures it is equity at Pyth prices, with every open position closed at the first price after the end. Anyone can recompute either from public data.",
+  },
+  {
+    q: "Who holds the prize?",
+    a: "The contract, from the moment the tournament is made. The host can cancel before it starts, or take the pool back if no result is posted for seven days, but cannot touch it once trading has begun. The key that posts winners can only post winners: it cannot move funds, post before the end, or pay more ranks than the prize has. Winners pull their share themselves.",
+  },
+  {
+    q: "Can I run a private one?",
+    a: "Yes. A private tournament is hidden from the arena and needs an invite. The code is derived from the host's passkey, its address goes onchain, and the contract checks the code's signature on every join. If a link leaks, the host rotates the code and the old link stops working.",
+  },
+  {
+    q: "Is it live? Is it audited?",
+    a: "Live on Monad testnet, not audited. The contracts are deployed with their source verified, run at full line and branch coverage with fuzz and invariant tests, and pass Slither clean, but that is not a professional audit and this page does not call it one. Testnet only: the prizes and the capital are test tokens.",
+  },
+];
+---
+
+<section class="wrap faq" id="faq" aria-labelledby="faq-title" data-reveal>
+	<h2 id="faq-title">FAQs</h2>
+	<div class="faq__list">
+		{faqs.map((f) => (
+			<details class="faq__item">
+				<summary>
+					<span>{f.q}</span>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+				</summary>
+				<p>{f.a}</p>
+			</details>
+		))}
+	</div>
+	<p class="faq__more"><a href={`${repo}#readme`}>Read the YoTrade README</a></p>
+</section>
+
+<style>
+	.faq {
+		max-width: 662px;
+		margin-top: clamp(4rem, 8vw, 6rem);
+		margin-bottom: clamp(2rem, 4vw, 3rem);
+	}
+	.faq h2 {
+		margin: 0 0 1.5rem;
+		font-size: clamp(1.75rem, 3vw, 2.5rem);
+		font-weight: 500;
+		line-height: 1.35;
+		letter-spacing: -0.02em;
+		color: var(--ink-90);
+	}
+	.faq__item {
+		border-bottom: 1px solid rgba(37, 34, 40, 0.08);
+	}
+	.faq__item summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 1.4rem 0;
+		cursor: pointer;
+		list-style: none;
+		font-size: 1rem;
+		letter-spacing: -0.01em;
+		color: var(--ink-90);
+	}
+	.faq__item summary::-webkit-details-marker {
+		display: none;
+	}
+	.faq__item summary svg {
+		flex: none;
+		width: 1rem;
+		height: 1rem;
+		color: var(--ink-65);
+		transition: transform 0.2s;
+	}
+	.faq__item[open] summary svg {
+		transform: rotate(45deg);
+	}
+	/* The answer unfolds downward. Browsers without ::details-content open it instantly. */
+	.faq {
+		interpolate-size: allow-keywords;
+	}
+	.faq__item::details-content {
+		height: 0;
+		overflow: clip;
+		transition:
+			height 0.3s ease,
+			content-visibility 0.3s allow-discrete;
+	}
+	.faq__item[open]::details-content {
+		height: auto;
+	}
+	.faq__item[open] p {
+		animation: faq-in 0.3s ease;
+	}
+	@keyframes faq-in {
+		from {
+			opacity: 0;
+			transform: translateY(-0.35rem);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.faq__item::details-content {
+			transition: none;
+		}
+		.faq__item[open] p {
+			animation: none;
+		}
+	}
+	.faq__item p {
+		margin: 0 0 1.4rem;
+		font-size: 1rem;
+		line-height: 1.5;
+		letter-spacing: -0.01em;
+		color: var(--ink-65);
+	}
+	.faq__more {
+		margin: 1.5rem 0 0;
+		font-size: 0.875rem;
+		font-weight: 450;
+	}
+	.faq__more a {
+		color: var(--lav-text);
+	}
+</style>

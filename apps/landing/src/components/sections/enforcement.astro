@@ -1,0 +1,486 @@
+---
+import { contractAssertions, contractTests } from "../../lib/counts";
+
+const repo = "https://github.com/yotrade/yotrade";
+const app = "https://app.yotrade.xyz";
+// Permalinks pinned at the commit these line numbers were read from, so they stay true when the
+// files move on. Read from the code rather than remembered.
+const at = (file: string) =>
+  `${repo}/blob/ed836edd0562bff647ae6f9b1b14369399803ef8/packages/contracts/src/${file}`;
+const escrow = at("modules/EscrowModule.sol");
+const registration = at("modules/RegistrationModule.sol");
+const results = at("modules/ResultsModule.sol");
+const trading = at("perps/modules/PerpsTradingModule.sol");
+const settlement = at("perps/modules/PerpsSettlementModule.sol");
+const base = at("perps/PerpsBase.sol");
+// The TournamentManager proxy on Monad testnet, verified on Sourcify.
+const deployed =
+  "https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10";
+const fields = [
+  {
+    label: "The prize",
+    field: "createTournament",
+    value: "escrowed when it is made",
+    note: "to the exact amount",
+    href: `${escrow}#L22`,
+  },
+  {
+    label: "Who may join",
+    field: "join",
+    value: "an allowlist or a signed invite",
+    note: "one account each, until full",
+    href: `${registration}#L15`,
+  },
+  {
+    label: "How far you can lever",
+    field: "trade",
+    value: "up to the cap, on a confident price",
+    note: "a flip counts as new risk",
+    href: `${trading}#L16`,
+  },
+  {
+    label: "The way out",
+    field: "_exitPrice",
+    value: "always open",
+    note: "at the worse edge of the band",
+    href: `${base}#L130`,
+  },
+  {
+    label: "When you go under",
+    field: "liquidate",
+    value: "anyone can close it",
+    note: "below maintenance, before the end",
+    href: `${settlement}#L19`,
+  },
+  {
+    label: "When the bell rings",
+    field: "settle",
+    value: "the first price after the end",
+    note: "the same for whoever settles",
+    href: `${settlement}#L44`,
+  },
+  {
+    label: "Who picks the winners",
+    field: "postResults",
+    value: "a key that can only post",
+    note: "after the end, within the ranks",
+    href: `${results}#L18`,
+  },
+  {
+    label: "Who gets paid",
+    field: "claim",
+    value: "the winners, by their own hand",
+    note: "after the review window",
+    href: `${results}#L63`,
+  },
+];
+// The other tabs: how each mode runs, and what has been deployed and measured.
+const spot = [
+  ["Venue", "real Kuru order books on Monad: your orders fill against other people's"],
+  ["Capital", "standardized test capital, recorded onchain when you join"],
+  [
+    "Guards",
+    "an empty side, price impact against the top of the book, and slippage after the quote",
+  ],
+  [
+    "Score",
+    "realized plus unrealized PnL inside the window, over the capital at join plus anything added",
+  ],
+  [
+    "At the bell",
+    "holdings marked at the last price traded, so a sale after the end cannot erase a loss",
+  ],
+];
+const futures = [
+  ["Capital", "a virtual $10,000, the same for everyone"],
+  [
+    "Prices",
+    "a signed Pyth update rides with every order, so the fill is the oracle's, not the trader's",
+  ],
+  ["Leverage", "up to 100x, or a lower cap the host sets before the start"],
+  ["Liquidation", "permissionless: anyone may close an account below maintenance"],
+  ["At the bell", "every open position closes at the first Pyth price after the end"],
+];
+const privateRows = [
+  ["Hidden", "not listed in the arena; only a link lets you in"],
+  ["Invite", "a code derived from the host's passkey, its address stored onchain"],
+  [
+    "Checked",
+    "the contract verifies the code's signature on every join, bound to chain, tournament and trader",
+  ],
+  ["Revoked", "a leaked link dies when the host rotates to the next code"],
+  ["Recovered", "any device with the host's passkey finds the current code again"],
+];
+const evidence = [
+  [
+    "Deployed",
+    "TournamentManager, PerpsEngine, two venue adapters and ProfileRegistry, live on Monad testnet and verified on Sourcify",
+  ],
+  [
+    "Measured",
+    "join in 11 s on Spot and 6 s on Futures, an order in 2 to 5 s, results posted in 6 s",
+  ],
+  [
+    "Tests",
+    `${contractTests} contract tests and ${contractAssertions} assertions at full line and branch coverage, fuzzed and invariant-tested, Slither clean`,
+  ],
+  [
+    "Recomputable",
+    "every score comes from public fills and public prices, with the formula in the open",
+  ],
+  ["Caveats", "testnet only, test tokens only, and not a professional audit"],
+];
+const tabs = [
+  { id: "rules", label: "The rules" },
+  { id: "spot", label: "Spot" },
+  { id: "futures", label: "Futures" },
+  { id: "private", label: "Private" },
+  { id: "evidence", label: "Evidence" },
+];
+const templates = [
+  {
+    label: "Real order books",
+    name: "Spot",
+    copy: "Trade Kuru's books with the same test capital. Fills are public, final in under a second.",
+    chips: ["Kuru", "return on capital"],
+  },
+  {
+    label: "Long or short",
+    name: "Futures",
+    copy: "Go either way at Pyth prices from the same $10,000, with liquidation anyone can trigger.",
+    chips: ["up to 100x", "Pyth prices"],
+  },
+  {
+    label: "Invite only",
+    name: "Private",
+    copy: "Hidden from the arena, one link for your group, and a code you can rotate if it leaks.",
+    chips: ["signed invites", "revocable"],
+  },
+];
+---
+
+<section class="wrap" id="enforcement" aria-labelledby="enforcement-title">
+	<div class="section-card section-card--dark center" data-reveal>
+		<span class="eyebrow">The Rules</span>
+		<h2 class="headline" id="enforcement-title">A Contract That Referees Every Round</h2>
+		<p class="lede">The host sets the stakes. Everyone trades. The contract keeps the prize and pays the winners.</p>
+		<div class="actions">
+			<a class="btn btn--dark" href={`${app}/new`}>Host a Game</a>
+			<a class="btn btn--ghost" href={deployed}>See the Contract</a>
+		</div>
+
+		<div class="panel" aria-label="The rules of a tournament and the function that enforces each one">
+			<div class="panel__bar"><i></i><i></i><i></i><span>yotrade · TournamentManager · Monad testnet · deployed</span></div>
+			<div class="panel__body">
+				<div class="panel__side" role="tablist" aria-label="Panel sections" data-tabs>
+					{tabs.map((t, i) => (
+						<button type="button" role="tab" id={`tab-${t.id}`} aria-controls={`panel-${t.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.label}</button>
+					))}
+				</div>
+				<div class="panel__main" role="tabpanel" id="panel-rules" aria-labelledby="tab-rules">
+					<div class="panel__head">
+						<div>
+							<div class="panel__title">Every tournament · onchain</div>
+							<div class="panel__sub">The rules of a round, and the function that enforces each</div>
+						</div>
+						<span class="panel__badge">live</span>
+					</div>
+					<ol class="fields">
+						{fields.map((f) => (
+							<li>
+								<span class="fields__name">{f.label}</span>
+								<span class="fields__rule"><b>{f.value}</b> <span>{f.note}</span></span>
+								<a class="fields__line" href={f.href} title={f.field}>{f.field} ↗</a>
+							</li>
+						))}
+					</ol>
+					<p class="fields__foot">Break any of these and the contract refuses the call. There is no other way in.</p>
+				</div>
+				{[
+					{ id: 'spot', title: 'Spot · Kuru', sub: 'Real order books, scored from public fills', rows: spot },
+					{ id: 'futures', title: 'Futures · Pyth', sub: 'Long or short from the same $10,000', rows: futures },
+					{ id: 'private', title: 'Private · invite only', sub: 'For a club, a class, or a group chat', rows: privateRows },
+					{ id: 'evidence', title: 'Evidence · what has run', sub: 'Deployed on Monad testnet and measured there', rows: evidence },
+				].map((t) => (
+					<div class="panel__main" role="tabpanel" id={`panel-${t.id}`} aria-labelledby={`tab-${t.id}`} hidden>
+						<div class="panel__head">
+							<div>
+								<div class="panel__title">{t.title}</div>
+								<div class="panel__sub">{t.sub}</div>
+							</div>
+							<span class="panel__badge">live</span>
+						</div>
+						<dl class="rows">
+							{t.rows.map(([k, v]) => (
+								<div><dt>{k}</dt><dd>{v}</dd></div>
+							))}
+						</dl>
+					</div>
+				))}
+			</div>
+		</div>
+		<p class="panel__caption">Deployed on Monad testnet. Every rule above links to the line that enforces it.</p>
+
+		<div class="split" id="modes">
+			<div>
+				<h3>A round for every crowd.</h3>
+				<p>Real order books or leverage, open to the arena or invite only. The host picks once, and the contract holds everyone to it.</p>
+			</div>
+			<a class="btn btn--ghost" href={`${app}/arena`}>Open the Arena</a>
+		</div>
+		<div class="cards" style="text-align:left">
+			{templates.map((t) => (
+				<div class="card">
+					<span class="label">{t.label}</span>
+					<h3>{t.name}</h3>
+					<p>{t.copy}</p>
+					<div class="chips">{t.chips.map((c) => <span class="chip"><i></i>{c}</span>)}</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<script>
+	// Tabs: click or arrow keys move between them; only the selected panel is shown.
+	for (const list of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+		const tabs = Array.from(list.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+		const select = (tab: HTMLButtonElement) => {
+			for (const t of tabs) {
+				const on = t === tab
+				t.setAttribute('aria-selected', String(on))
+				t.tabIndex = on ? 0 : -1
+				const panel = document.getElementById(t.getAttribute('aria-controls') ?? '')
+				if (panel) panel.hidden = !on
+			}
+			tab.focus()
+		}
+		tabs.forEach((tab, i) => {
+			tab.addEventListener('click', () => select(tab))
+			tab.addEventListener('keydown', (e) => {
+				const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0
+				if (step === 0) return
+				e.preventDefault()
+				select(tabs[(i + step + tabs.length) % tabs.length] as HTMLButtonElement)
+			})
+		})
+	}
+</script>
+
+<style>
+	.enforcement {
+		margin-top: 2rem;
+	}
+	.panel {
+		margin: clamp(2rem, 4vw, 3rem) auto 0;
+		max-width: 60rem;
+		border-radius: 18px;
+		overflow: hidden;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: #101017;
+		text-align: left;
+		box-shadow: 0 40px 80px -40px rgba(124, 107, 255, 0.35);
+	}
+	.panel__bar {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.6rem 0.9rem;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: #8d8ca3;
+	}
+	.panel__bar i {
+		width: 0.6rem;
+		height: 0.6rem;
+		border-radius: 50%;
+		background: #2a2a36;
+	}
+	.panel__bar span {
+		margin-left: 0.5rem;
+	}
+	.panel__body {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+	/* On a phone the tabs are a strip that scrolls sideways; from tablet up, a sidebar. */
+	.panel__side {
+		display: flex;
+		flex-direction: row;
+		gap: 0.35rem;
+		padding: 0.75rem;
+		overflow-x: auto;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		font-size: 0.8rem;
+		color: #8d8ca3;
+	}
+	.panel__main {
+		padding: 1.25rem;
+	}
+	.panel__head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.panel__title {
+		font-weight: 600;
+		color: #ffffff;
+	}
+	.panel__sub {
+		margin-top: 0.25rem;
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: #8d8ca3;
+	}
+	.panel__badge {
+		border-radius: 9999px;
+		padding: 0.25rem 0.6rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+		background: rgba(58, 166, 110, 0.18);
+		color: #6ee7a8;
+	}
+	@media (min-width: 768px) {
+		.panel__body {
+			grid-template-columns: 11rem 1fr;
+		}
+		.panel__side {
+			flex-direction: column;
+			gap: 0.2rem;
+			padding: 1rem 0.75rem;
+			overflow: visible;
+			border-bottom: 0;
+			border-right: 1px solid rgba(255, 255, 255, 0.08);
+		}
+		.panel__side button {
+			width: 100%;
+		}
+		.panel__main {
+			padding: 1.5rem;
+		}
+	}
+	.fields {
+		margin: 1rem 0 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.fields li {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.15rem 1.25rem;
+		padding: 0.7rem 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		text-align: left;
+	}
+	.fields__name {
+		font-size: 0.9rem;
+		color: rgba(255, 255, 255, 0.6);
+	}
+	.fields__rule {
+		grid-column: 1 / -1;
+		font-size: 0.95rem;
+		line-height: 1.4;
+		letter-spacing: -0.01em;
+		color: rgba(255, 255, 255, 0.45);
+	}
+	.fields__rule b {
+		font-weight: 500;
+		color: #ffffff;
+	}
+	.fields__line {
+		font-size: 0.8rem;
+		font-weight: 450;
+		color: #b7abff;
+		white-space: nowrap;
+	}
+	.fields__foot {
+		margin: 1rem 0 0;
+		font-size: 0.85rem;
+		line-height: 1.4;
+		color: rgba(255, 255, 255, 0.5);
+		text-align: left;
+	}
+	.panel__caption {
+		margin: 1rem auto 0;
+		max-width: 60rem;
+		font-size: 0.8125rem;
+		letter-spacing: -0.01em;
+		color: rgba(255, 255, 255, 0.5);
+	}
+	@media (min-width: 720px) {
+		.fields li {
+			grid-template-columns: 10rem 1fr auto;
+			align-items: baseline;
+		}
+		.fields__rule {
+			grid-column: auto;
+		}
+	}
+	@media (min-width: 1024px) {
+		.fields li {
+			grid-template-columns: 13rem 1fr auto;
+		}
+	}
+	.panel__side button {
+		display: block;
+		flex: 0 0 auto;
+		white-space: nowrap;
+		padding: 0.55rem 0.75rem;
+		border: 0;
+		border-radius: 10px;
+		background: none;
+		text-align: left;
+		font: inherit;
+		font-size: 0.875rem;
+		color: rgba(255, 255, 255, 0.6);
+		cursor: pointer;
+	}
+	.panel__side button:hover {
+		color: #ffffff;
+		background: rgba(255, 255, 255, 0.05);
+	}
+	.panel__side button[aria-selected='true'] {
+		color: #ffffff;
+		background: rgba(124, 107, 255, 0.18);
+	}
+	.panel__side button:focus-visible {
+		outline: 2px solid #b7abff;
+		outline-offset: 2px;
+	}
+	.panel__main[hidden] {
+		display: none;
+	}
+	.rows {
+		margin: 1rem 0 0;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.rows div {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 0.2rem 1.25rem;
+		padding: 0.8rem 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		text-align: left;
+	}
+	.rows dt {
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: #b7abff;
+	}
+	.rows dd {
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.45;
+		letter-spacing: -0.01em;
+		color: rgba(255, 255, 255, 0.85);
+	}
+	@media (min-width: 720px) {
+		.rows div {
+			grid-template-columns: 9rem 1fr;
+			align-items: baseline;
+		}
+	}
+</style>

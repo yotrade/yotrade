@@ -1,0 +1,146 @@
+---
+import { Image } from "astro:assets";
+
+// The chain, the venues, and the tools YoTrade is built on. Not backers: the hackathon's sponsors
+// are not that. Drop a logo at src/assets/brands/<slug>.svg (png and webp work too) and it
+// shows beside the name.
+const brands = [
+  { slug: "monad", name: "Monad" },
+  { slug: "kuru", name: "Kuru" },
+  { slug: "pyth", name: "Pyth" },
+  { slug: "mera", name: "Mera" },
+  { slug: "envio", name: "Envio" },
+  { slug: "kimi", name: "Kimi" },
+  { slug: "alchemy", name: "Alchemy" },
+  { slug: "metropolis", name: "Monad Metropolis" },
+];
+// Eleven show; when there are more, a twelfth cell opens the rest, the way the reference does it.
+const SHOWN = 11;
+const files = import.meta.glob<ImageMetadata>("../../assets/brands/*.{svg,png,webp}", {
+  eager: true,
+  import: "default",
+});
+const logoFor = (slug: string) => {
+  const key = Object.keys(files).find((k) => /\/([^/]+)\.(svg|png|webp)$/.exec(k)?.[1] === slug);
+  return key ? files[key] : null;
+};
+const items = brands.map((b) => ({ ...b, logo: logoFor(b.slug) }));
+// The grid's lines are the container's grey showing through a 1px gap, and each white cell hides
+// the rest of it. A last row that does not fill leaves that grey as a block rather than a line, so
+// the row is completed with empty white cells. Four columns at full width and two below it, so a
+// multiple of four satisfies both.
+const shown = Math.min(items.length, SHOWN) + (items.length > SHOWN ? 1 : 0);
+const fillers = (4 - (shown % 4)) % 4;
+---
+
+<section class="wrap" aria-labelledby="brands-title">
+	<div class="section-card section-card--white brands" data-reveal>
+		<h2 id="brands-title">Built on</h2>
+		<ul class="brands__grid" data-brands>
+			{items.map((b, i) => (
+				<li class:list={{ 'is-more': i >= SHOWN }} hidden={i >= SHOWN}>
+					{b.logo && <Image src={b.logo} alt="" height={28} densities={[1, 2]} />}<span>{b.name}</span>
+				</li>
+			))}
+			{items.length > SHOWN && (
+				<li class="brands__toggle">
+					<button type="button" data-brands-more aria-expanded="false">View More</button>
+				</li>
+			)}
+			{Array.from({ length: fillers }).map(() => (
+				<li class="brands__filler" aria-hidden="true"></li>
+			))}
+		</ul>
+	</div>
+</section>
+
+<script>
+	const grid = document.querySelector<HTMLElement>('[data-brands]')
+	const more = document.querySelector<HTMLButtonElement>('[data-brands-more]')
+	more?.addEventListener('click', () => {
+		for (const li of grid?.querySelectorAll<HTMLElement>('.is-more') ?? []) li.hidden = false
+		more.setAttribute('aria-expanded', 'true')
+		more.closest('li')?.remove()
+	})
+</script>
+
+<style>
+	.brands {
+		padding: 3rem 1.5rem;
+	}
+	.brands h2 {
+		margin: 0 0 2rem;
+		text-align: center;
+		font-size: clamp(1.75rem, 3vw, 2.5rem);
+		font-weight: 500;
+		line-height: 1.2;
+		letter-spacing: -0.03em;
+		color: var(--ink-90);
+	}
+	.brands__grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1px;
+		max-width: var(--content-max);
+		margin: 0 auto;
+		padding: 1px 0;
+		list-style: none;
+		background: rgba(37, 34, 40, 0.08);
+	}
+	.brands__grid li {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		min-height: 120px;
+		padding: 1rem;
+		background: #ffffff;
+	}
+	.brands__grid li[hidden] {
+		display: none;
+	}
+	.brands__grid img {
+		height: 28px;
+		width: auto;
+		border-radius: 8px;
+		filter: grayscale(1);
+		opacity: 0.7;
+		transition:
+			opacity 0.2s,
+			filter 0.2s;
+	}
+	.brands__grid li:hover img {
+		/* The mark lights up; the name stays in the page's ink. */
+		filter: none;
+		opacity: 1;
+	}
+	.brands__grid span {
+		font-size: 1.125rem;
+		font-weight: 550;
+		letter-spacing: -0.02em;
+		text-align: center;
+		color: var(--ink-65);
+	}
+	.brands__toggle button {
+		border: 0;
+		background: none;
+		padding: 0.5rem 0.75rem;
+		border-radius: 99px;
+		font-size: 1.0625rem;
+		font-weight: 450;
+		letter-spacing: -0.01em;
+		color: var(--ink-65);
+	}
+	.brands__toggle button:hover {
+		color: var(--ink-90);
+		background: rgba(37, 34, 40, 0.04);
+	}
+	@media (min-width: 720px) {
+		.brands__grid {
+			grid-template-columns: repeat(4, 1fr);
+		}
+		.brands__grid li {
+			min-height: 150px;
+		}
+	}
+</style>

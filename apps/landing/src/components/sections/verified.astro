@@ -1,0 +1,51 @@
+---
+const repo = "https://github.com/yotrade/yotrade";
+const cards = [
+  {
+    label: "Same start",
+    title: "Everyone starts even.",
+    copy: "A fresh account per tournament and the same capital for all. Money added later joins the denominator, so it buys no return.",
+  },
+  {
+    label: "Same scoring",
+    title: "Anyone can redo the math.",
+    copy: "Scores come from public fills and public prices with the formula in the open. The board is a view of the chain, not a verdict.",
+  },
+  {
+    label: "Same bell",
+    title: "The end is the end.",
+    copy: "Spot holdings are marked at the last price traded before the bell; futures close at the first Pyth price after it. Nothing after the end counts.",
+  },
+];
+---
+
+<section class="wrap" id="verified" aria-labelledby="verified-title">
+	<div class="section-card center" data-reveal>
+		<span class="eyebrow">Fairness</span>
+		<h2 class="headline" id="verified-title">A Board Nobody Can Fudge</h2>
+		<p class="lede">The prize is locked before the first trade, and the score is yours to check.</p>
+		<div class="cards" style="text-align:left">
+			{cards.map((c) => (
+				<div class="card">
+					<span class="label">{c.label}</span>
+					<h3>{c.title}</h3>
+					<p>{c.copy}</p>
+				</div>
+			))}
+		</div>
+
+		<div class="split">
+			<div>
+				<h3>The key that posts can only post.</h3>
+				<p>Winners are posted by a key that holds one role: it cannot move funds, post before the end, or name more winners than the prize has. A review window follows, then each winner claims their own share.</p>
+			</div>
+			<a class="btn btn--secondary" href={`${repo}/blob/main/packages/contracts/SECURITY.md`}>Read the Trust Model</a>
+		</div>
+	</div>
+</section>
+
+<style>
+	.cards {
+		margin-top: 2rem;
+	}
+</style>

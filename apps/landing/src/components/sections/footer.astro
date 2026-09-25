@@ -1,0 +1,195 @@
+---
+import { Image } from "astro:assets";
+
+import logo from "../../assets/logo.png";
+
+const repo = "https://github.com/yotrade/yotrade";
+const app = "https://app.yotrade.xyz";
+const columns = [
+  {
+    title: "Product",
+    links: [
+      ["Host a tournament", `${app}/new`],
+      ["Arena", `${app}/arena`],
+      ["Launch App", app],
+    ],
+  },
+  {
+    title: "Developers",
+    links: [
+      ["GitHub", repo],
+      ["Architecture", `${repo}/blob/main/docs/ARCHITECTURE.md`],
+      ["Contracts", `${repo}/tree/main/packages/contracts`],
+      ["Security", `${repo}/blob/main/packages/contracts/SECURITY.md`],
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      ["How it works", "/#enforcement"],
+      ["Fairness", "/#verified"],
+      ["FAQ", "/#faq"],
+    ],
+  },
+  {
+    title: "Project",
+    links: [
+      ["Monad Metropolis", "https://monad.xyz/developers/hackathons/metropolis"],
+      [
+        "Monad testnet",
+        "https://testnet.monadvision.com/address/0xe60aFf1991d9D93e6093da5c813A63B746159D10",
+      ],
+    ],
+  },
+];
+---
+
+<div class="wrap">
+	<div class="section-card closing" data-reveal>
+		<section class="section-card section-card--white center updates" aria-label="Start a tournament">
+			<h2>Settle It on the Board</h2>
+			<p>Live on Monad testnet. Host a round for your community in three steps.</p>
+			<div class="updates__actions">
+				<a class="btn btn--ink" href={`${app}/new`}>Host a Game</a>
+			</div>
+		</section>
+
+		<footer class="footer">
+			<div class="footer__grid">
+				{columns.map((c) => (
+					<div class="footer__col">
+						<h3>{c.title}</h3>
+						<ul>{c.links.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul>
+					</div>
+				))}
+			</div>
+			<div class="footer__brand-row">
+				<a class="footer__brand" href="/" aria-label="YoTrade, back to top">
+					<Image src={logo} alt="" width={28} height={28} densities={[1, 2]} />
+					<span>YoTrade</span>
+				</a>
+				<div class="footer__social">
+					<a href={repo} target="_blank" rel="noreferrer" aria-label="YoTrade on GitHub">
+						<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z" /></svg>
+					</a>
+				</div>
+			</div>
+			<p class="footer__legal">
+				© {new Date().getFullYear()} YoTrade · A Monad Metropolis hackathon submission. Testnet only,
+				not audited. Nothing here is financial advice.
+			</p>
+		</footer>
+	</div>
+</div>
+
+<style>
+	.closing {
+		padding-top: 1.5rem;
+		padding-bottom: 2.5rem;
+		/* The card does not touch the bottom of the page; the same gutter as its sides. */
+		margin-bottom: var(--gutter);
+	}
+	.updates h2 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 450;
+		line-height: 1.35;
+		letter-spacing: -0.03em;
+		color: var(--ink-solid);
+	}
+	.updates p {
+		margin: 0.5rem auto 1.5rem;
+		max-width: 620px;
+		font-size: 1.25rem;
+		line-height: 1.36;
+		letter-spacing: -0.01em;
+		color: var(--ink-65);
+	}
+	.footer {
+		max-width: var(--content-max);
+		margin: clamp(3rem, 7vw, 6rem) auto 0;
+	}
+	.footer__grid {
+		display: grid;
+		gap: 2rem 1.5rem;
+		grid-template-columns: repeat(2, 1fr);
+	}
+	.footer__col h3 {
+		margin: 0 0 1rem;
+		font-size: 0.875rem;
+		font-weight: 450;
+		letter-spacing: 0.01em;
+		color: var(--lav-text);
+	}
+	.footer__col ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		gap: 0.75rem;
+	}
+	.footer__col a {
+		font-size: 0.875rem;
+		font-weight: 450;
+		line-height: 1.25;
+		color: var(--ink-65);
+	}
+	.footer__col a:hover {
+		color: var(--ink-90);
+	}
+	.footer__brand-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: clamp(3rem, 6vw, 5rem);
+	}
+	.footer__brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-weight: 550;
+		letter-spacing: -0.02em;
+		color: var(--lav-text);
+	}
+	.updates__actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.75rem;
+	}
+	.updates__actions .btn {
+		height: 42px;
+		padding: 8px 16px;
+		font-size: 1rem;
+		font-weight: 450;
+	}
+	.footer__social {
+		display: flex;
+		align-items: center;
+		gap: 1.25rem;
+	}
+	.footer__social a {
+		display: inline-flex;
+		color: rgba(39, 34, 40, 0.4);
+	}
+	.footer__social a:hover {
+		color: var(--ink-90);
+	}
+	.footer__social svg {
+		width: 1.35rem;
+		height: 1.35rem;
+	}
+	.footer__legal {
+		margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+		font-size: 0.875rem;
+		line-height: 1.6;
+		letter-spacing: -0.01em;
+		color: rgba(39, 34, 40, 0.5);
+	}
+	@media (min-width: 768px) {
+		.footer__grid {
+			grid-template-columns: repeat(4, 1fr);
+		}
+	}
+</style>
