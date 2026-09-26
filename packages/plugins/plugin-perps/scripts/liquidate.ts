@@ -18,14 +18,13 @@ import { hermes } from "../src/hermes.ts";
 import { liveFuturesTournaments, sweep } from "../src/liquidator.ts";
 import { perps } from "../src/plugin.ts";
 
-// An unset workflow variable arrives as an empty string, so empty means "use the default" too.
-const INDEXER_URL =
-  process.env["INDEXER_URL"] || "https://indexer.dev.hyperindex.xyz/2d1cdb5/v1/graphql";
+// Required: the endpoint changes with every indexer deployment. An unset workflow variable arrives as "".
+const INDEXER_URL = process.env["INDEXER_URL"];
 const execute = process.argv.includes("--execute");
 const key = process.env["LIQUIDATOR_PRIVATE_KEY"];
 const pythKey = process.env["PYTH_API_KEY"];
-if (!(key && pythKey)) {
-  throw new Error("Set LIQUIDATOR_PRIVATE_KEY and PYTH_API_KEY");
+if (!(key && pythKey && INDEXER_URL)) {
+  throw new Error("Set LIQUIDATOR_PRIVATE_KEY, PYTH_API_KEY and INDEXER_URL");
 }
 
 const account = privateKeyToAccount(key as Hex);

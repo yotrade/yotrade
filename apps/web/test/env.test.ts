@@ -5,13 +5,25 @@ import { monadTestnet } from "viem/chains";
 import { parsePublicEnv } from "../src/lib/env.ts";
 import { appTransport, createAppRuntime, E2E_FLAG } from "../src/lib/runtime.ts";
 
+const INDEXER = "https://indexer.test/v1/graphql";
+/** A valid environment: the indexer is the one required variable. */
+const envWith = (extra: Record<string, string> = {}) =>
+  parsePublicEnv({ NEXT_PUBLIC_INDEXER_URL: INDEXER, ...extra });
+
 describe("parsePublicEnv", () => {
-  test("falls back to local development defaults", () => {
-    expect(parsePublicEnv({})).toEqual({
+  test("falls back to local development defaults, except the indexer", () => {
+    expect(parsePublicEnv({ NEXT_PUBLIC_INDEXER_URL: INDEXER })).toEqual({
       NEXT_PUBLIC_RP_ID: "localhost",
       NEXT_PUBLIC_RPC_URL: "https://testnet-rpc.monad.xyz",
-      NEXT_PUBLIC_INDEXER_URL: "https://indexer.dev.hyperindex.xyz/2d1cdb5/v1/graphql",
+      NEXT_PUBLIC_INDEXER_URL: INDEXER,
     });
+  });
+
+  test("refuses to start without an indexer endpoint, and says which variable", () => {
+    expect(() => parsePublicEnv({})).toThrow(/NEXT_PUBLIC_INDEXER_URL/);
+    expect(() => parsePublicEnv({ NEXT_PUBLIC_INDEXER_URL: "" })).toThrow(
+      /NEXT_PUBLIC_INDEXER_URL/,
+    );
   });
 
   test("names the offending variable instead of failing later", () => {
@@ -26,7 +38,7 @@ describe("parsePublicEnv", () => {
 
 describe("createAppRuntime", () => {
   test("wires every plugin on Monad testnet", () => {
-    const runtime = createAppRuntime(parsePublicEnv({}));
+    const runtime = createAppRuntime(envWith());
 
     expect(runtime.chain.id).toBe(10_143);
     expect(typeof runtime.kuru.portfolio).toBe("function");
@@ -35,7 +47,7 @@ describe("createAppRuntime", () => {
   });
 
   test("puts Alchemy first when a key is configured, with the public RPC behind it", () => {
-    const env = parsePublicEnv({ NEXT_PUBLIC_ALCHEMY_API_KEY: "key" });
+    const env = envWith({ NEXT_PUBLIC_ALCHEMY_API_KEY: "key" });
     const transport = appTransport(env)({ chain: monadTestnet });
     expect(transport.config.type).toBe("fallback");
     const urls = (transport.value as { transports: { value?: { url?: string } }[] }).transports.map(
@@ -45,12 +57,12 @@ describe("createAppRuntime", () => {
   });
 
   test("uses the public RPC alone without a key", () => {
-    const transport = appTransport(parsePublicEnv({}))({ chain: monadTestnet });
+    const transport = appTransport(envWith())({ chain: monadTestnet });
     expect(transport.config.type).toBe("http");
   });
 
   test("a seed gives one stable account, but only in a browser that opted in", async () => {
-    const env = parsePublicEnv({ NEXT_PUBLIC_E2E_PRF_SEED: `0x${"11".repeat(32)}` });
+    const env = envWith({ NEXT_PUBLIC_E2E_PRF_SEED: `0x${"11".repeat(32)}` });
     // No flag: the real passkey path, which has no WebAuthn here and so cannot sign in.
     await expect(createAppRuntime(env).mera.signIn()).rejects.toThrow();
 
@@ -75,7 +87,7 @@ describe("createAppRuntime", () => {
 
 test("an empty optional variable, as a container passes it, counts as unset", () => {
   expect(
-    parsePublicEnv({ NEXT_PUBLIC_RP_ID: "yotrade.xyz", NEXT_PUBLIC_ALCHEMY_API_KEY: "" })
+    envWith({ NEXT_PUBLIC_RP_ID: "yotrade.xyz", NEXT_PUBLIC_ALCHEMY_API_KEY: "" })
       .NEXT_PUBLIC_ALCHEMY_API_KEY,
   ).toBeUndefined();
 });
