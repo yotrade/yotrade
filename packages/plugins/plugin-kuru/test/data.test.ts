@@ -234,6 +234,43 @@ describe("summarizeTrades", () => {
   });
 });
 
+describe("open orders", () => {
+  test("reads a user's resting orders with prices and sizes as bigints", async () => {
+    const urls: string[] = [];
+    const client = createDataClient("https://kuru.test/api/v1", (url) => {
+      urls.push(url);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            feedEpoch: 285,
+            data: [
+              {
+                orderId: "97344",
+                marketAddress: "0x0b4dd2a7b09d5c5401149ffe51301cc589017343",
+                symbol: "XAUTUSDC",
+                isBuy: true,
+                price: "425083",
+                remainingSize: "147030",
+                minSizeAfterBlock: null,
+              },
+            ],
+          }),
+        ),
+      );
+    });
+    expect(await client.openOrders(98n)).toEqual([
+      {
+        orderId: "97344",
+        market: "0x0b4dd2a7b09d5c5401149ffe51301cc589017343",
+        isBuy: true,
+        price: 425_083n,
+        remainingSize: 147_030n,
+      },
+    ]);
+    expect(urls).toEqual(["https://kuru.test/api/v1/users/98/orders"]);
+  });
+});
+
 describe("market data", () => {
   test("decodes columnar candles, scaling volume to USDC units", async () => {
     const urls: string[] = [];

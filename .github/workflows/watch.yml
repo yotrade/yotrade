@@ -1,7 +1,8 @@
 name: watch
 
-# Fails, and so emails the repository owner, when production is down or a hot wallet the app spends from
-# (drip, scorer, liquidator) is below its floor. Judges arrive in bursts; an empty drip stops every join.
+# Fails, and so emails the repository owner, when production is down, a hot wallet the app spends from
+# (drip, scorer, liquidator) is below its floor, or the spot books' maker has stopped: its gas is low or the last
+# `seed` run failed. Judges arrive in bursts; an empty drip stops every join, and an eaten ladder every spot trade.
 on:
   schedule:
     - cron: "17 */3 * * *"
@@ -9,6 +10,8 @@ on:
 
 permissions:
   contents: read
+  # Reads the last `seed` run's result.
+  actions: read
 
 jobs:
   health:
@@ -25,3 +28,28 @@ jobs:
             echo "::error::top up: $low"
             exit 1
           fi
+      - name: Spot books' maker
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAKER: "0x4E9D7d61957A2536815948b743F33FDC45165E64"
+          # A run that re-places both ladders spends about 0.4 MON; below this the next one may not finish.
+          FLOOR_WEI: "500000000000000000"
+        run: |
+          hex=$(curl -sS --max-time 30 --retry 3 --retry-delay 10 https://testnet-rpc.monad.xyz \
+            -H 'content-type: application/json' \
+            -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBalance\",\"params\":[\"$MAKER\",\"latest\"]}" | jq -r .result)
+          wei=$(python3 -c "print(int('$hex', 16))")
+          echo "maker $MAKER: $(python3 -c "print($wei / 1e18)") MON"
+          failed=0
+          # Wei overflows shell arithmetic above about 9.2 MON, so python compares.
+          if [ "$(python3 -c "print(int($wei < $FLOOR_WEI))")" = 1 ]; then
+            echo "::error::top up the maker $MAKER"
+            failed=1
+          fi
+          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow seed.yml --limit 1 --json conclusion --jq '.[0].conclusion')
+          echo "last seed run: $last"
+          if [ "$last" = "failure" ]; then
+            echo "::error::the last seed run failed"
+            failed=1
+          fi
+          exit $failed
