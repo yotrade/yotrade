@@ -45,7 +45,18 @@ git -C "$work" -c core.hooksPath=/dev/null commit -q --allow-empty -m "chore(ind
 commit=$(git -C "$work" rev-parse --short=7 HEAD)
 git -C "$work" -c core.hooksPath=/dev/null push -q --no-verify --force origin HEAD:refs/heads/envio
 git -C "$repo_root" worktree remove --force "$work"
-echo "pushed $commit to envio; waiting for Envio Cloud to index from the start block"
+echo "pushed $commit to envio"
+
+# Auto-deploy skips a commit that changes nothing under the indexer's root directory, and this one changes
+# nothing, so the deployment is started here once Envio Cloud has picked the commit up.
+until status=$(cloud indexer commits "$INDEXER" "$ORG" -o json 2>/dev/null |
+  jq -r --arg commit "$commit" '.data[] | select(.commit_hash == $commit) | .status') && [ -n "$status" ]; do
+  sleep 10
+done
+if [ "$status" = inactive ]; then
+  cloud deployment deploy "$INDEXER" "$commit" "$ORG" --yes
+fi
+echo "deployment $commit started; waiting for Envio Cloud to index from the start block"
 
 until cloud deployment status "$INDEXER" "$commit" "$ORG" 2>/dev/null | grep -q "Overall completion: 100.00%"; do
   sleep 30
