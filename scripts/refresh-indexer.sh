@@ -36,13 +36,14 @@ if [ "$count" -ge 3 ]; then
   cloud deployment delete "$INDEXER" "$oldest" "$ORG" --yes
 fi
 
-# Every push to the deployment branch is a new deployment; an empty commit on top of main makes one.
+# Every push to the deployment branch is a new deployment; an empty commit on top of main makes one. Hooks are off
+# for it: the worktree has no dependencies or submodules to run them with, and main has already passed CI.
 git -C "$repo_root" fetch -q origin main
 work=$(mktemp -d)
 git -C "$repo_root" worktree add -q --detach "$work" origin/main
-git -C "$work" commit -q --allow-empty -m "chore(indexer): fresh development deployment"
+git -C "$work" -c core.hooksPath=/dev/null commit -q --allow-empty -m "chore(indexer): fresh development deployment"
 commit=$(git -C "$work" rev-parse --short=7 HEAD)
-git -C "$work" push -q --force origin HEAD:refs/heads/envio
+git -C "$work" -c core.hooksPath=/dev/null push -q --no-verify --force origin HEAD:refs/heads/envio
 git -C "$repo_root" worktree remove --force "$work"
 echo "pushed $commit to envio; waiting for Envio Cloud to index from the start block"
 
@@ -59,5 +60,5 @@ coolify -X PATCH "$COOLIFY_URL/api/v1/applications/$COOLIFY_APP/envs/bulk" \
   -d "$(jq -n --arg url "$endpoint" '{data: [{key: "NEXT_PUBLIC_INDEXER_URL", value: $url, is_preview: false, is_literal: true, is_buildtime: true}]}')" >/dev/null
 coolify -X POST "$COOLIFY_URL/api/v1/deploy?uuid=$COOLIFY_APP&force=false" >/dev/null
 # The liquidator fallback workflow reads it from a repository variable.
-gh variable set INDEXER_URL --body "$endpoint"
+gh variable set INDEXER_URL --repo yotrade/yotrade --body "$endpoint"
 echo "production redeploying on $endpoint; check https://app.yotrade.xyz/api/health for indexer.ok in a few minutes"
