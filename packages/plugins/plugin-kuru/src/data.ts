@@ -10,6 +10,17 @@ export interface DataBalance {
   readonly reserved: bigint;
 }
 
+/** One of a user's resting orders, as the data API lists it. */
+export interface DataOrder {
+  readonly orderId: string;
+  readonly market: Address;
+  readonly isBuy: boolean;
+  /** Price precision. */
+  readonly price: bigint;
+  /** Unfilled quantity, in size precision. */
+  readonly remainingSize: bigint;
+}
+
 export interface DataTrade {
   readonly tradeId: string;
   readonly market: Address;
@@ -45,6 +56,14 @@ interface RawDepth {
     bids: { price: string; total_base: string }[];
     asks: { price: string; total_base: string }[];
   };
+}
+
+interface RawOrder {
+  orderId: string;
+  marketAddress: Address;
+  isBuy: boolean;
+  price: string;
+  remainingSize: string;
 }
 
 interface RawTradesPage {
@@ -324,6 +343,18 @@ export function createDataClient(
     },
 
     /** Most recent fills first. */
+    /** The user's resting orders on every market. */
+    async openOrders(userId: bigint): Promise<DataOrder[]> {
+      const { data } = await get<{ data: RawOrder[] }>(`/users/${userId}/orders`);
+      return data.map((row) => ({
+        orderId: row.orderId,
+        market: row.marketAddress,
+        isBuy: row.isBuy,
+        price: BigInt(row.price),
+        remainingSize: BigInt(row.remainingSize),
+      }));
+    },
+
     async trades(userId: bigint, limit = 100): Promise<DataTrade[]> {
       const body = await get<{ data: { trades: RawTrade[] } }>(
         `/users/${userId}/trades?limit=${limit}`,

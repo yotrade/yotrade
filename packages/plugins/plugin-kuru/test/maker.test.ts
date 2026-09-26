@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { ladder, type MarketSpec } from "../src/maker.ts";
+import { ladder, ladderStanding, type MarketSpec } from "../src/maker.ts";
 
 // XAUt0/USDC on Kuru testnet: two price decimals, six size decimals, ten-dollar minimum.
 const XAUT: MarketSpec = {
@@ -76,5 +76,30 @@ describe("ladder", () => {
     expect(() => ladder(XAUT, { ...base, reference: 0n })).toThrow(RangeError);
     expect(() => ladder(XAUT, { ...base, levels: 0 })).toThrow(RangeError);
     expect(() => ladder(XAUT, { ...base, stepBps: 0n })).toThrow(RangeError);
+  });
+});
+
+describe("ladderStanding", () => {
+  const Xaut = "0x0b4dd2a7b09d5c5401149ffe51301cc589017343";
+  const orders = (bids: number, asks: number, market = Xaut) => [
+    ...Array.from({ length: bids }, () => ({ market, isBuy: true })),
+    ...Array.from({ length: asks }, () => ({ market, isBuy: false })),
+  ];
+
+  test("a ladder with at least half its levels on each side still stands", () => {
+    expect(ladderStanding(orders(8, 7), Xaut, 8)).toBe(true);
+    expect(ladderStanding(orders(4, 4), Xaut.toUpperCase(), 8)).toBe(true);
+  });
+
+  test("one thin side, or none at all, needs a new ladder", () => {
+    expect(ladderStanding(orders(8, 3), Xaut, 8)).toBe(false);
+    expect(ladderStanding(orders(0, 8), Xaut, 8)).toBe(false);
+    expect(ladderStanding([], Xaut, 8)).toBe(false);
+  });
+
+  test("orders on another market do not count", () => {
+    expect(
+      ladderStanding(orders(8, 8, "0xfdbe356828c8f5a5d5ed4f69dde0816f4058ef61"), Xaut, 8),
+    ).toBe(false);
   });
 });

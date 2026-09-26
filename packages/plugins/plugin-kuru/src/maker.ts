@@ -65,3 +65,18 @@ export function ladder(spec: MarketSpec, request: LadderRequest): MakerOrder[] {
   }
   return orders;
 }
+
+/**
+ * Whether a maker's ladder on `market` still stands: at least half of `levels` resting on each side. Post-only
+ * orders rest until they are taken, so re-placing a standing ladder only spends gas.
+ */
+export function ladderStanding(
+  orders: readonly { market: string; isBuy: boolean }[],
+  market: string,
+  levels: number,
+): boolean {
+  const mine = orders.filter((order) => order.market.toLowerCase() === market.toLowerCase());
+  const need = Math.ceil(levels / 2);
+  const bids = mine.filter((order) => order.isBuy).length;
+  return bids >= need && mine.length - bids >= need;
+}
