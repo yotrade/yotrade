@@ -36,6 +36,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx biome ci .
       - run: bunx turbo run lint typecheck build test
+        env:
+          # The live indexer the app is built against, kept current by scripts/refresh-indexer.sh.
+          NEXT_PUBLIC_INDEXER_URL: ${{ vars.INDEXER_URL }}
 
   contracts:
     runs-on: ubuntu-latest
