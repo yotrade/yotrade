@@ -9,8 +9,12 @@ const publicSchema = z.object({
   NEXT_PUBLIC_RP_ID: z.string().min(1).default("localhost"),
   NEXT_PUBLIC_RPC_URL: z.url().default("https://testnet-rpc.monad.xyz"),
   NEXT_PUBLIC_ALCHEMY_API_KEY: z.string().min(1).optional(),
-  /** Envio Cloud GraphQL endpoint. Changes with every indexer deployment on the development plan. */
-  NEXT_PUBLIC_INDEXER_URL: z.url().default("https://indexer.dev.hyperindex.xyz/2d1cdb5/v1/graphql"),
+  /**
+   * Envio Cloud GraphQL endpoint. Required, never defaulted: development deployments change URL on every refresh
+   * and are deleted after 30 days, so an endpoint written in code goes stale without a sound. The current one is
+   * the repository variable `INDEXER_URL`, kept up to date by `scripts/refresh-indexer.sh`.
+   */
+  NEXT_PUBLIC_INDEXER_URL: z.url(),
   /**
    * Local end-to-end runs only: 32 bytes of passkey entropy, so every run is the same account and its gas is
    * reused. Ignored in production builds, where only a real passkey can produce an identity.
