@@ -82,6 +82,9 @@ TypeScript packages are consumed as source through explicit subpath exports: no 
 git clone --recurse-submodules https://github.com/yotrade/yotrade.git
 cd yotrade
 bun install
+cp apps/web/.env.example apps/web/.env.local
+# The one required value: the live indexer endpoint, which changes with every indexer deployment.
+echo "NEXT_PUBLIC_INDEXER_URL=$(gh variable get INDEXER_URL -R yotrade/yotrade)" >> apps/web/.env.local
 ```
 
 ## Commands
