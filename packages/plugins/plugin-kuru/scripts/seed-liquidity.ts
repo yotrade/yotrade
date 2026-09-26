@@ -3,7 +3,11 @@
  * against. Testnet books are thin enough that one order can clear a side.
  *
  *   bun run seed             # plan only: prints balances and the orders it would place
- *   bun run seed --execute   # claims the faucet, deposits, cancels the maker's old orders, places the ladder
+ *   bun run seed --execute   # re-places only the ladders that have been eaten: claims the faucet, deposits,
+ *                            # cancels the maker's old orders on those markets and places new ladders
+ *
+ * A ladder still standing (at least half its levels on each side) is left alone: post-only orders rest until they
+ * are taken, so re-placing them only spends gas. A run with nothing to replace sends no transaction at all.
  *
  * Needs MAKER_PRIVATE_KEY (a dedicated testnet account with a little MON for gas).
  */
@@ -23,7 +27,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
-import { ladder } from "../src/maker.ts";
+import { ladder, ladderStanding } from "../src/maker.ts";
 import { kuru } from "../src/plugin.ts";
 
 /** Markets the faucet gives inventory for, with the global pair used when a book has no usable mid. */
@@ -75,6 +79,21 @@ const gas = await publicClient.getBalance({ address: account.address });
 console.info(
   `maker ${account.address} · ${formatEther(gas)} MON · ${execute ? "EXECUTE" : "plan only"}`,
 );
+
+const userId = await runtime.kuru.account.id(account.address);
+const open = userId === 0n ? [] : await runtime.kuru.data.openOrders(userId);
+const stale = TARGETS.filter(
+  (target) => !ladderStanding(open, markets[target.market].orderBook, LEVELS),
+);
+for (const target of TARGETS) {
+  console.info(
+    `${target.market}: ${stale.includes(target) ? "needs a new ladder" : "ladder standing"}`,
+  );
+}
+if (stale.length === 0) {
+  console.info("Every ladder stands. Nothing to send.");
+  process.exit(0);
+}
 if (execute && gas < MIN_GAS) {
   throw new Error(`The maker needs at least ${formatEther(MIN_GAS)} MON for gas`);
 }
@@ -97,15 +116,16 @@ for (const symbol of ["usdc", "cbBtc", "xaut0"] as const) {
   }
 }
 
-const userId = await runtime.kuru.account.id(account.address);
+// A first deposit is what gives the maker a Kuru id, so read it again rather than trust the one from before.
+const makerId = userId === 0n ? await runtime.kuru.account.id(account.address) : userId;
 
-for (const target of TARGETS) {
+for (const target of stale) {
   const market = markets[target.market];
   // Yesterday's ladder still holds the inventory. Free it first, or the plan sees no base to sell.
-  if (execute && userId !== 0n) {
+  if (execute && makerId !== 0n) {
     await confirm(
       "cancel old orders",
-      client.spot.cancelAllOrders({ market: market.orderBook, userId }),
+      client.spot.cancelAllOrders({ market: market.orderBook, userId: makerId }),
     );
   }
   const { holdings } = await runtime.kuru.portfolio(account.address);
@@ -140,14 +160,14 @@ for (const target of TARGETS) {
       `  ${order.side.padEnd(4)} ${(Number(order.quantity) / Number(info.sizePrecision)).toFixed(6)} @ ${Number(order.price) / Number(info.pricePrecision)}`,
     );
   }
-  if (!execute || orders.length === 0 || userId === 0n) {
+  if (!execute || orders.length === 0 || makerId === 0n) {
     continue;
   }
   await confirm(
     "place ladder",
     client.spot.batch({
       market: market.orderBook,
-      userId,
+      userId: makerId,
       orders: orders.map((order) => ({ ...order, tif: "gtc", executionInstruction: "postOnly" })),
       cancelSlotIdxs: [],
     }),
